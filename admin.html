@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin – Prabha Gyan Jyoti</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f4f8; }
+
+    /* TOP BAR */
+    .topbar {
+      background: #1a3c6e;
+      color: #fff;
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .topbar h1 { font-size: 16px; }
+    .topbar button {
+      background: #c0392b;
+      color: #fff;
+      border: none;
+      padding: 7px 18px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    /* TABS */
+    .tabs {
+      display: flex;
+      background: #fff;
+      border-bottom: 2px solid #1a3c6e;
+      overflow-x: auto;
+    }
+    .tab {
+      padding: 12px 22px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      color: #555;
+      white-space: nowrap;
+      border-bottom: 3px solid transparent;
+    }
+    .tab.active { color: #1a3c6e; border-bottom: 3px solid #1a3c6e; }
+
+    /* CONTENT */
+    .content { padding: 24px; max-width: 1100px; margin: 0 auto; }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin-bottom: 24px;
+    }
+    .card h2 { font-size: 16px; color: #1a3c6e; margin-bottom: 18px; border-bottom: 1px solid #e0e0e0; padding-bottom: 10px; }
+
+    /* FORM GRID */
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 16px; }
+    label { font-size: 12px; font-weight: 600; color: #555; display: block; margin-bottom: 4px; }
+    input, select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid #ccc;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    input:focus, select:focus { outline: none; border-color: #2e6da4; }
+
+    .btn { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
+    .btn-primary { background: #1a3c6e; color: #fff; }
+    .btn-danger { background: #c0392b; color: #fff; }
+    .btn-success { background: #27ae60; color: #fff; }
+    .btn:hover { opacity: 0.88; }
+
+    /* TABLE */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #1a3c6e; color: #fff; padding: 10px 8px; text-align: left; }
+    td { padding: 9px 8px; border-bottom: 1px solid #eee; }
+    tr:hover td { background: #f5f8ff; }
+
+    .badge {
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .badge-admin { background: #fdebd0; color: #e67e22; }
+    .badge-teacher { background: #d5f5e3; color: #27ae60; }
+
+    .msg { padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 14px; }
+    .msg-success { background: #d5f5e3; color: #1e8449; }
+    .msg-error { background: #fadbd8; color: #c0392b; }
+
+    /* MARKS VIEW */
+    .filter-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; align-items: flex-end; }
+    .filter-row > div { flex: 1; min-width: 140px; }
+
+    .marks-table-wrap { overflow-x: auto; }
+    .pending { color: #e67e22; font-style: italic; }
+
+    @media(max-width:600px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .topbar h1 { font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>🏫 Prabha Gyan Jyoti — Admin Dashboard</h1>
+  <button onclick="logout()">Logout</button>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('students')">👨‍🎓 Students</div>
+  <div class="tab" onclick="showTab('teachers')">👩‍🏫 Teachers</div>
+  <div class="tab" onclick="showTab('marks')">📊 View Marks</div>
+  <div class="tab" onclick="showTab('report')">🖨️ Print Slips</div>
+</div>
+
+<div class="content">
+
+  <!-- ===== STUDENTS ===== -->
+  <div class="section active" id="sec-students">
+    <div class="card">
+      <h2>Add New Student</h2>
+      <div id="student-msg"></div>
+      <div class="form-grid">
+        <div><label>Student Name *</label><input id="s-name" placeholder="Full name"/></div>
+        <div><label>Father's Name *</label><input id="s-father" placeholder="Father's name"/></div>
+        <div><label>Mother's Name</label><input id="s-mother" placeholder="Mother's name"/></div>
+        <div><label>Admission No *</label><input id="s-admno" placeholder="e.g. 209"/></div>
+        <div><label>Roll No *</label><input id="s-roll" type="number" placeholder="e.g. 1"/></div>
+        <div>
+          <label>Class *</label>
+          <select id="s-class">
+            <option value="">-- Select --</option>
+            <option>II</option><option>III</option><option>IV</option>
+            <option>V</option><option>VI</option><option>VII</option><option>VIII</option>
+          </select>
+        </div>
+        <div><label>Date of Birth</label><input id="s-dob" type="date"/></div>
+        <div><label>Address</label><input id="s-address" placeholder="Village / City"/></div>
+        <div><label>Session *</label><input id="s-session" value="2026-27"/></div>
+      </div>
+      <button class="btn btn-primary" onclick="addStudent()">+ Add Student</button>
+    </div>
+
+    <div class="card">
+      <h2>All Students</h2>
+      <div style="margin-bottom:12px; display:flex; gap:10px; flex-wrap:wrap;">
+        <select id="filter-class" onchange="loadStudents()" style="width:160px;">
+          <option value="">All Classes</option>
+          <option>II</option><option>III</option><option>IV</option>
+          <option>V</option><option>VI</option><option>VII</option><option>VIII</option>
+        </select>
+      </div>
+      <table>
+        <thead><tr>
+          <th>Roll</th><th>Name</th><th>Father</th><th>Class</th><th>Adm No</th><th>Action</th>
+        </tr></thead>
+        <tbody id="students-tbody"><tr><td colspan="6" style="text-align:center;color:#999;">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== TEACHERS ===== -->
+  <div class="section" id="sec-teachers">
+    <div class="card">
+      <h2>Add New Teacher / Staff</h2>
+      <div id="teacher-msg"></div>
+      <div class="form-grid">
+        <div><label>Full Name *</label><input id="t-name" placeholder="Teacher name"/></div>
+        <div><label>Email *</label><input id="t-email" type="email" placeholder="email@gmail.com"/></div>
+        <div><label>Password *</label><input id="t-pass" type="password" placeholder="Min 6 chars"/></div>
+        <div>
+          <label>Subject *</label>
+          <select id="t-subject">
+            <option value="">-- Select --</option>
+            <option>English</option><option>Hindi</option><option>Maths</option>
+            <option>Science/E.V.S.</option><option>S.S.T.</option><option>G.K.</option>
+            <option>Computer</option><option>Sanskrit</option><option>Drawing</option>
+            <option>All Subjects</option>
+          </select>
+        </div>
+        <div>
+          <label>Assigned Classes *</label>
+          <select id="t-classes" multiple style="height:90px;">
+            <option>II</option><option>III</option><option>IV</option>
+            <option>V</option><option>VI</option><option>VII</option><option>VIII</option>
+          </select>
+          <small style="color:#888;">Hold Ctrl to select multiple</small>
+        </div>
+        <div>
+          <label>Role</label>
+          <select id="t-role">
+            <option value="teacher">Teacher</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="addTeacher()">+ Add Teacher</button>
+    </div>
+
+    <div class="card">
+      <h2>All Teachers</h2>
+      <table>
+        <thead><tr><th>Name</th><th>Email</th><th>Subject</th><th>Classes</th><th>Role</th><th>Action</th></tr></thead>
+        <tbody id="teachers-tbody"><tr><td colspan="6" style="text-align:center;color:#999;">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== VIEW MARKS ===== -->
+  <div class="section" id="sec-marks">
+    <div class="card">
+      <h2>View Entered Marks</h2>
+      <div class="filter-row">
+        <div>
+          <label>Class</label>
+          <select id="m-class" onchange="loadMarksView()">
+            <option value="">-- Select Class --</option>
+            <option>II</option><option>III</option><option>IV</option>
+            <option>V</option><option>VI</option><option>VII</option><option>VIII</option>
+          </select>
+        </div>
+        <div>
+          <label>Exam</label>
+          <select id="m-exam" onchange="loadMarksView()">
+            <option value="">-- All Exams --</option>
+            <option value="PA1">P.A. 1</option>
+            <option value="HalfYearly">Half Yearly</option>
+            <option value="PA2">P.A. 2</option>
+            <option value="Annual">Annual</option>
+          </select>
+        </div>
+        <div>
+          <label>Session</label>
+          <input id="m-session" value="2026-27" style="width:110px;" onchange="loadMarksView()"/>
+        </div>
+      </div>
+      <div id="marks-status" style="margin-bottom:12px;"></div>
+      <div class="marks-table-wrap">
+        <table id="marks-table">
+          <thead><tr id="marks-thead"></tr></thead>
+          <tbody id="marks-tbody"><tr><td colspan="12" style="text-align:center;color:#999;">Select a class above</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PRINT SLIPS ===== -->
+  <div class="section" id="sec-report">
+    <div class="card">
+      <h2>Generate & Print Report Slips</h2>
+      <div class="filter-row">
+        <div>
+          <label>Class</label>
+          <select id="p-class" style="width:160px;">
+            <option value="">-- Select Class --</option>
+            <option>II</option><option>III</option><option>IV</option>
+            <option>V</option><option>VI</option><option>VII</option><option>VIII</option>
+          </select>
+        </div>
+        <div>
+          <label>Exam</label>
+          <select id="p-exam" style="width:160px;">
+            <option value="PA1">P.A. 1 (20 marks)</option>
+            <option value="HalfYearly">Half Yearly (80 marks)</option>
+            <option value="PA2">P.A. 2 (20 marks)</option>
+            <option value="Annual">Annual (80 marks)</option>
+          </select>
+        </div>
+        <div>
+          <label>Session</label>
+          <input id="p-session" value="2026-27" style="width:110px;"/>
+        </div>
+        <div style="padding-top:18px;">
+          <button class="btn btn-success" onclick="generateSlips()">🖨️ Generate & Print</button>
+        </div>
+      </div>
+      <p style="font-size:12px;color:#888;margin-top:8px;">Opens a printable page. Use Ctrl+P or browser print to print.</p>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<script type="module">
+import { auth, db } from './firebase-config.js';
+import { onAuthStateChanged, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { collection, addDoc, getDocs, doc, setDoc, deleteDoc, query, where, orderBy, getDoc }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const SUBJECTS = ['English','Hindi','Maths','Science/E.V.S.','S.S.T.','G.K.','Computer','Sanskrit','Drawing'];
+const EXAM_LABELS = { PA1:'P.A.1', HalfYearly:'Half Yearly', PA2:'P.A.2', Annual:'Annual' };
+const MAX_MARKS = { PA1:20, HalfYearly:80, PA2:20, Annual:80 };
+
+// Auth guard
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { window.location.href = 'index.html'; return; }
+  const snap = await getDoc(doc(db, 'users', user.uid));
+  if (!snap.exists() || snap.data().role !== 'admin') { window.location.href = 'index.html'; }
+  loadStudents();
+  loadTeachers();
+});
+
+// ---- TAB ----
+window.showTab = function(tab) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('sec-'+tab).classList.add('active');
+  event.target.classList.add('active');
+  if (tab === 'marks') loadMarksView();
+};
+
+// ---- LOGOUT ----
+window.logout = () => signOut(auth).then(() => window.location.href = 'index.html');
+
+// ======== STUDENTS ========
+window.addStudent = async function() {
+  const name = document.getElementById('s-name').value.trim();
+  const father = document.getElementById('s-father').value.trim();
+  const mother = document.getElementById('s-mother').value.trim();
+  const admno = document.getElementById('s-admno').value.trim();
+  const roll = document.getElementById('s-roll').value.trim();
+  const cls = document.getElementById('s-class').value;
+  const dob = document.getElementById('s-dob').value;
+  const address = document.getElementById('s-address').value.trim();
+  const session = document.getElementById('s-session').value.trim();
+  const msgEl = document.getElementById('student-msg');
+
+  if (!name || !father || !admno || !roll || !cls || !session) {
+    showMsg('student-msg', 'Please fill all required fields.', 'error'); return;
+  }
+  try {
+    await addDoc(collection(db, 'students'), { name, fatherName:father, motherName:mother, admissionNo:admno, rollNo:Number(roll), class:cls, dob, address, session });
+    showMsg('student-msg', `Student "${name}" added successfully!`, 'success');
+    ['s-name','s-father','s-mother','s-admno','s-roll','s-dob','s-address'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('s-class').value = '';
+    loadStudents();
+  } catch(e) { showMsg('student-msg', 'Error: '+e.message, 'error'); }
+};
+
+window.loadStudents = async function() {
+  const cls = document.getElementById('filter-class').value;
+  const tbody = document.getElementById('students-tbody');
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">Loading...</td></tr>';
+  try {
+    let q = cls ? query(collection(db,'students'), where('class','==',cls)) : collection(db,'students');
+    const snap = await getDocs(q);
+    if (snap.empty) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">No students found.</td></tr>'; return; }
+    let rows = [];
+    snap.forEach(d => rows.push({id:d.id,...d.data()}));
+    rows.sort((a,b) => a.rollNo - b.rollNo);
+    tbody.innerHTML = rows.map(s => `
+      <tr>
+        <td>${s.rollNo}</td>
+        <td><b>${s.name}</b></td>
+        <td>${s.fatherName}</td>
+        <td><b>Class ${s.class}</b></td>
+        <td>${s.admissionNo}</td>
+        <td><button class="btn btn-danger" style="padding:4px 12px;font-size:12px;" onclick="deleteStudent('${s.id}','${s.name}')">Delete</button></td>
+      </tr>`).join('');
+  } catch(e) { tbody.innerHTML = `<tr><td colspan="6">Error: ${e.message}</td></tr>`; }
+};
+
+window.deleteStudent = async function(id, name) {
+  if (!confirm(`Delete student "${name}"?`)) return;
+  await deleteDoc(doc(db,'students',id));
+  loadStudents();
+};
+
+// ======== TEACHERS ========
+window.addTeacher = async function() {
+  const name = document.getElementById('t-name').value.trim();
+  const email = document.getElementById('t-email').value.trim();
+  const pass = document.getElementById('t-pass').value;
+  const subject = document.getElementById('t-subject').value;
+  const role = document.getElementById('t-role').value;
+  const clsSel = document.getElementById('t-classes');
+  const classes = Array.from(clsSel.selectedOptions).map(o => o.value);
+
+  if (!name || !email || !pass || !subject || classes.length === 0) {
+    showMsg('teacher-msg', 'Please fill all required fields and select at least one class.', 'error'); return;
+  }
+  if (pass.length < 6) { showMsg('teacher-msg', 'Password must be at least 6 characters.', 'error'); return; }
+
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    await setDoc(doc(db,'users', cred.user.uid), { name, email, subject, assignedClasses:classes, role, createdAt: new Date().toISOString() });
+    showMsg('teacher-msg', `Teacher "${name}" added successfully!`, 'success');
+    ['t-name','t-email','t-pass'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('t-subject').value = '';
+    Array.from(clsSel.options).forEach(o => o.selected = false);
+    loadTeachers();
+  } catch(e) {
+    const msg = e.code === 'auth/email-already-in-use' ? 'This email is already registered.' : e.message;
+    showMsg('teacher-msg', 'Error: '+msg, 'error');
+  }
+};
+
+window.loadTeachers = async function() {
+  const tbody = document.getElementById('teachers-tbody');
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">Loading...</td></tr>';
+  try {
+    const snap = await getDocs(collection(db,'users'));
+    if (snap.empty) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No users found.</td></tr>'; return; }
+    let rows = [];
+    snap.forEach(d => rows.push({id:d.id,...d.data()}));
+    tbody.innerHTML = rows.map(t => `
+      <tr>
+        <td><b>${t.name||'-'}</b></td>
+        <td>${t.email||'-'}</td>
+        <td>${t.subject||'-'}</td>
+        <td>${(t.assignedClasses||[]).join(', ')}</td>
+        <td><span class="badge badge-${t.role}">${t.role?.toUpperCase()}</span></td>
+        <td><button class="btn btn-danger" style="padding:4px 12px;font-size:12px;" onclick="deleteTeacher('${t.id}','${t.name}')">Delete</button></td>
+      </tr>`).join('');
+  } catch(e) { tbody.innerHTML = `<tr><td colspan="6">Error: ${e.message}</td></tr>`; }
+};
+
+window.deleteTeacher = async function(id, name) {
+  if (!confirm(`Delete user "${name}"? This removes them from the system.`)) return;
+  await deleteDoc(doc(db,'users',id));
+  loadTeachers();
+};
+
+// ======== MARKS VIEW ========
+window.loadMarksView = async function() {
+  const cls = document.getElementById('m-class').value;
+  const exam = document.getElementById('m-exam').value;
+  const session = document.getElementById('m-session').value;
+  const thead = document.getElementById('marks-thead');
+  const tbody = document.getElementById('marks-tbody');
+  const statusEl = document.getElementById('marks-status');
+
+  if (!cls) { tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#999;">Please select a class.</td></tr>'; return; }
+
+  tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#999;">Loading...</td></tr>';
+
+  try {
+    // Get students
+    const stuSnap = await getDocs(query(collection(db,'students'), where('class','==',cls), where('session','==',session)));
+    let students = [];
+    stuSnap.forEach(d => students.push({id:d.id,...d.data()}));
+    students.sort((a,b) => a.rollNo - b.rollNo);
+
+    // Get marks
+    let marksQ = exam
+      ? query(collection(db,'marks'), where('class','==',cls), where('exam','==',exam), where('session','==',session))
+      : query(collection(db,'marks'), where('class','==',cls), where('session','==',session));
+    const marksSnap = await getDocs(marksQ);
+    // Build lookup: studentId_exam_subject -> marks
+    const lookup = {};
+    marksSnap.forEach(d => {
+      const m = d.data();
+      lookup[`${m.studentId}_${m.exam}_${m.subject}`] = m.marksObtained;
+    });
+
+    const exams = exam ? [exam] : ['PA1','HalfYearly','PA2','Annual'];
+    // Build header
+    let hCols = '<th>Roll</th><th>Name</th>';
+    exams.forEach(ex => SUBJECTS.forEach(sub => hCols += `<th style="white-space:nowrap;">${sub}<br><small>${EXAM_LABELS[ex]}</small></th>`));
+    thead.innerHTML = hCols;
+
+    // Build rows
+    tbody.innerHTML = students.map(s => {
+      let row = `<td>${s.rollNo}</td><td><b>${s.name}</b></td>`;
+      exams.forEach(ex => {
+        SUBJECTS.forEach(sub => {
+          const key = `${s.id}_${ex}_${sub}`;
+          const val = lookup[key];
+          row += val !== undefined
+            ? `<td style="text-align:center;">${val}</td>`
+            : `<td class="pending" style="text-align:center;">-</td>`;
+        });
+      });
+      return `<tr>${row}</tr>`;
+    }).join('') || '<tr><td colspan="50" style="text-align:center;color:#999;">No students found for this class/session.</td></tr>';
+
+    statusEl.innerHTML = `<span style="color:#1a3c6e;font-size:13px;">Showing <b>${students.length}</b> students | Class <b>${cls}</b></span>`;
+  } catch(e) { tbody.innerHTML = `<tr><td colspan="12">Error: ${e.message}</td></tr>`; }
+};
+
+// ======== PRINT SLIPS ========
+window.generateSlips = async function() {
+  const cls = document.getElementById('p-class').value;
+  const exam = document.getElementById('p-exam').value;
+  const session = document.getElementById('p-session').value;
+  if (!cls) { alert('Please select a class.'); return; }
+
+  // Get students
+  const stuSnap = await getDocs(query(collection(db,'students'), where('class','==',cls), where('session','==',session)));
+  let students = [];
+  stuSnap.forEach(d => students.push({id:d.id,...d.data()}));
+  students.sort((a,b) => a.rollNo - b.rollNo);
+
+  if (students.length === 0) { alert('No students found for this class.'); return; }
+
+  // Get marks
+  const marksSnap = await getDocs(query(collection(db,'marks'), where('class','==',cls), where('exam','==',exam), where('session','==',session)));
+  const lookup = {};
+  marksSnap.forEach(d => { const m = d.data(); lookup[`${m.studentId}_${m.subject}`] = m.marksObtained; });
+
+  const maxMark = MAX_MARKS[exam];
+  const examLabel = EXAM_LABELS[exam];
+  const today = new Date().toLocaleDateString('en-IN');
+
+  // Generate print window
+  const win = window.open('', '_blank');
+  const slipHTML = students.map(s => {
+    let rows = '';
+    let total = 0;
+    SUBJECTS.forEach(sub => {
+      const m = lookup[`${s.id}_${sub}`];
+      const mStr = m !== undefined ? m : '___';
+      if (m !== undefined) total += Number(m);
+      rows += `<tr><td>${sub}</td><td>${mStr}</td><td>${maxMark}</td></tr>`;
+    });
+    const pct = students.length > 0 ? ((total / (SUBJECTS.length * maxMark)) * 100).toFixed(1) : '___';
+    return `
+    <div class="slip">
+      <div class="slip-header">
+        <b>PRABHA GYAN JYOTI PUBLIC SCHOOL</b><br>
+        <small>Govt. Recognized · Gangoh, Saharanpur (U.P.) · Mob: 9837700311</small>
+      </div>
+      <div class="slip-sub"><b>${examLabel} REPORT SLIP</b> &nbsp;|&nbsp; Session: ${session} &nbsp;|&nbsp; Date: ${today}</div>
+      <div class="slip-info">
+        <span><b>Name:</b> ${s.name}</span>
+        <span><b>Class:</b> ${s.class}</span>
+        <span><b>Roll No:</b> ${s.rollNo}</span>
+        <span><b>Adm No:</b> ${s.admissionNo}</span>
+      </div>
+      <table>
+        <thead><tr><th>Subject</th><th>Marks Obtained</th><th>Max Marks</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot>
+          <tr><td><b>Grand Total</b></td><td><b>${total}</b></td><td><b>${SUBJECTS.length * maxMark}</b></td></tr>
+          <tr><td colspan="3"><b>Percentage: ${pct}%</b></td></tr>
+        </tfoot>
+      </table>
+      <div class="sig-row">
+        <span>Class Teacher: _______________</span>
+        <span>Parent Sign: _______________</span>
+        <span>Principal: _______________</span>
+      </div>
+    </div>`;
+  }).join('<div class="cut-line">✂ ─────────────────────────────────────</div>');
+
+  win.document.write(`<!DOCTYPE html><html><head><title>Report Slips – Class ${cls}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 12px; background: #fff; }
+    .slip { border: 1.5px solid #1a3c6e; border-radius: 6px; padding: 12px 14px; margin: 10px; page-break-inside: avoid; }
+    .slip-header { text-align: center; color: #1a3c6e; font-size: 13px; margin-bottom: 4px; }
+    .slip-sub { text-align: center; font-size: 11px; color: #c0392b; font-weight: 700; margin-bottom: 6px; }
+    .slip-info { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { background: #1a3c6e; color: #fff; padding: 5px 8px; text-align: left; }
+    td { padding: 4px 8px; border-bottom: 1px solid #eee; }
+    tfoot td { background: #f0f4f8; font-weight: 700; }
+    .sig-row { display: flex; justify-content: space-between; margin-top: 10px; font-size: 11px; color: #555; }
+    .cut-line { text-align: center; color: #aaa; font-size: 11px; margin: 4px 0; }
+    @media print {
+      @page { margin: 10mm; }
+      .cut-line { border-top: 1px dashed #ccc; color: #ccc; }
+    }
+  </style></head><body>${slipHTML}
+  <script>window.onload=()=>window.print();<\/script></body></html>`);
+  win.document.close();
+};
+
+// ---- HELPER ----
+function showMsg(id, msg, type) {
+  const el = document.getElementById(id);
+  el.className = 'msg msg-'+(type==='error'?'error':'success');
+  el.textContent = msg;
+  setTimeout(() => el.textContent = '', 5000);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login – Prabha Gyan Jyoti Public School</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #1a3c6e 0%, #2e6da4 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 420px;
+    }
+    .school-header { text-align: center; margin-bottom: 28px; }
+    .school-header img { width: 72px; height: 72px; border-radius: 50%; margin-bottom: 10px; }
+    .school-name {
+      font-size: 17px;
+      font-weight: 700;
+      color: #1a3c6e;
+      line-height: 1.3;
+    }
+    .school-sub { font-size: 12px; color: #666; margin-top: 4px; }
+    h2 { text-align: center; color: #c0392b; font-size: 20px; margin-bottom: 24px; letter-spacing: 1px; }
+    label { font-size: 13px; font-weight: 600; color: #333; display: block; margin-bottom: 5px; }
+    input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid #ccc;
+      border-radius: 7px;
+      font-size: 14px;
+      margin-bottom: 18px;
+      transition: border-color 0.2s;
+    }
+    input:focus { outline: none; border-color: #2e6da4; }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #1a3c6e;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      border: none;
+      border-radius: 7px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: background 0.2s;
+    }
+    button:hover { background: #2e6da4; }
+    #error-msg {
+      color: #c0392b;
+      font-size: 13px;
+      text-align: center;
+      margin-top: 12px;
+      min-height: 18px;
+    }
+    .loader { display: none; text-align: center; margin-top: 10px; color: #666; font-size: 13px; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="school-header">
+    <div class="school-name">PRABHA GYAN JYOTI PUBLIC SCHOOL</div>
+    <div class="school-sub">Government Recognized · Gangoh, Saharanpur (U.P.)</div>
+  </div>
+  <h2>STAFF LOGIN</h2>
+  <label for="email">Email Address</label>
+  <input type="email" id="email" placeholder="Enter your email" />
+  <label for="password">Password</label>
+  <input type="password" id="password" placeholder="Enter your password" />
+  <button onclick="doLogin()">LOGIN</button>
+  <div id="error-msg"></div>
+  <div class="loader" id="loader">Logging in, please wait...</div>
+</div>
+
+<script type="module">
+  import { auth, db } from './firebase-config.js';
+  import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  window.doLogin = async function() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const errEl = document.getElementById('error-msg');
+    const loader = document.getElementById('loader');
+    errEl.textContent = '';
+
+    if (!email || !password) {
+      errEl.textContent = 'Please enter email and password.';
+      return;
+    }
+
+    loader.style.display = 'block';
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const uid = cred.user.uid;
+      const snap = await getDoc(doc(db, 'users', uid));
+      if (!snap.exists()) {
+        errEl.textContent = 'User profile not found. Contact admin.';
+        loader.style.display = 'none';
+        return;
+      }
+      const role = snap.data().role;
+      if (role === 'admin') {
+        window.location.href = 'admin.html';
+      } else {
+        window.location.href = 'teacher.html';
+      }
+    } catch (e) {
+      loader.style.display = 'none';
+      if (e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password') {
+        errEl.textContent = 'Incorrect email or password.';
+      } else if (e.code === 'auth/user-not-found') {
+        errEl.textContent = 'No account found with this email.';
+      } else {
+        errEl.textContent = 'Login failed. Please try again.';
+      }
+    }
+  };
+
+  // Allow Enter key
+  document.getElementById('password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') window.doLogin();
+  });
+</script>
+</body>
+</html>

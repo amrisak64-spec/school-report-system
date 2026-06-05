@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Teacher – Prabha Gyan Jyoti</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f4f8; }
+
+    .topbar {
+      background: #1a6e3c;
+      color: #fff;
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .topbar-info h1 { font-size: 15px; }
+    .topbar-info p { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+    .topbar button {
+      background: #c0392b;
+      color: #fff;
+      border: none;
+      padding: 7px 18px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .content { padding: 24px; max-width: 900px; margin: 0 auto; }
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin-bottom: 24px;
+    }
+    .card h2 { font-size: 16px; color: #1a6e3c; margin-bottom: 18px; border-bottom: 1px solid #e0e0e0; padding-bottom: 10px; }
+
+    .filter-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; align-items: flex-end; }
+    .filter-row > div { flex: 1; min-width: 140px; }
+    label { font-size: 12px; font-weight: 600; color: #555; display: block; margin-bottom: 4px; }
+    select, input {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid #ccc;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    select:focus, input:focus { outline: none; border-color: #1a6e3c; }
+
+    .btn { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
+    .btn-primary { background: #1a6e3c; color: #fff; }
+    .btn-secondary { background: #1a3c6e; color: #fff; }
+    .btn:hover { opacity: 0.88; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #1a6e3c; color: #fff; padding: 10px 8px; text-align: left; }
+    td { padding: 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
+    tr:hover td { background: #f5fff8; }
+
+    .marks-input {
+      width: 70px;
+      padding: 6px 8px;
+      border: 1.5px solid #ccc;
+      border-radius: 5px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .marks-input:focus { border-color: #1a6e3c; outline: none; }
+    .marks-input.saved { border-color: #27ae60; background: #f0fff4; }
+    .marks-input.error { border-color: #c0392b; background: #fff5f5; }
+
+    .msg { padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 14px; }
+    .msg-success { background: #d5f5e3; color: #1e8449; }
+    .msg-error { background: #fadbd8; color: #c0392b; }
+
+    .info-box {
+      background: #e8f5e9;
+      border-left: 4px solid #1a6e3c;
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+    .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+    .dot-green { background: #27ae60; }
+    .dot-orange { background: #e67e22; }
+
+    #loading { text-align: center; padding: 30px; color: #888; font-size: 14px; }
+
+    @media(max-width:600px) {
+      .filter-row { flex-direction: column; }
+      .marks-input { width: 60px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-info">
+    <h1 id="welcome-text">🏫 Prabha Gyan Jyoti — Teacher Portal</h1>
+    <p id="teacher-info">Loading...</p>
+  </div>
+  <button onclick="logout()">Logout</button>
+</div>
+
+<div class="content">
+  <div class="card">
+    <h2>Enter Student Marks</h2>
+    <div class="info-box" id="teacher-subject-info">Loading your assignment...</div>
+    <div class="filter-row">
+      <div>
+        <label>Select Class *</label>
+        <select id="sel-class" onchange="loadStudentsForMarks()">
+          <option value="">-- Select Class --</option>
+        </select>
+      </div>
+      <div>
+        <label>Exam *</label>
+        <select id="sel-exam" onchange="loadStudentsForMarks()">
+          <option value="">-- Select Exam --</option>
+          <option value="PA1">P.A. 1 (out of 20)</option>
+          <option value="HalfYearly">Half Yearly (out of 80)</option>
+          <option value="PA2">P.A. 2 (out of 20)</option>
+          <option value="Annual">Annual (out of 80)</option>
+        </select>
+      </div>
+      <div>
+        <label>Session</label>
+        <input id="sel-session" value="2026-27"/>
+      </div>
+    </div>
+    <div id="marks-msg"></div>
+    <div id="loading" style="display:none;">Loading students...</div>
+    <div id="marks-section" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+        <div id="marks-summary" style="font-size:13px; color:#555;"></div>
+        <button class="btn btn-primary" onclick="saveAllMarks()">💾 Save All Marks</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Roll No</th>
+              <th>Student Name</th>
+              <th id="col-subject">Subject</th>
+              <th id="col-maxmarks">Max Marks</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="marks-tbody"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:16px; text-align:right;">
+        <button class="btn btn-primary" onclick="saveAllMarks()">💾 Save All Marks</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW FULL MARKSHEET -->
+  <div class="card">
+    <h2>View Class Marksheet (All Subjects)</h2>
+    <div class="filter-row">
+      <div>
+        <label>Class</label>
+        <select id="view-class" style="width:160px;">
+          <option value="">-- Select --</option>
+        </select>
+      </div>
+      <div>
+        <label>Exam</label>
+        <select id="view-exam" style="width:160px;">
+          <option value="PA1">P.A. 1</option>
+          <option value="HalfYearly">Half Yearly</option>
+          <option value="PA2">P.A. 2</option>
+          <option value="Annual">Annual</option>
+        </select>
+      </div>
+      <div style="padding-top:18px;">
+        <button class="btn btn-secondary" onclick="loadFullMarksheet()">📊 View Marksheet</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto; margin-top:8px;">
+      <table id="full-marksheet">
+        <thead><tr id="full-thead"></tr></thead>
+        <tbody id="full-tbody"><tr><td style="color:#999;padding:12px;">Select class and exam above.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { auth, db } from './firebase-config.js';
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { collection, getDocs, doc, getDoc, query, where, setDoc, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const SUBJECTS = ['English','Hindi','Maths','Science/E.V.S.','S.S.T.','G.K.','Computer','Sanskrit','Drawing'];
+const MAX_MARKS = { PA1:20, HalfYearly:80, PA2:20, Annual:80 };
+
+let currentTeacher = null;
+let currentStudents = [];
+let existingMarks = {};
+
+// Auth guard
+onAuthStateChanged(auth, async (user) => {
+  if (!user) { window.location.href = 'index.html'; return; }
+  const snap = await getDoc(doc(db, 'users', user.uid));
+  if (!snap.exists()) { window.location.href = 'index.html'; return; }
+  currentTeacher = { uid: user.uid, email: user.email, ...snap.data() };
+
+  document.getElementById('welcome-text').textContent = `👋 Welcome, ${currentTeacher.name || 'Teacher'}`;
+  document.getElementById('teacher-info').textContent = `Subject: ${currentTeacher.subject} | Classes: ${(currentTeacher.assignedClasses||[]).join(', ')}`;
+  document.getElementById('teacher-subject-info').innerHTML =
+    `You are assigned to teach <b>${currentTeacher.subject}</b> for classes: <b>${(currentTeacher.assignedClasses||[]).join(', ')}</b>.<br>
+     Select your class and exam below to enter marks.`;
+
+  // Populate class dropdowns
+  const classes = currentTeacher.assignedClasses || [];
+  ['sel-class','view-class'].forEach(id => {
+    const sel = document.getElementById(id);
+    classes.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = 'Class ' + c;
+      sel.appendChild(opt);
+    });
+  });
+});
+
+window.logout = () => signOut(auth).then(() => window.location.href = 'index.html');
+
+// Load students for marks entry
+window.loadStudentsForMarks = async function() {
+  const cls = document.getElementById('sel-class').value;
+  const exam = document.getElementById('sel-exam').value;
+  const session = document.getElementById('sel-session').value;
+  const section = document.getElementById('marks-section');
+  const loading = document.getElementById('loading');
+
+  if (!cls || !exam) { section.style.display = 'none'; return; }
+
+  loading.style.display = 'block';
+  section.style.display = 'none';
+
+  try {
+    // Load students
+    const stuSnap = await getDocs(query(collection(db,'students'), where('class','==',cls), where('session','==',session)));
+    currentStudents = [];
+    stuSnap.forEach(d => currentStudents.push({id:d.id,...d.data()}));
+    currentStudents.sort((a,b) => a.rollNo - b.rollNo);
+
+    if (currentStudents.length === 0) {
+      loading.style.display = 'none';
+      showMsg('marks-msg', 'No students found for this class. Ask admin to add students.', 'error');
+      return;
+    }
+
+    // Load existing marks
+    const marksSnap = await getDocs(query(collection(db,'marks'),
+      where('class','==',cls), where('exam','==',exam),
+      where('subject','==',currentTeacher.subject), where('session','==',session)));
+    existingMarks = {};
+    marksSnap.forEach(d => { const m = d.data(); existingMarks[m.studentId] = { docId: d.id, marks: m.marksObtained }; });
+
+    // Update header
+    document.getElementById('col-subject').textContent = currentTeacher.subject;
+    document.getElementById('col-maxmarks').textContent = `Max: ${MAX_MARKS[exam]}`;
+
+    // Render table
+    const tbody = document.getElementById('marks-tbody');
+    tbody.innerHTML = currentStudents.map(s => {
+      const existing = existingMarks[s.id];
+      const val = existing ? existing.marks : '';
+      const isSaved = existing !== undefined;
+      return `
+        <tr>
+          <td><b>${s.rollNo}</b></td>
+          <td>${s.name}<br><small style="color:#888;">${s.fatherName}</small></td>
+          <td>
+            <input type="number" class="marks-input ${isSaved?'saved':''}" id="m_${s.id}"
+              value="${val}" min="0" max="${MAX_MARKS[exam]}"
+              onchange="validateInput(this, ${MAX_MARKS[exam]})"
+              placeholder="0-${MAX_MARKS[exam]}"/>
+          </td>
+          <td>${MAX_MARKS[exam]}</td>
+          <td id="status_${s.id}">
+            ${isSaved
+              ? '<span style="color:#27ae60;">✅ Saved</span>'
+              : '<span style="color:#e67e22;">⏳ Pending</span>'}
+          </td>
+        </tr>`;
+    }).join('');
+
+    const savedCount = Object.keys(existingMarks).length;
+    document.getElementById('marks-summary').innerHTML =
+      `<span class="status-dot dot-green"></span>${savedCount} saved &nbsp;|&nbsp; <span class="status-dot dot-orange"></span>${currentStudents.length - savedCount} pending`;
+
+    loading.style.display = 'none';
+    section.style.display = 'block';
+    document.getElementById('marks-msg').textContent = '';
+  } catch(e) {
+    loading.style.display = 'none';
+    showMsg('marks-msg', 'Error loading: '+e.message, 'error');
+  }
+};
+
+window.validateInput = function(input, max) {
+  const val = Number(input.value);
+  if (input.value === '') { input.classList.remove('saved','error'); return; }
+  if (isNaN(val) || val < 0 || val > max) {
+    input.classList.add('error'); input.classList.remove('saved');
+  } else {
+    input.classList.remove('error'); input.classList.add('saved');
+  }
+};
+
+// Save all marks
+window.saveAllMarks = async function() {
+  const cls = document.getElementById('sel-class').value;
+  const exam = document.getElementById('sel-exam').value;
+  const session = document.getElementById('sel-session').value;
+  const max = MAX_MARKS[exam];
+
+  if (!cls || !exam) { showMsg('marks-msg','Please select class and exam.','error'); return; }
+
+  let errors = [];
+  let saves = [];
+
+  currentStudents.forEach(s => {
+    const input = document.getElementById('m_'+s.id);
+    if (!input || input.value === '') return; // skip empty
+    const val = Number(input.value);
+    if (isNaN(val) || val < 0 || val > max) {
+      errors.push(`${s.name}: invalid marks (${input.value})`);
+      return;
+    }
+    saves.push({ student: s, marks: val });
+  });
+
+  if (errors.length > 0) {
+    showMsg('marks-msg', 'Fix errors: ' + errors.join('; '), 'error'); return;
+  }
+  if (saves.length === 0) {
+    showMsg('marks-msg', 'No marks entered yet.', 'error'); return;
+  }
+
+  try {
+    for (const item of saves) {
+      const docId = `${item.student.id}_${exam}_${currentTeacher.subject.replace(/[^a-zA-Z0-9]/g,'_')}_${session.replace('-','_')}`;
+      await setDoc(doc(db,'marks',docId), {
+        studentId: item.student.id,
+        studentName: item.student.name,
+        class: cls,
+        subject: currentTeacher.subject,
+        exam,
+        session,
+        marksObtained: item.marks,
+        maxMarks: max,
+        enteredBy: currentTeacher.email,
+        updatedAt: serverTimestamp()
+      });
+      document.getElementById('status_'+item.student.id).innerHTML = '<span style="color:#27ae60;">✅ Saved</span>';
+      document.getElementById('m_'+item.student.id).classList.add('saved');
+      existingMarks[item.student.id] = { marks: item.marks };
+    }
+    const savedCount = Object.keys(existingMarks).length;
+    document.getElementById('marks-summary').innerHTML =
+      `<span class="status-dot dot-green"></span>${savedCount} saved &nbsp;|&nbsp; <span class="status-dot dot-orange"></span>${currentStudents.length - savedCount} pending`;
+    showMsg('marks-msg', `✅ ${saves.length} marks saved successfully!`, 'success');
+  } catch(e) {
+    showMsg('marks-msg', 'Error saving: '+e.message, 'error');
+  }
+};
+
+// Full marksheet view
+window.loadFullMarksheet = async function() {
+  const cls = document.getElementById('view-class').value;
+  const exam = document.getElementById('view-exam').value;
+  const session = document.getElementById('sel-session').value;
+  const thead = document.getElementById('full-thead');
+  const tbody = document.getElementById('full-tbody');
+
+  if (!cls) { alert('Please select a class.'); return; }
+
+  tbody.innerHTML = '<tr><td colspan="12" style="color:#999;padding:12px;">Loading...</td></tr>';
+
+  const stuSnap = await getDocs(query(collection(db,'students'), where('class','==',cls), where('session','==',session)));
+  let students = [];
+  stuSnap.forEach(d => students.push({id:d.id,...d.data()}));
+  students.sort((a,b) => a.rollNo - b.rollNo);
+
+  const marksSnap = await getDocs(query(collection(db,'marks'), where('class','==',cls), where('exam','==',exam), where('session','==',session)));
+  const lookup = {};
+  marksSnap.forEach(d => { const m = d.data(); lookup[`${m.studentId}_${m.subject}`] = m.marksObtained; });
+
+  thead.innerHTML = '<th>Roll</th><th>Name</th>' + SUBJECTS.map(s => `<th>${s}</th>`).join('') + '<th>Total</th>';
+  tbody.innerHTML = students.map(s => {
+    let total = 0;
+    let cells = SUBJECTS.map(sub => {
+      const val = lookup[`${s.id}_${sub}`];
+      if (val !== undefined) total += Number(val);
+      return `<td style="text-align:center;">${val !== undefined ? val : '<span style="color:#e67e22;">-</span>'}</td>`;
+    }).join('');
+    return `<tr><td><b>${s.rollNo}</b></td><td>${s.name}</td>${cells}<td><b>${total}</b></td></tr>`;
+  }).join('') || '<tr><td colspan="12" style="color:#999;padding:12px;">No students found.</td></tr>';
+};
+
+function showMsg(id, msg, type) {
+  const el = document.getElementById(id);
+  el.className = 'msg msg-'+(type==='error'?'error':'success');
+  el.textContent = msg;
+  if (type === 'success') setTimeout(() => el.textContent = '', 5000);
+}
+</script>
+</body>
+</html>
