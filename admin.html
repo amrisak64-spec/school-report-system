@@ -483,8 +483,8 @@ window.closeEditModal = function() {
 window.filterStudentTable = function() {
   const q = (document.getElementById('search-student').value||'').toLowerCase();
   const list = window._allStudents || [];
-  if (!q) { _renderStudentTable(list); return; }
-  _renderStudentTable(list.filter(s =>
+  if (!q) { window._renderStudentTable(list); return; }
+  window._renderStudentTable(list.filter(s =>
     s.name.toLowerCase().includes(q) ||
     String(s.admissionNo).toLowerCase().includes(q) ||
     String(s.rollNo).includes(q)
@@ -570,13 +570,13 @@ window.loadStudents = async function() {
     allStudents = [];
     snap.forEach(d => allStudents.push({id:d.id,...d.data()}));
     allStudents.sort((a,b) => a.rollNo - b.rollNo);
-    _renderStudentTable(allStudents);
+    window._renderStudentTable(allStudents);
   } catch(e) {
     tbody.innerHTML = `<tr><td colspan="7">Error: ${e.message}</td></tr>`;
   }
 };
 
-function __renderStudentTable(students) {
+window._renderStudentTable = function(students) {
   window._allStudents = allStudents;
   const tbody = document.getElementById('students-tbody');
   if (students.length === 0) {
@@ -596,7 +596,7 @@ function __renderStudentTable(students) {
         <button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteStudent('${s.id}','${s.name}')">🗑 Delete</button>
       </td>
     </tr>`).join('');
-}
+};
 
 // filterStudentTable registered above before imports
 
