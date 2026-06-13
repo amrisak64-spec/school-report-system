@@ -35,11 +35,12 @@
     .filter-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; align-items: flex-end; }
     .filter-row > div { flex: 1; min-width: 130px; }
     label { font-size: 12px; font-weight: 600; color: #555; display: block; margin-bottom: 4px; }
-    select, input[type="text"], input[type="number"] {
+    select, input[type="text"], input[type="number"], textarea {
       width: 100%; padding: 9px 12px;
       border: 1.5px solid #ccc; border-radius: 6px; font-size: 13px;
     }
-    select:focus, input:focus { outline: none; border-color: #1a6e3c; }
+    select:focus, input:focus, textarea:focus { outline: none; border-color: #1a6e3c; }
+    textarea { min-width: 190px; min-height: 58px; resize: vertical; font-family: Arial, sans-serif; }
 
     .btn { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
     .btn-primary { background: #1a6e3c; color: #fff; }
@@ -135,9 +136,9 @@
           <option>English</option>
           <option>Hindi</option>
           <option>Maths</option>
-          <option>Science/E.V.S.</option>
-          <option>S.S.T.</option>
-          <option>G.K.</option>
+          <option>Science</option>
+          <option>SST</option>
+          <option>GK</option>
           <option>Computer</option>
           <option>Sanskrit</option>
           <option>Drawing</option>
@@ -167,6 +168,8 @@
               <th>Address</th>
               <th id="col-subject">Marks</th>
               <th>Max</th>
+              <th>Notebook (10)</th>
+              <th>Teacher Remarks</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -187,6 +190,11 @@ import { collection, getDocs, doc, getDoc, query, where, setDoc, serverTimestamp
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const MAX_MARKS = { PA1:20, HalfYearly:80, PA2:20, Annual:80 };
+const SUBJECT_ALIASES = {
+  'Science/E.V.S.': 'Science',
+  'S.S.T.': 'SST',
+  'G.K.': 'GK'
+};
 
 let currentTeacher = null;
 let currentStudents = [];
@@ -197,6 +205,8 @@ onAuthStateChanged(auth, async user => {
   const snap = await getDoc(doc(db, 'users', user.uid));
   if (!snap.exists()) { window.location.href = 'index.html'; return; }
   currentTeacher = snap.data();
+  currentTeacher.assignedClasses = currentTeacher.assignedClasses || [];
+  currentTeacher.subject = SUBJECT_ALIASES[currentTeacher.subject] || currentTeacher.subject;
 
   document.getElementById('welcome-text').textContent = `👋 Welcome, ${currentTeacher.name || 'Teacher'}`;
   document.getElementById('teacher-info').textContent = `Subject: ${currentTeacher.subject} | Classes: ${(currentTeacher.assignedClasses||[]).join(', ')}`;
@@ -205,11 +215,17 @@ onAuthStateChanged(auth, async user => {
      Select session, class, section, exam and subject then click <b>Load Students</b>.`;
 
   // Pre-select subject if teacher has one assigned
-  if (currentTeacher.subject && currentTeacher.subject !== 'All') {
+  const classSelect = document.getElementById('sel-class');
+  Array.from(classSelect.options).forEach(option => {
+    if (option.value && !currentTeacher.assignedClasses.includes(option.value)) option.remove();
+  });
+
+  if (currentTeacher.subject && currentTeacher.subject !== 'All Subjects') {
     const subSel = document.getElementById('sel-subject');
     for (let opt of subSel.options) {
       if (opt.value === currentTeacher.subject) { opt.selected = true; break; }
     }
+    subSel.disabled = true;
   }
 });
 
@@ -226,6 +242,14 @@ window.loadStudents = async function() {
     showMsg('marks-msg', 'Please select Class, Exam and Subject.', 'error');
     return;
   }
+  if (!currentTeacher.assignedClasses.includes(cls)) {
+    showMsg('marks-msg', 'You are not assigned to this class.', 'error');
+    return;
+  }
+  if (currentTeacher.subject !== 'All Subjects' && subject !== currentTeacher.subject) {
+    showMsg('marks-msg', 'You can only enter marks for your assigned subject.', 'error');
+    return;
+  }
 
   document.getElementById('loading').style.display = 'block';
   document.getElementById('marks-section').style.display = 'none';
@@ -239,7 +263,7 @@ window.loadStudents = async function() {
     stuSnap.forEach(d => {
       const data = d.data();
       // Filter by section if selected
-      if (!section || !data.section || data.section === section) {
+      if (!section || data.section === section) {
         currentStudents.push({id:d.id, ...data});
       }
     });
@@ -256,9 +280,16 @@ window.loadStudents = async function() {
       where('class','==',cls), where('exam','==',exam),
       where('subject','==',subject), where('session','==',session)));
     existingMarks = {};
+    const currentStudentIds = new Set(currentStudents.map(student => student.id));
     marksSnap.forEach(d => {
       const m = d.data();
-      existingMarks[m.studentId] = { docId: d.id, marks: m.marksObtained };
+      if (!currentStudentIds.has(m.studentId)) return;
+      existingMarks[m.studentId] = {
+        docId: d.id,
+        marks: m.marksObtained,
+        notebookMarks: m.notebookMarks,
+        remarks: m.remarks || ''
+      };
     });
 
     const max = MAX_MARKS[exam];
@@ -268,14 +299,16 @@ window.loadStudents = async function() {
     tbody.innerHTML = currentStudents.map((s, idx) => {
       const existing = existingMarks[s.id];
       const val = existing ? existing.marks : '';
+      const notebook = existing?.notebookMarks ?? '';
+      const remarks = existing?.remarks || '';
       const isSaved = existing !== undefined;
       return `
         <tr>
           <td>${idx+1}</td>
           <td><b>${s.admissionNo || s.rollNo || '-'}</b></td>
-          <td>${s.name || '-'}</td>
-          <td style="color:#555;">${s.fatherName || '-'}</td>
-          <td style="color:#777;font-size:12px;">${s.address || '-'}</td>
+          <td>${escapeHtml(s.name || '-')}</td>
+          <td style="color:#555;">${escapeHtml(s.fatherName || '-')}</td>
+          <td style="color:#777;font-size:12px;">${escapeHtml(s.address || '-')}</td>
           <td>
             <input type="number" class="marks-input ${isSaved?'saved':''}" id="m_${s.id}"
               value="${val}" min="0" max="${max}"
@@ -283,6 +316,12 @@ window.loadStudents = async function() {
               placeholder="0-${max}"/>
           </td>
           <td style="text-align:center;">${max}</td>
+          <td>
+            <input type="number" class="marks-input ${isSaved?'saved':''}" id="n_${s.id}"
+              value="${notebook}" min="0" max="10"
+              onchange="validateInput(this, 10)" placeholder="0-10"/>
+          </td>
+          <td><textarea id="r_${s.id}" maxlength="300" placeholder="Feedback for the student">${escapeHtml(remarks)}</textarea></td>
           <td id="status_${s.id}">
             ${isSaved
               ? '<span style="color:#27ae60;">✅ Saved</span>'
@@ -327,16 +366,32 @@ window.saveAllMarks = async function() {
   if (!cls || !exam || !subject) {
     showMsg('marks-msg','Please select class, exam and subject first.','error'); return;
   }
+  if (!currentTeacher.assignedClasses.includes(cls)) {
+    showMsg('marks-msg', 'You are not assigned to this class.', 'error'); return;
+  }
+  if (currentTeacher.subject !== 'All Subjects' && subject !== currentTeacher.subject) {
+    showMsg('marks-msg', 'You can only enter marks for your assigned subject.', 'error'); return;
+  }
 
   let errors = [], saves = [];
   currentStudents.forEach(s => {
     const input = document.getElementById('m_'+s.id);
+    const notebookInput = document.getElementById('n_'+s.id);
+    const remarksInput = document.getElementById('r_'+s.id);
     if (!input || input.value === '') return;
     const val = Number(input.value);
+    const notebook = notebookInput?.value === '' ? null : Number(notebookInput.value);
     if (isNaN(val) || val < 0 || val > max) {
       errors.push(`${s.name}: invalid (${input.value})`);
+    } else if (notebook !== null && (isNaN(notebook) || notebook < 0 || notebook > 10)) {
+      errors.push(`${s.name}: notebook marks must be between 0 and 10`);
     } else {
-      saves.push({ student: s, marks: val });
+      saves.push({
+        student: s,
+        marks: val,
+        notebookMarks: notebook,
+        remarks: remarksInput?.value.trim() || ''
+      });
     }
   });
 
@@ -358,6 +413,9 @@ window.saveAllMarks = async function() {
         session,
         marksObtained: item.marks,
         maxMarks: max,
+        notebookMarks: item.notebookMarks,
+        notebookMaxMarks: 10,
+        remarks: item.remarks,
         enteredBy: currentTeacher?.email || '',
         updatedAt: serverTimestamp()
       });
@@ -381,6 +439,12 @@ function showMsg(id, msg, type) {
   el.className = 'msg msg-'+(type==='error'?'error':'success');
   el.textContent = msg;
   if (type === 'success') setTimeout(() => el.textContent = '', 5000);
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+  }[char]));
 }
 </script>
 </body>
