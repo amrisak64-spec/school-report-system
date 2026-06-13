@@ -182,7 +182,7 @@
       <div><label>Admission No *</label><input id="edit-admno"/></div>
       <div><label>Roll No *</label><input id="edit-roll" type="number"/></div>
       <div>
-        <label>Class *</label>
+        <label for="edit-class">Class *</label>
         <select id="edit-class">
           <option value="">-- Select --</option>
           <option>II</option><option>III</option><option>IV</option>
@@ -190,7 +190,7 @@
         </select>
       </div>
       <div>
-        <label>Section</label>
+        <label for="edit-section">Section</label>
         <select id="edit-section">
           <option value="">-- Select Section --</option>
           <option value="A">Section A</option>
@@ -236,7 +236,7 @@
         <div><label>Admission No *</label><input id="s-admno" placeholder="e.g. 209"/></div>
         <div><label>Roll No *</label><input id="s-roll" type="number" placeholder="e.g. 1"/></div>
         <div>
-          <label>Class *</label>
+          <label for="s-class">Class *</label>
           <select id="s-class">
             <option value="">-- Select --</option>
             <option>II</option><option>III</option><option>IV</option>
@@ -244,7 +244,7 @@
           </select>
         </div>
         <div>
-          <label>Section</label>
+          <label for="s-section">Section</label>
           <select id="s-section">
             <option value="">-- Select Section --</option>
             <option value="A">Section A</option>
@@ -261,7 +261,7 @@
     <div class="card">
       <h2>All Students</h2>
       <div class="search-bar">
-        <select id="filter-class" onchange="loadStudents()" style="width:160px;">
+        <select id="filter-class" aria-label="Filter by Class" onchange="loadStudents()" style="width:160px;">
           <option value="">All Classes</option>
           <option>II</option><option>III</option><option>IV</option>
           <option>V</option><option>VI</option><option>VII</option><option>VIII</option>
@@ -355,7 +355,7 @@
         <div><label>Email *</label><input id="t-email" type="email" placeholder="email@gmail.com"/></div>
         <div><label>Password *</label><input id="t-pass" type="password" placeholder="Min 6 chars"/></div>
         <div>
-          <label>Subject *</label>
+          <label for="t-subject">Subject *</label>
           <select id="t-subject">
             <option value="">-- Select --</option>
             <option>English</option><option>Hindi</option><option>Maths</option>
@@ -365,7 +365,7 @@
           </select>
         </div>
         <div>
-          <label>Assigned Classes *</label>
+          <label for="t-classes">Assigned Classes *</label>
           <select id="t-classes" multiple style="height:90px;">
             <option>II</option><option>III</option><option>IV</option>
             <option>V</option><option>VI</option><option>VII</option><option>VIII</option>
@@ -373,7 +373,7 @@
           <small style="color:#888;">Hold Ctrl to select multiple</small>
         </div>
         <div>
-          <label>Role</label>
+          <label for="t-role">Role</label>
           <select id="t-role">
             <option value="teacher">Teacher</option>
             <option value="admin">Admin</option>
@@ -398,7 +398,7 @@
       <h2>View Entered Marks</h2>
       <div class="filter-row">
         <div>
-          <label>Class</label>
+          <label for="m-class">Class</label>
           <select id="m-class" onchange="loadMarksView()">
             <option value="">-- Select Class --</option>
             <option>II</option><option>III</option><option>IV</option>
@@ -406,7 +406,7 @@
           </select>
         </div>
         <div>
-          <label>Exam</label>
+          <label for="m-exam">Exam</label>
           <select id="m-exam" onchange="loadMarksView()">
             <option value="">-- All Exams --</option>
             <option value="PA1">P.A. 1</option>
@@ -436,7 +436,7 @@
       <h2>Generate & Print Progress Report Cards</h2>
       <div class="filter-row">
         <div>
-          <label>Class</label>
+          <label for="p-class">Class</label>
           <select id="p-class" style="width:160px;">
             <option value="">-- Select Class --</option>
             <option>II</option><option>III</option><option>IV</option>
@@ -444,7 +444,7 @@
           </select>
         </div>
         <div>
-          <label>Section</label>
+          <label for="p-section">Section</label>
           <select id="p-section" style="width:160px;">
             <option value="">-- All Sections --</option>
             <option value="A">Section A</option>
@@ -465,7 +465,35 @@
 
 </div><!-- /content -->
 
+<script>
+// ---- UI functions (plain script — runs immediately, no module hoisting) ----
+// ---- UI functions on window BEFORE imports so onclick always works ----
+window.showTab = function(tab, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('sec-'+tab).classList.add('active');
+  el.classList.add('active');
+  if (tab === 'marks' && window._fbReady) loadMarksView();
+};
+
+window.closeEditModal = function() {
+  document.getElementById('edit-modal').classList.remove('open');
+};
+
+window.filterStudentTable = function() {
+  const q = (document.getElementById('search-student').value||'').toLowerCase();
+  const list = window._allStudents || [];
+  if (!q) { _renderStudentTable(list); return; }
+  _renderStudentTable(list.filter(s =>
+    s.name.toLowerCase().includes(q) ||
+    String(s.admissionNo).toLowerCase().includes(q) ||
+    String(s.rollNo).includes(q)
+  ));
+};
+</script>
+
 <script type="module">
+// ---- Firebase imports ----
 import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged, signOut, createUserWithEmailAndPassword }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -484,6 +512,7 @@ let allStudents = [];
 let parsedExcelData = [];
 
 // ---- AUTH GUARD ----
+window._fbReady = true;
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = 'index.html'; return; }
   const snap = await getDoc(doc(db, 'users', user.uid));
@@ -492,14 +521,7 @@ onAuthStateChanged(auth, async (user) => {
   loadTeachers();
 });
 
-// ---- TAB ----
-window.showTab = function(tab, el) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('sec-'+tab).classList.add('active');
-  el.classList.add('active');
-  if (tab === 'marks') loadMarksView();
-};
+// showTab registered above before imports
 
 // ---- LOGOUT ----
 window.logout = () => signOut(auth).then(() => window.location.href = 'index.html');
@@ -548,13 +570,14 @@ window.loadStudents = async function() {
     allStudents = [];
     snap.forEach(d => allStudents.push({id:d.id,...d.data()}));
     allStudents.sort((a,b) => a.rollNo - b.rollNo);
-    renderStudentTable(allStudents);
+    _renderStudentTable(allStudents);
   } catch(e) {
     tbody.innerHTML = `<tr><td colspan="7">Error: ${e.message}</td></tr>`;
   }
 };
 
-function renderStudentTable(students) {
+function __renderStudentTable(students) {
+  window._allStudents = allStudents;
   const tbody = document.getElementById('students-tbody');
   if (students.length === 0) {
     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">No students found.</td></tr>';
@@ -575,17 +598,7 @@ function renderStudentTable(students) {
     </tr>`).join('');
 }
 
-// Client-side search filter
-window.filterStudentTable = function() {
-  const q = document.getElementById('search-student').value.toLowerCase();
-  if (!q) { renderStudentTable(allStudents); return; }
-  const filtered = allStudents.filter(s =>
-    s.name.toLowerCase().includes(q) ||
-    String(s.admissionNo).toLowerCase().includes(q) ||
-    String(s.rollNo).includes(q)
-  );
-  renderStudentTable(filtered);
-};
+// filterStudentTable registered above before imports
 
 window.deleteStudent = async function(id, name) {
   if (!confirm(`Delete student "${name}"? This cannot be undone.`)) return;
@@ -613,9 +626,7 @@ window.openEditModal = async function(docId) {
   document.getElementById('edit-modal').classList.add('open');
 };
 
-window.closeEditModal = function() {
-  document.getElementById('edit-modal').classList.remove('open');
-};
+
 
 window.saveEditStudent = async function() {
   const docId   = document.getElementById('edit-doc-id').value;
@@ -1246,7 +1257,7 @@ window.generateProgressReports = async function() {
       .report-card { margin:0; padding:10px; }
     }
   </style></head><body>${reportHTML}
-  <script>window.addEventListener('load', () => window.print());</script></body></html>`);
+  <script>window.addEventListener('load', () => window.print());<\/script></body></html>`);
   win.document.close();
 };
 
