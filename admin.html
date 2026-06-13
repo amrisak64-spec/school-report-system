@@ -4,11 +4,12 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin – Prabha Gyan Jyoti</title>
+  <!-- SheetJS for Excel reading -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; background: #f0f4f8; }
 
-    /* TOP BAR */
     .topbar {
       background: #1a3c6e;
       color: #fff;
@@ -28,7 +29,6 @@
       font-size: 13px;
     }
 
-    /* TABS */
     .tabs {
       display: flex;
       background: #fff;
@@ -46,7 +46,6 @@
     }
     .tab.active { color: #1a3c6e; border-bottom: 3px solid #1a3c6e; }
 
-    /* CONTENT */
     .content { padding: 24px; max-width: 1100px; margin: 0 auto; }
     .section { display: none; }
     .section.active { display: block; }
@@ -60,7 +59,6 @@
     }
     .card h2 { font-size: 16px; color: #1a3c6e; margin-bottom: 18px; border-bottom: 1px solid #e0e0e0; padding-bottom: 10px; }
 
-    /* FORM GRID */
     .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 16px; }
     label { font-size: 12px; font-weight: 600; color: #555; display: block; margin-bottom: 4px; }
     input, select {
@@ -76,33 +74,93 @@
     .btn-primary { background: #1a3c6e; color: #fff; }
     .btn-danger { background: #c0392b; color: #fff; }
     .btn-success { background: #27ae60; color: #fff; }
+    .btn-warning { background: #e67e22; color: #fff; }
+    .btn-info { background: #2980b9; color: #fff; }
     .btn:hover { opacity: 0.88; }
 
-    /* TABLE */
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th { background: #1a3c6e; color: #fff; padding: 10px 8px; text-align: left; }
     td { padding: 9px 8px; border-bottom: 1px solid #eee; }
     tr:hover td { background: #f5f8ff; }
 
-    .badge {
-      padding: 3px 10px;
-      border-radius: 12px;
-      font-size: 11px;
-      font-weight: 700;
-    }
+    .badge { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
     .badge-admin { background: #fdebd0; color: #e67e22; }
     .badge-teacher { background: #d5f5e3; color: #27ae60; }
 
     .msg { padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 14px; }
     .msg-success { background: #d5f5e3; color: #1e8449; }
     .msg-error { background: #fadbd8; color: #c0392b; }
+    .msg-info { background: #d6eaf8; color: #1a5276; }
 
-    /* MARKS VIEW */
     .filter-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; align-items: flex-end; }
     .filter-row > div { flex: 1; min-width: 140px; }
-
     .marks-table-wrap { overflow-x: auto; }
     .pending { color: #e67e22; font-style: italic; }
+
+    /* ===== EXCEL UPLOAD STYLES ===== */
+    .upload-zone {
+      border: 2px dashed #2e6da4;
+      border-radius: 10px;
+      padding: 30px;
+      text-align: center;
+      background: #f0f8ff;
+      cursor: pointer;
+      margin-bottom: 16px;
+      transition: background 0.2s;
+    }
+    .upload-zone:hover { background: #daeeff; }
+    .upload-zone input[type="file"] { display: none; }
+    .upload-zone .upload-icon { font-size: 36px; margin-bottom: 8px; }
+    .upload-zone p { color: #555; font-size: 14px; }
+    .upload-zone small { color: #888; font-size: 12px; }
+
+    .preview-table-wrap { overflow-x: auto; max-height: 300px; overflow-y: auto; margin-bottom: 16px; }
+    .preview-table-wrap table th { background: #27ae60; }
+
+    .upload-summary {
+      background: #eafaf1;
+      border: 1px solid #27ae60;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #1e8449;
+    }
+
+    /* ===== EDIT MODAL ===== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: 12px;
+      padding: 28px;
+      width: 90%;
+      max-width: 620px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+    .modal h3 { font-size: 16px; color: #1a3c6e; margin-bottom: 18px; padding-bottom: 10px; border-bottom: 1px solid #e0e0e0; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+
+    .search-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .search-bar input { flex: 1; min-width: 200px; }
+
+    .progress-bar-wrap { background: #e0e0e0; border-radius: 6px; height: 12px; margin: 8px 0; }
+    .progress-bar { background: #27ae60; height: 12px; border-radius: 6px; transition: width 0.3s; }
 
     @media(max-width:600px) {
       .form-grid { grid-template-columns: 1fr; }
@@ -112,16 +170,56 @@
 </head>
 <body>
 
+<!-- Edit Student Modal -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <h3>✏️ Edit Student</h3>
+    <input type="hidden" id="edit-doc-id"/>
+    <div class="form-grid">
+      <div><label>Student Name *</label><input id="edit-name"/></div>
+      <div><label>Father's Name *</label><input id="edit-father"/></div>
+      <div><label>Mother's Name</label><input id="edit-mother"/></div>
+      <div><label>Admission No *</label><input id="edit-admno"/></div>
+      <div><label>Roll No *</label><input id="edit-roll" type="number"/></div>
+      <div>
+        <label>Class *</label>
+        <select id="edit-class">
+          <option value="">-- Select --</option>
+          <option>II</option><option>III</option><option>IV</option>
+          <option>V</option><option>VI</option><option>VII</option><option>VIII</option><option>IX</option><option>X</option>
+        </select>
+      </div>
+      <div>
+        <label>Section</label>
+        <select id="edit-section">
+          <option value="">-- Select Section --</option>
+          <option value="A">Section A</option>
+          <option value="B">Section B</option>
+        </select>
+      </div>
+      <div><label>Date of Birth</label><input id="edit-dob" type="date"/></div>
+      <div><label>Address</label><input id="edit-address"/></div>
+      <div><label>Session</label><input id="edit-session"/></div>
+    </div>
+    <div id="edit-msg"></div>
+    <div class="modal-actions">
+      <button class="btn" style="background:#ccc;color:#333;" onclick="closeEditModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditStudent()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <div class="topbar">
   <h1>🏫 Prabha Gyan Jyoti — Admin Dashboard</h1>
   <button onclick="logout()">Logout</button>
 </div>
 
 <div class="tabs">
-  <div class="tab active" onclick="showTab('students')">👨‍🎓 Students</div>
-  <div class="tab" onclick="showTab('teachers')">👩‍🏫 Teachers</div>
-  <div class="tab" onclick="showTab('marks')">📊 View Marks</div>
-  <div class="tab" onclick="showTab('report')">🖨️ Print Slips</div>
+  <div class="tab active" onclick="showTab('students', this)">👨‍🎓 Students</div>
+  <div class="tab" onclick="showTab('upload', this)">📤 Upload Excel</div>
+  <div class="tab" onclick="showTab('teachers', this)">👩‍🏫 Teachers</div>
+  <div class="tab" onclick="showTab('marks', this)">📊 View Marks</div>
+  <div class="tab" onclick="showTab('report', this)">🖨️ Print Slips</div>
 </div>
 
 <div class="content">
@@ -142,7 +240,15 @@
           <select id="s-class">
             <option value="">-- Select --</option>
             <option>II</option><option>III</option><option>IV</option>
-            <option>V</option><option>VI</option><option>VII</option><option>VIII</option>
+            <option>V</option><option>VI</option><option>VII</option><option>VIII</option><option>IX</option><option>X</option>
+          </select>
+        </div>
+        <div>
+          <label>Section</label>
+          <select id="s-section">
+            <option value="">-- Select Section --</option>
+            <option value="A">Section A</option>
+            <option value="B">Section B</option>
           </select>
         </div>
         <div><label>Date of Birth</label><input id="s-dob" type="date"/></div>
@@ -154,18 +260,87 @@
 
     <div class="card">
       <h2>All Students</h2>
-      <div style="margin-bottom:12px; display:flex; gap:10px; flex-wrap:wrap;">
+      <div class="search-bar">
         <select id="filter-class" onchange="loadStudents()" style="width:160px;">
           <option value="">All Classes</option>
           <option>II</option><option>III</option><option>IV</option>
           <option>V</option><option>VI</option><option>VII</option><option>VIII</option>
         </select>
+        <input id="search-student" placeholder="🔍 Search by name or adm no..." oninput="filterStudentTable()" style="flex:1;min-width:200px;"/>
       </div>
       <table>
         <thead><tr>
-          <th>Roll</th><th>Name</th><th>Father</th><th>Class</th><th>Adm No</th><th>Action</th>
+          <th>Roll</th><th>Name</th><th>Father</th><th>Class</th><th>Adm No</th><th>DOB</th><th>Action</th>
         </tr></thead>
-        <tbody id="students-tbody"><tr><td colspan="6" style="text-align:center;color:#999;">Loading...</td></tr></tbody>
+        <tbody id="students-tbody"><tr><td colspan="7" style="text-align:center;color:#999;">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== EXCEL UPLOAD ===== -->
+  <div class="section" id="sec-upload">
+    <div class="card">
+      <h2>📤 Upload Students via Excel File</h2>
+
+      <!-- Download Template -->
+      <div style="background:#fff8e1;border:1px solid #f0c040;border-radius:8px;padding:14px;margin-bottom:20px;">
+        <b style="color:#b7770d;">Step 1 — Download the Excel Template</b>
+        <p style="font-size:13px;color:#555;margin:6px 0;">Your Excel file must have these columns in order:</p>
+        <p style="font-size:13px;font-family:monospace;background:#f5f5f5;padding:8px;border-radius:4px;margin:6px 0;">
+          name | fatherName | motherName | admissionNo | rollNo | class | dob | address | session
+        </p>
+        <button class="btn btn-warning" style="margin-top:8px;" onclick="downloadTemplate()">⬇ Download Sample Template</button>
+      </div>
+
+      <!-- Upload Zone -->
+      <b style="color:#1a3c6e;font-size:14px;">Step 2 — Upload your filled Excel file</b>
+      <div class="upload-zone" id="upload-zone" onclick="document.getElementById('excel-file').click()">
+        <input type="file" id="excel-file" accept=".xlsx,.xls,.csv" onchange="handleExcelUpload(event)"/>
+        <div class="upload-icon">📂</div>
+        <p><b>Click to select Excel file</b></p>
+        <small>Supports .xlsx, .xls, .csv files</small>
+      </div>
+
+      <!-- Preview -->
+      <div id="upload-preview" style="display:none;">
+        <div class="upload-summary" id="upload-summary"></div>
+        <div id="upload-errors" style="display:none;"></div>
+        <b style="font-size:13px;color:#1a3c6e;">Preview (first 5 rows):</b>
+        <div class="preview-table-wrap" style="margin-top:8px;">
+          <table id="preview-table">
+            <thead><tr id="preview-thead"></tr></thead>
+            <tbody id="preview-tbody"></tbody>
+          </table>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
+          <button class="btn btn-success" id="confirm-upload-btn" onclick="confirmUpload()">✅ Upload All to Firebase</button>
+          <button class="btn" style="background:#ccc;color:#333;" onclick="cancelUpload()">✖ Cancel</button>
+        </div>
+        <div id="upload-progress" style="display:none;margin-top:14px;">
+          <div style="font-size:13px;color:#1a3c6e;margin-bottom:4px;" id="progress-text">Uploading...</div>
+          <div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <div id="upload-result-msg"></div>
+    </div>
+
+    <!-- Excel Format Guide -->
+    <div class="card">
+      <h2>📋 Excel Column Format Guide</h2>
+      <table>
+        <thead><tr><th>Column Name</th><th>Example Value</th><th>Required?</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><b>name</b></td><td>Shivansh Sharma</td><td>✅ Yes</td><td>Full student name</td></tr>
+          <tr><td><b>fatherName</b></td><td>Mr. Raman Kumar</td><td>✅ Yes</td><td>Father's full name</td></tr>
+          <tr><td><b>motherName</b></td><td>Mrs. Pooja</td><td>No</td><td>Mother's name</td></tr>
+          <tr><td><b>admissionNo</b></td><td>209</td><td>✅ Yes</td><td>Unique admission number</td></tr>
+          <tr><td><b>rollNo</b></td><td>31</td><td>✅ Yes</td><td>Class roll number (number only)</td></tr>
+          <tr><td><b>class</b></td><td>VIII</td><td>✅ Yes</td><td>II, III, IV, V, VI, VII, or VIII</td></tr>
+          <tr><td><b>dob</b></td><td>14/03/2013</td><td>No</td><td>Date of birth DD/MM/YYYY</td></tr>
+          <tr><td><b>address</b></td><td>Vill. Machroli</td><td>No</td><td>Village / City</td></tr>
+          <tr><td><b>session</b></td><td>2026-27</td><td>✅ Yes</td><td>Academic session</td></tr>
+        </tbody>
       </table>
     </div>
   </div>
@@ -258,23 +433,22 @@
   <!-- ===== PRINT SLIPS ===== -->
   <div class="section" id="sec-report">
     <div class="card">
-      <h2>Generate & Print Report Slips</h2>
+      <h2>Generate & Print Progress Report Cards</h2>
       <div class="filter-row">
         <div>
           <label>Class</label>
           <select id="p-class" style="width:160px;">
             <option value="">-- Select Class --</option>
             <option>II</option><option>III</option><option>IV</option>
-            <option>V</option><option>VI</option><option>VII</option><option>VIII</option>
+            <option>V</option><option>VI</option><option>VII</option><option>VIII</option><option>IX</option><option>X</option>
           </select>
         </div>
         <div>
-          <label>Exam</label>
-          <select id="p-exam" style="width:160px;">
-            <option value="PA1">P.A. 1 (20 marks)</option>
-            <option value="HalfYearly">Half Yearly (80 marks)</option>
-            <option value="PA2">P.A. 2 (20 marks)</option>
-            <option value="Annual">Annual (80 marks)</option>
+          <label>Section</label>
+          <select id="p-section" style="width:160px;">
+            <option value="">-- All Sections --</option>
+            <option value="A">Section A</option>
+            <option value="B">Section B</option>
           </select>
         </div>
         <div>
@@ -282,10 +456,10 @@
           <input id="p-session" value="2026-27" style="width:110px;"/>
         </div>
         <div style="padding-top:18px;">
-          <button class="btn btn-success" onclick="generateSlips()">🖨️ Generate & Print</button>
+          <button class="btn btn-success" onclick="generateProgressReports()">🖨️ Generate & Print Reports</button>
         </div>
       </div>
-      <p style="font-size:12px;color:#888;margin-top:8px;">Opens a printable page. Use Ctrl+P or browser print to print.</p>
+      <p style="font-size:12px;color:#888;margin-top:8px;">Generates detailed progress report cards. Opens in a new printable page.</p>
     </div>
   </div>
 
@@ -293,15 +467,23 @@
 
 <script type="module">
 import { auth, db } from './firebase-config.js';
-import { onAuthStateChanged, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { collection, addDoc, getDocs, doc, setDoc, deleteDoc, query, where, orderBy, getDoc }
+import { onAuthStateChanged, signOut, createUserWithEmailAndPassword }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { collection, addDoc, getDocs, doc, setDoc, deleteDoc, updateDoc,
+         query, where, orderBy, getDoc, writeBatch }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const SUBJECTS = ['English','Hindi','Maths','Science/E.V.S.','S.S.T.','G.K.','Computer','Sanskrit','Drawing'];
 const EXAM_LABELS = { PA1:'P.A.1', HalfYearly:'Half Yearly', PA2:'P.A.2', Annual:'Annual' };
 const MAX_MARKS = { PA1:20, HalfYearly:80, PA2:20, Annual:80 };
+const VALID_CLASSES = ['II','III','IV','V','VI','VII','VIII'];
 
-// Auth guard
+// Store all loaded students for client-side search
+let allStudents = [];
+// Store parsed Excel data
+let parsedExcelData = [];
+
+// ---- AUTH GUARD ----
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = 'index.html'; return; }
   const snap = await getDoc(doc(db, 'users', user.uid));
@@ -311,38 +493,45 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 // ---- TAB ----
-window.showTab = function(tab) {
+window.showTab = function(tab, el) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('sec-'+tab).classList.add('active');
-  event.target.classList.add('active');
+  el.classList.add('active');
   if (tab === 'marks') loadMarksView();
 };
 
 // ---- LOGOUT ----
 window.logout = () => signOut(auth).then(() => window.location.href = 'index.html');
 
-// ======== STUDENTS ========
+// ======================================================
+// ==================== STUDENTS ========================
+// ======================================================
+
 window.addStudent = async function() {
-  const name = document.getElementById('s-name').value.trim();
-  const father = document.getElementById('s-father').value.trim();
-  const mother = document.getElementById('s-mother').value.trim();
-  const admno = document.getElementById('s-admno').value.trim();
-  const roll = document.getElementById('s-roll').value.trim();
-  const cls = document.getElementById('s-class').value;
-  const dob = document.getElementById('s-dob').value;
+  const name    = document.getElementById('s-name').value.trim();
+  const father  = document.getElementById('s-father').value.trim();
+  const mother  = document.getElementById('s-mother').value.trim();
+  const admno   = document.getElementById('s-admno').value.trim();
+  const roll    = document.getElementById('s-roll').value.trim();
+  const cls     = document.getElementById('s-class').value;
+  const section = document.getElementById('s-section').value;
+  const dob     = document.getElementById('s-dob').value;
   const address = document.getElementById('s-address').value.trim();
   const session = document.getElementById('s-session').value.trim();
-  const msgEl = document.getElementById('student-msg');
 
   if (!name || !father || !admno || !roll || !cls || !session) {
     showMsg('student-msg', 'Please fill all required fields.', 'error'); return;
   }
   try {
-    await addDoc(collection(db, 'students'), { name, fatherName:father, motherName:mother, admissionNo:admno, rollNo:Number(roll), class:cls, dob, address, session });
+    await addDoc(collection(db, 'students'), {
+      name, fatherName:father, motherName:mother, admissionNo:admno,
+      rollNo:Number(roll), class:cls, section, dob, address, session
+    });
     showMsg('student-msg', `Student "${name}" added successfully!`, 'success');
     ['s-name','s-father','s-mother','s-admno','s-roll','s-dob','s-address'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('s-class').value = '';
+    document.getElementById('s-section').value = '';
     loadStudents();
   } catch(e) { showMsg('student-msg', 'Error: '+e.message, 'error'); }
 };
@@ -350,40 +539,317 @@ window.addStudent = async function() {
 window.loadStudents = async function() {
   const cls = document.getElementById('filter-class').value;
   const tbody = document.getElementById('students-tbody');
-  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">Loading...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">Loading...</td></tr>';
   try {
-    let q = cls ? query(collection(db,'students'), where('class','==',cls)) : collection(db,'students');
+    let q = cls
+      ? query(collection(db,'students'), where('class','==',cls))
+      : collection(db,'students');
     const snap = await getDocs(q);
-    if (snap.empty) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">No students found.</td></tr>'; return; }
-    let rows = [];
-    snap.forEach(d => rows.push({id:d.id,...d.data()}));
-    rows.sort((a,b) => a.rollNo - b.rollNo);
-    tbody.innerHTML = rows.map(s => `
-      <tr>
-        <td>${s.rollNo}</td>
-        <td><b>${s.name}</b></td>
-        <td>${s.fatherName}</td>
-        <td><b>Class ${s.class}</b></td>
-        <td>${s.admissionNo}</td>
-        <td><button class="btn btn-danger" style="padding:4px 12px;font-size:12px;" onclick="deleteStudent('${s.id}','${s.name}')">Delete</button></td>
-      </tr>`).join('');
-  } catch(e) { tbody.innerHTML = `<tr><td colspan="6">Error: ${e.message}</td></tr>`; }
+    allStudents = [];
+    snap.forEach(d => allStudents.push({id:d.id,...d.data()}));
+    allStudents.sort((a,b) => a.rollNo - b.rollNo);
+    renderStudentTable(allStudents);
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="7">Error: ${e.message}</td></tr>`;
+  }
+};
+
+function renderStudentTable(students) {
+  const tbody = document.getElementById('students-tbody');
+  if (students.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">No students found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = students.map(s => `
+    <tr>
+      <td>${s.rollNo}</td>
+      <td><b>${s.name}</b></td>
+      <td>${s.fatherName}</td>
+      <td><b>Class ${s.class}</b></td>
+      <td>${s.admissionNo}</td>
+      <td>${s.dob || '-'}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-info" style="padding:4px 10px;font-size:12px;" onclick="openEditModal('${s.id}')">✏️ Edit</button>
+        <button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteStudent('${s.id}','${s.name}')">🗑 Delete</button>
+      </td>
+    </tr>`).join('');
+}
+
+// Client-side search filter
+window.filterStudentTable = function() {
+  const q = document.getElementById('search-student').value.toLowerCase();
+  if (!q) { renderStudentTable(allStudents); return; }
+  const filtered = allStudents.filter(s =>
+    s.name.toLowerCase().includes(q) ||
+    String(s.admissionNo).toLowerCase().includes(q) ||
+    String(s.rollNo).includes(q)
+  );
+  renderStudentTable(filtered);
 };
 
 window.deleteStudent = async function(id, name) {
-  if (!confirm(`Delete student "${name}"?`)) return;
+  if (!confirm(`Delete student "${name}"? This cannot be undone.`)) return;
   await deleteDoc(doc(db,'students',id));
   loadStudents();
 };
 
-// ======== TEACHERS ========
+// ---- EDIT MODAL ----
+window.openEditModal = async function(docId) {
+  const snap = await getDoc(doc(db,'students',docId));
+  if (!snap.exists()) { alert('Student not found!'); return; }
+  const s = snap.data();
+  document.getElementById('edit-doc-id').value  = docId;
+  document.getElementById('edit-name').value    = s.name || '';
+  document.getElementById('edit-father').value  = s.fatherName || '';
+  document.getElementById('edit-mother').value  = s.motherName || '';
+  document.getElementById('edit-admno').value   = s.admissionNo || '';
+  document.getElementById('edit-roll').value    = s.rollNo || '';
+  document.getElementById('edit-class').value   = s.class || '';
+  document.getElementById('edit-section').value = s.section || '';
+  document.getElementById('edit-dob').value     = s.dob || '';
+  document.getElementById('edit-address').value = s.address || '';
+  document.getElementById('edit-session').value = s.session || '';
+  document.getElementById('edit-msg').textContent = '';
+  document.getElementById('edit-modal').classList.add('open');
+};
+
+window.closeEditModal = function() {
+  document.getElementById('edit-modal').classList.remove('open');
+};
+
+window.saveEditStudent = async function() {
+  const docId   = document.getElementById('edit-doc-id').value;
+  const name    = document.getElementById('edit-name').value.trim();
+  const father  = document.getElementById('edit-father').value.trim();
+  const mother  = document.getElementById('edit-mother').value.trim();
+  const admno   = document.getElementById('edit-admno').value.trim();
+  const roll    = document.getElementById('edit-roll').value.trim();
+  const cls     = document.getElementById('edit-class').value;
+  const section = document.getElementById('edit-section').value;
+  const dob     = document.getElementById('edit-dob').value;
+  const address = document.getElementById('edit-address').value.trim();
+  const session = document.getElementById('edit-session').value.trim();
+
+  if (!name || !father || !admno || !roll || !cls) {
+    showMsg('edit-msg','Please fill all required fields.','error'); return;
+  }
+  try {
+    await updateDoc(doc(db,'students',docId), {
+      name, fatherName:father, motherName:mother, admissionNo:admno,
+      rollNo:Number(roll), class:cls, section, dob, address, session
+    });
+    showMsg('edit-msg', 'Student updated successfully!', 'success');
+    setTimeout(() => { closeEditModal(); loadStudents(); }, 1200);
+  } catch(e) {
+    showMsg('edit-msg', 'Error: '+e.message, 'error');
+  }
+};
+
+// Close modal on overlay click
+document.getElementById('edit-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeEditModal();
+});
+
+// ======================================================
+// =================== EXCEL UPLOAD =====================
+// ======================================================
+
+window.downloadTemplate = function() {
+  // Build sample Excel data
+  const wb = XLSX.utils.book_new();
+  const sampleData = [
+    ['name','fatherName','motherName','admissionNo','rollNo','class','dob','address','session'],
+    ['Shivansh Sharma','Mr. Raman Kumar','Mrs. Pooja','209','31','VIII','14/03/2013','Vill. Machroli','2026-27'],
+    ['Rahul Verma','Mr. Suresh Verma','Mrs. Kavita','211','32','VIII','15/01/2013','Gandhi Nagar, Gangoh','2026-27'],
+    ['Priya Singh','Mr. Rajesh Singh','Mrs. Sunita','212','33','VII','20/05/2014','Gangoh','2026-27'],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(sampleData);
+  ws['!cols'] = [{wch:20},{wch:20},{wch:18},{wch:14},{wch:8},{wch:8},{wch:14},{wch:20},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Students');
+  XLSX.writeFile(wb, 'Student_Upload_Template.xlsx');
+};
+
+window.handleExcelUpload = function(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+      if (rows.length < 2) {
+        showMsg('upload-result-msg', 'File is empty or has no data rows.', 'error');
+        return;
+      }
+
+      // Detect header row
+      const headers = rows[0].map(h => String(h).trim().toLowerCase());
+      const requiredCols = ['name','fathername','admissionno','rollno','class','session'];
+      const missingCols = requiredCols.filter(c => !headers.includes(c));
+
+      if (missingCols.length > 0) {
+        showMsg('upload-result-msg',
+          `Missing required columns: ${missingCols.join(', ')}. Please use the template.`, 'error');
+        return;
+      }
+
+      // Parse all rows
+      parsedExcelData = [];
+      const errors = [];
+
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (row.every(cell => cell === '')) continue; // skip empty rows
+
+        const getVal = (colName) => {
+          const idx = headers.indexOf(colName);
+          return idx >= 0 ? String(row[idx] || '').trim() : '';
+        };
+
+        const student = {
+          name:        getVal('name'),
+          fatherName:  getVal('fathername'),
+          motherName:  getVal('mothername'),
+          admissionNo: getVal('admissionno'),
+          rollNo:      Number(getVal('rollno')) || 0,
+          class:       getVal('class'),
+          dob:         getVal('dob'),
+          address:     getVal('address'),
+          session:     getVal('session') || '2026-27',
+        };
+
+        // Validate
+        let rowErrors = [];
+        if (!student.name)        rowErrors.push('name missing');
+        if (!student.fatherName)  rowErrors.push('fatherName missing');
+        if (!student.admissionNo) rowErrors.push('admissionNo missing');
+        if (!student.rollNo)      rowErrors.push('rollNo invalid');
+        if (!VALID_CLASSES.includes(student.class)) rowErrors.push(`class "${student.class}" invalid`);
+
+        if (rowErrors.length > 0) {
+          errors.push(`Row ${i+1} (${student.name||'unknown'}): ${rowErrors.join(', ')}`);
+        } else {
+          parsedExcelData.push(student);
+        }
+      }
+
+      // Show preview
+      showUploadPreview(parsedExcelData, errors, file.name);
+
+    } catch(err) {
+      showMsg('upload-result-msg', 'Error reading file: '+err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+};
+
+function showUploadPreview(data, errors, fileName) {
+  document.getElementById('upload-preview').style.display = 'block';
+  document.getElementById('upload-result-msg').textContent = '';
+
+  // Summary
+  const summaryEl = document.getElementById('upload-summary');
+  summaryEl.innerHTML = `
+    📁 <b>File:</b> ${fileName} &nbsp;|&nbsp;
+    ✅ <b>${data.length} valid students</b> ready to upload
+    ${errors.length > 0 ? `&nbsp;|&nbsp; ⚠️ <b>${errors.length} rows skipped</b> (see errors below)` : ''}
+  `;
+
+  // Errors
+  const errEl = document.getElementById('upload-errors');
+  if (errors.length > 0) {
+    errEl.style.display = 'block';
+    errEl.innerHTML = `<div class="msg msg-error"><b>⚠️ Skipped rows with errors:</b><br>${errors.join('<br>')}</div>`;
+  } else {
+    errEl.style.display = 'none';
+  }
+
+  // Preview table (first 5 rows)
+  const cols = ['name','fatherName','admissionNo','rollNo','class','session'];
+  const thead = document.getElementById('preview-thead');
+  const tbody = document.getElementById('preview-tbody');
+  thead.innerHTML = cols.map(c => `<th>${c}</th>`).join('');
+  tbody.innerHTML = data.slice(0, 5).map(s =>
+    `<tr>${cols.map(c => `<td>${s[c]||'-'}</td>`).join('')}</tr>`
+  ).join('');
+  if (data.length > 5) {
+    tbody.innerHTML += `<tr><td colspan="${cols.length}" style="text-align:center;color:#888;">... and ${data.length-5} more rows</td></tr>`;
+  }
+
+  document.getElementById('confirm-upload-btn').disabled = data.length === 0;
+}
+
+window.cancelUpload = function() {
+  document.getElementById('upload-preview').style.display = 'none';
+  document.getElementById('excel-file').value = '';
+  parsedExcelData = [];
+};
+
+window.confirmUpload = async function() {
+  if (parsedExcelData.length === 0) return;
+
+  const btn = document.getElementById('confirm-upload-btn');
+  btn.disabled = true;
+  btn.textContent = 'Uploading...';
+
+  const progressWrap = document.getElementById('upload-progress');
+  const progressBar  = document.getElementById('progress-bar');
+  const progressText = document.getElementById('progress-text');
+  progressWrap.style.display = 'block';
+
+  let uploaded = 0;
+  let failed = 0;
+  const batchSize = 20; // Firestore batch limit is 500, but keep smaller for progress
+
+  try {
+    for (let i = 0; i < parsedExcelData.length; i += batchSize) {
+      const chunk = parsedExcelData.slice(i, i + batchSize);
+      const batch = writeBatch(db);
+      chunk.forEach(student => {
+        const ref = doc(collection(db, 'students'));
+        batch.set(ref, student);
+      });
+      await batch.commit();
+      uploaded += chunk.length;
+      const pct = Math.round((uploaded / parsedExcelData.length) * 100);
+      progressBar.style.width = pct + '%';
+      progressText.textContent = `Uploading... ${uploaded} / ${parsedExcelData.length} students`;
+    }
+
+    progressText.textContent = `✅ Done! ${uploaded} students uploaded successfully.`;
+    progressBar.style.background = '#27ae60';
+    showMsg('upload-result-msg', `✅ ${uploaded} students uploaded to Firebase successfully!`, 'success');
+
+    // Reset after 3 seconds
+    setTimeout(() => {
+      cancelUpload();
+      progressWrap.style.display = 'none';
+      progressBar.style.width = '0%';
+      loadStudents();
+    }, 3000);
+
+  } catch(e) {
+    showMsg('upload-result-msg', 'Upload error: '+e.message, 'error');
+    btn.disabled = false;
+    btn.textContent = '✅ Upload All to Firebase';
+  }
+};
+
+// ======================================================
+// =================== TEACHERS =========================
+// ======================================================
+
 window.addTeacher = async function() {
-  const name = document.getElementById('t-name').value.trim();
-  const email = document.getElementById('t-email').value.trim();
-  const pass = document.getElementById('t-pass').value;
+  const name    = document.getElementById('t-name').value.trim();
+  const email   = document.getElementById('t-email').value.trim();
+  const pass    = document.getElementById('t-pass').value;
   const subject = document.getElementById('t-subject').value;
-  const role = document.getElementById('t-role').value;
-  const clsSel = document.getElementById('t-classes');
+  const role    = document.getElementById('t-role').value;
+  const clsSel  = document.getElementById('t-classes');
   const classes = Array.from(clsSel.selectedOptions).map(o => o.value);
 
   if (!name || !email || !pass || !subject || classes.length === 0) {
@@ -393,14 +859,18 @@ window.addTeacher = async function() {
 
   try {
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
-    await setDoc(doc(db,'users', cred.user.uid), { name, email, subject, assignedClasses:classes, role, createdAt: new Date().toISOString() });
+    await setDoc(doc(db,'users', cred.user.uid), {
+      name, email, subject, assignedClasses:classes, role,
+      createdAt: new Date().toISOString()
+    });
     showMsg('teacher-msg', `Teacher "${name}" added successfully!`, 'success');
     ['t-name','t-email','t-pass'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('t-subject').value = '';
     Array.from(clsSel.options).forEach(o => o.selected = false);
     loadTeachers();
   } catch(e) {
-    const msg = e.code === 'auth/email-already-in-use' ? 'This email is already registered.' : e.message;
+    const msg = e.code === 'auth/email-already-in-use'
+      ? 'This email is already registered.' : e.message;
     showMsg('teacher-msg', 'Error: '+msg, 'error');
   }
 };
@@ -410,7 +880,9 @@ window.loadTeachers = async function() {
   tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">Loading...</td></tr>';
   try {
     const snap = await getDocs(collection(db,'users'));
-    if (snap.empty) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No users found.</td></tr>'; return; }
+    if (snap.empty) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No users found.</td></tr>'; return;
+    }
     let rows = [];
     snap.forEach(d => rows.push({id:d.id,...d.data()}));
     tbody.innerHTML = rows.map(t => `
@@ -420,7 +892,8 @@ window.loadTeachers = async function() {
         <td>${t.subject||'-'}</td>
         <td>${(t.assignedClasses||[]).join(', ')}</td>
         <td><span class="badge badge-${t.role}">${t.role?.toUpperCase()}</span></td>
-        <td><button class="btn btn-danger" style="padding:4px 12px;font-size:12px;" onclick="deleteTeacher('${t.id}','${t.name}')">Delete</button></td>
+        <td><button class="btn btn-danger" style="padding:4px 12px;font-size:12px;"
+            onclick="deleteTeacher('${t.id}','${t.name}')">Delete</button></td>
       </tr>`).join('');
   } catch(e) { tbody.innerHTML = `<tr><td colspan="6">Error: ${e.message}</td></tr>`; }
 };
@@ -431,32 +904,35 @@ window.deleteTeacher = async function(id, name) {
   loadTeachers();
 };
 
-// ======== MARKS VIEW ========
+// ======================================================
+// =================== MARKS VIEW =======================
+// ======================================================
+
 window.loadMarksView = async function() {
-  const cls = document.getElementById('m-class').value;
-  const exam = document.getElementById('m-exam').value;
+  const cls     = document.getElementById('m-class').value;
+  const exam    = document.getElementById('m-exam').value;
   const session = document.getElementById('m-session').value;
-  const thead = document.getElementById('marks-thead');
-  const tbody = document.getElementById('marks-tbody');
-  const statusEl = document.getElementById('marks-status');
+  const thead   = document.getElementById('marks-thead');
+  const tbody   = document.getElementById('marks-tbody');
+  const statusEl= document.getElementById('marks-status');
 
-  if (!cls) { tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#999;">Please select a class.</td></tr>'; return; }
-
+  if (!cls) {
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#999;">Please select a class.</td></tr>';
+    return;
+  }
   tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#999;">Loading...</td></tr>';
 
   try {
-    // Get students
-    const stuSnap = await getDocs(query(collection(db,'students'), where('class','==',cls), where('session','==',session)));
+    const stuSnap = await getDocs(query(collection(db,'students'),
+      where('class','==',cls), where('session','==',session)));
     let students = [];
     stuSnap.forEach(d => students.push({id:d.id,...d.data()}));
     students.sort((a,b) => a.rollNo - b.rollNo);
 
-    // Get marks
     let marksQ = exam
       ? query(collection(db,'marks'), where('class','==',cls), where('exam','==',exam), where('session','==',session))
       : query(collection(db,'marks'), where('class','==',cls), where('session','==',session));
     const marksSnap = await getDocs(marksQ);
-    // Build lookup: studentId_exam_subject -> marks
     const lookup = {};
     marksSnap.forEach(d => {
       const m = d.data();
@@ -464,124 +940,322 @@ window.loadMarksView = async function() {
     });
 
     const exams = exam ? [exam] : ['PA1','HalfYearly','PA2','Annual'];
-    // Build header
     let hCols = '<th>Roll</th><th>Name</th>';
-    exams.forEach(ex => SUBJECTS.forEach(sub => hCols += `<th style="white-space:nowrap;">${sub}<br><small>${EXAM_LABELS[ex]}</small></th>`));
+    exams.forEach(ex => SUBJECTS.forEach(sub =>
+      hCols += `<th style="white-space:nowrap;">${sub}<br><small>${EXAM_LABELS[ex]}</small></th>`
+    ));
     thead.innerHTML = hCols;
 
-    // Build rows
     tbody.innerHTML = students.map(s => {
       let row = `<td>${s.rollNo}</td><td><b>${s.name}</b></td>`;
       exams.forEach(ex => {
         SUBJECTS.forEach(sub => {
-          const key = `${s.id}_${ex}_${sub}`;
-          const val = lookup[key];
+          const val = lookup[`${s.id}_${ex}_${sub}`];
           row += val !== undefined
             ? `<td style="text-align:center;">${val}</td>`
             : `<td class="pending" style="text-align:center;">-</td>`;
         });
       });
       return `<tr>${row}</tr>`;
-    }).join('') || '<tr><td colspan="50" style="text-align:center;color:#999;">No students found for this class/session.</td></tr>';
+    }).join('') || '<tr><td colspan="50" style="text-align:center;color:#999;">No students found.</td></tr>';
 
     statusEl.innerHTML = `<span style="color:#1a3c6e;font-size:13px;">Showing <b>${students.length}</b> students | Class <b>${cls}</b></span>`;
-  } catch(e) { tbody.innerHTML = `<tr><td colspan="12">Error: ${e.message}</td></tr>`; }
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="12">Error: ${e.message}</td></tr>`;
+  }
 };
 
-// ======== PRINT SLIPS ========
-window.generateSlips = async function() {
-  const cls = document.getElementById('p-class').value;
-  const exam = document.getElementById('p-exam').value;
+// ======================================================
+// =================== PRINT SLIPS ======================
+// ======================================================
+
+window.generateProgressReports = async function() {
+  const cls     = document.getElementById('p-class').value;
+  const section = document.getElementById('p-section').value;
   const session = document.getElementById('p-session').value;
+  
   if (!cls) { alert('Please select a class.'); return; }
 
-  // Get students
-  const stuSnap = await getDocs(query(collection(db,'students'), where('class','==',cls), where('session','==',session)));
+  let q = query(collection(db,'students'),
+    where('class','==',cls), where('session','==',session));
+  if (section) q = query(collection(db,'students'),
+    where('class','==',cls), where('section','==',section), where('session','==',session));
+  
+  const stuSnap = await getDocs(q);
   let students = [];
   stuSnap.forEach(d => students.push({id:d.id,...d.data()}));
-  students.sort((a,b) => a.rollNo - b.rollNo);
+  students.sort((a,b) => (a.rollNo||0) - (b.rollNo||0));
+  
+  if (students.length === 0) { alert('No students found.'); return; }
 
-  if (students.length === 0) { alert('No students found for this class.'); return; }
+  // Fetch all marks for these students
+  const marksSnap = await getDocs(query(collection(db,'marks'),
+    where('class','==',cls), where('session','==',session)));
+  const marksLookup = {};
+  marksSnap.forEach(d => {
+    const m = d.data();
+    const key = `${m.studentId}_${m.exam}_${m.subject}`;
+    marksLookup[key] = m.marksObtained;
+  });
 
-  // Get marks
-  const marksSnap = await getDocs(query(collection(db,'marks'), where('class','==',cls), where('exam','==',exam), where('session','==',session)));
-  const lookup = {};
-  marksSnap.forEach(d => { const m = d.data(); lookup[`${m.studentId}_${m.subject}`] = m.marksObtained; });
-
-  const maxMark = MAX_MARKS[exam];
-  const examLabel = EXAM_LABELS[exam];
-  const today = new Date().toLocaleDateString('en-IN');
-
-  // Generate print window
   const win = window.open('', '_blank');
-  const slipHTML = students.map(s => {
-    let rows = '';
-    let total = 0;
+  const today = new Date().toLocaleDateString('en-IN');
+  
+  const reportHTML = students.map(s => {
+    // Get marks for all exams
+    const exams = ['PA1', 'HalfYearly', 'PA2', 'Annual'];
+    const marksData = {};
+    
     SUBJECTS.forEach(sub => {
-      const m = lookup[`${s.id}_${sub}`];
-      const mStr = m !== undefined ? m : '___';
-      if (m !== undefined) total += Number(m);
-      rows += `<tr><td>${sub}</td><td>${mStr}</td><td>${maxMark}</td></tr>`;
+      marksData[sub] = {};
+      exams.forEach(exam => {
+        const key = `${s.id}_${exam}_${sub}`;
+        marksData[sub][exam] = marksLookup[key] || '-';
+      });
     });
-    const pct = students.length > 0 ? ((total / (SUBJECTS.length * maxMark)) * 100).toFixed(1) : '___';
+
+    // Calculate totals and percentages
+    let term1Total = 0, term1Max = 0;
+    let term2Total = 0, term2Max = 0;
+    let finalTotal = 0, finalMax = 0;
+    
+    SUBJECTS.forEach(sub => {
+      const pa1 = marksData[sub]['PA1'];
+      const hy = marksData[sub]['HalfYearly'];
+      const pa2 = marksData[sub]['PA2'];
+      const ann = marksData[sub]['Annual'];
+      
+      if (pa1 !== '-') { term1Total += Number(pa1); term1Max += 20; }
+      if (hy !== '-') { term1Max += 80; term1Total += Number(hy); }
+      if (pa2 !== '-') { term2Total += Number(pa2); term2Max += 20; }
+      if (ann !== '-') { term2Total += Number(ann); term2Max += 80; }
+      if (pa1 !== '-' || hy !== '-') finalMax += 100;
+      if (pa1 !== '-' || hy !== '-') finalTotal += (pa1 !== '-' ? Number(pa1) : 0) + (hy !== '-' ? Number(hy) : 0);
+      if (pa2 !== '-' || ann !== '-') finalMax += 100;
+      if (pa2 !== '-' || ann !== '-') finalTotal += (pa2 !== '-' ? Number(pa2) : 0) + (ann !== '-' ? Number(ann) : 0);
+    });
+
+    const term1Pct = term1Max > 0 ? ((term1Total / term1Max) * 100).toFixed(1) : 0;
+    const term2Pct = term2Max > 0 ? ((term2Total / term2Max) * 100).toFixed(1) : 0;
+    const finalPct = finalMax > 0 ? ((finalTotal / finalMax) * 100).toFixed(1) : 0;
+
+    // Build marks table rows
+    let marksRows = SUBJECTS.map(sub => `
+      <tr>
+        <td><b>${sub}</b></td>
+        <td>${marksData[sub]['PA1'] || '-'}</td>
+        <td>${marksData[sub]['HalfYearly'] || '-'}</td>
+        <td>${marksData[sub]['PA2'] || '-'}</td>
+        <td>${marksData[sub]['Annual'] || '-'}</td>
+        <td>${(Number(marksData[sub]['PA1']||0) + Number(marksData[sub]['HalfYearly']||0) + Number(marksData[sub]['PA2']||0) + Number(marksData[sub]['Annual']||0)).toFixed(0)}</td>
+        <td>B2</td>
+      </tr>
+    `).join('');
+
     return `
-    <div class="slip">
-      <div class="slip-header">
-        <b>PRABHA GYAN JYOTI PUBLIC SCHOOL</b><br>
-        <small>Govt. Recognized · Gangoh, Saharanpur (U.P.) · Mob: 9837700311</small>
+    <div class="report-card">
+      <div class="report-header">
+        <h3>PRABHA GYAN JYOTI PUBLIC SCHOOL</h3>
+        <p>Government Recognized · Gangoh, Saharanpur (U.P.)</p>
+        <h4>PROGRESS REPORT</h4>
+        <p style="font-size:11px;">Session: ${session} | Date: ${today}</p>
       </div>
-      <div class="slip-sub"><b>${examLabel} REPORT SLIP</b> &nbsp;|&nbsp; Session: ${session} &nbsp;|&nbsp; Date: ${today}</div>
-      <div class="slip-info">
-        <span><b>Name:</b> ${s.name}</span>
-        <span><b>Class:</b> ${s.class}</span>
-        <span><b>Roll No:</b> ${s.rollNo}</span>
-        <span><b>Adm No:</b> ${s.admissionNo}</span>
+
+      <div class="student-info">
+        <table>
+          <tr>
+            <td><b>Name Of Student</b><br><span>${s.name}</span></td>
+            <td><b>Admission No.</b><br><span>${s.admissionNo}</span></td>
+            <td><b>Roll No.</b><br><span>${s.rollNo}</span></td>
+            <td><b>Class</b><br><span>${s.class}${s.section ? '-'+s.section : ''}</span></td>
+          </tr>
+          <tr>
+            <td colspan="2"><b>Father's Name</b><br><span>${s.fatherName || '-'}</span></td>
+            <td colspan="2"><b>Mother's Name</b><br><span>${s.motherName || '-'}</span></td>
+          </tr>
+          <tr>
+            <td colspan="4"><b>Address</b><br><span>${s.address || '-'}</span></td>
+          </tr>
+        </table>
       </div>
-      <table>
-        <thead><tr><th>Subject</th><th>Marks Obtained</th><th>Max Marks</th></tr></thead>
-        <tbody>${rows}</tbody>
-        <tfoot>
-          <tr><td><b>Grand Total</b></td><td><b>${total}</b></td><td><b>${SUBJECTS.length * maxMark}</b></td></tr>
-          <tr><td colspan="3"><b>Percentage: ${pct}%</b></td></tr>
-        </tfoot>
-      </table>
-      <div class="sig-row">
-        <span>Class Teacher: _______________</span>
-        <span>Parent Sign: _______________</span>
-        <span>Principal: _______________</span>
+
+      <div class="marks-section">
+        <h4>SCHOLASTIC AREA</h4>
+        <table class="marks-table">
+          <thead>
+            <tr>
+              <th>Subject</th>
+              <th colspan="2">TERM - 1</th>
+              <th colspan="2">TERM - 2</th>
+              <th rowspan="2">FINAL RESULT</th>
+              <th rowspan="2">GRADE</th>
+            </tr>
+            <tr>
+              <th></th>
+              <th>PA-1 (20)</th>
+              <th>HY (80)</th>
+              <th>PA-2 (20)</th>
+              <th>ANN (80)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${marksRows}
+            <tr style="background:#e8eef7;font-weight:bold;">
+              <td>GRAND TOTAL</td>
+              <td colspan="2">${term1Total}/${term1Max}</td>
+              <td colspan="2">${term2Total}/${term2Max}</td>
+              <td>${finalTotal}/${finalMax}</td>
+              <td>B1</td>
+            </tr>
+            <tr style="background:#e8eef7;font-weight:bold;">
+              <td colspan="3">Percentage (%)</td>
+              <td colspan="2">${term1Pct}%</td>
+              <td colspan="2">${term2Pct}%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="performance-section">
+        <h4>CO-SCHOLASTIC AREAS</h4>
+        <table class="criteria-table">
+          <thead>
+            <tr>
+              <th>S.No.</th>
+              <th>Criterion</th>
+              <th>Outstanding</th>
+              <th>Very Good</th>
+              <th>Good</th>
+              <th>Average</th>
+              <th>Remark</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>Cleanliness</td>
+              <td style="text-align:center;">✓</td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td>Good</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Discipline</td>
+              <td></td>
+              <td></td>
+              <td style="text-align:center;">✓</td>
+              <td></td>
+              <td>Average</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>Punctuality</td>
+              <td></td>
+              <td style="text-align:center;">✓</td>
+              <td></td>
+              <td></td>
+              <td>Very Good</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>Parent Interaction</td>
+              <td></td>
+              <td></td>
+              <td style="text-align:center;">✓</td>
+              <td></td>
+              <td>Good</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="remarks-section">
+        <table>
+          <tr>
+            <td style="width:50%;"><b>CLASS TEACHER'S REMARKS</b><br>
+              <div style="height:40px;border:1px solid #ddd;padding:4px;"></div>
+            </td>
+            <td style="width:50%;border-left:1px solid #ddd;padding-left:10px;"><b>PRINCIPAL'S REMARKS</b><br>
+              <div style="height:40px;border:1px solid #ddd;padding:4px;"></div>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="signature-section">
+        <div style="display:flex;justify-content:space-between;margin-top:20px;">
+          <div style="text-align:center;">
+            <div style="height:40px;"></div>
+            <b style="font-size:11px;">Class Teacher</b>
+          </div>
+          <div style="text-align:center;">
+            <div style="height:40px;"></div>
+            <b style="font-size:11px;">Principal</b>
+          </div>
+          <div style="text-align:center;">
+            <div style="height:40px;"></div>
+            <b style="font-size:11px;">Parent/Guardian</b>
+          </div>
+        </div>
       </div>
     </div>`;
-  }).join('<div class="cut-line">✂ ─────────────────────────────────────</div>');
+  }).join('<div class="page-break"></div>');
 
-  win.document.write(`<!DOCTYPE html><html><head><title>Report Slips – Class ${cls}</title>
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Progress Reports – ${cls}</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, sans-serif; font-size: 12px; background: #fff; }
-    .slip { border: 1.5px solid #1a3c6e; border-radius: 6px; padding: 12px 14px; margin: 10px; page-break-inside: avoid; }
-    .slip-header { text-align: center; color: #1a3c6e; font-size: 13px; margin-bottom: 4px; }
-    .slip-sub { text-align: center; font-size: 11px; color: #c0392b; font-weight: 700; margin-bottom: 6px; }
-    .slip-info { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; font-size: 12px; }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    th { background: #1a3c6e; color: #fff; padding: 5px 8px; text-align: left; }
-    td { padding: 4px 8px; border-bottom: 1px solid #eee; }
-    tfoot td { background: #f0f4f8; font-weight: 700; }
-    .sig-row { display: flex; justify-content: space-between; margin-top: 10px; font-size: 11px; color: #555; }
-    .cut-line { text-align: center; color: #aaa; font-size: 11px; margin: 4px 0; }
-    @media print {
-      @page { margin: 10mm; }
-      .cut-line { border-top: 1px dashed #ccc; color: #ccc; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'Times New Roman',Times,serif; font-size:12px; background:#fff; padding:10px; }
+    .report-card { border:2px solid #1a3c6e; padding:15px; margin:10px; page-break-after:always; background:#fff; }
+    .report-header { text-align:center; margin-bottom:12px; border-bottom:2px solid #1a3c6e; padding-bottom:8px; }
+    .report-header h3 { color:#1a3c6e; font-size:15px; margin:2px 0; }
+    .report-header h4 { color:#d4a017; font-size:13px; font-weight:bold; margin:4px 0; }
+    .report-header p { font-size:11px; color:#555; margin:2px 0; }
+    
+    .student-info { margin-bottom:12px; }
+    .student-info table { width:100%; border-collapse:collapse; }
+    .student-info td { border:1px solid #ccc; padding:6px; font-size:11px; }
+    .student-info span { font-weight:bold; }
+    
+    .marks-section { margin-bottom:12px; }
+    .marks-section h4 { color:#1a3c6e; font-size:12px; margin-bottom:6px; background:#e8eef7; padding:4px; }
+    .marks-table { width:100%; border-collapse:collapse; font-size:11px; }
+    .marks-table th { background:#1a3c6e; color:#fff; padding:5px 4px; text-align:center; }
+    .marks-table td { border:1px solid #ccc; padding:4px; text-align:center; }
+    .marks-table td:first-child { text-align:left; padding-left:6px; }
+    
+    .criteria-table { width:100%; border-collapse:collapse; font-size:11px; }
+    .criteria-table th { background:#1a3c6e; color:#fff; padding:5px 4px; }
+    .criteria-table td { border:1px solid #ccc; padding:4px; text-align:center; }
+    .criteria-table td:nth-child(2) { text-align:left; }
+    .criteria-table td:last-child { text-align:left; }
+    
+    .performance-section { margin-bottom:12px; }
+    .performance-section h4 { color:#1a3c6e; font-size:12px; margin-bottom:6px; background:#e8eef7; padding:4px; }
+    
+    .remarks-section { margin-bottom:12px; }
+    .remarks-section table { width:100%; border-collapse:collapse; }
+    .remarks-section td { border:1px solid #ccc; padding:6px; font-size:11px; }
+    
+    .signature-section { font-size:11px; }
+    .page-break { page-break-after:always; }
+    
+    @media print { 
+      body { padding:0; } 
+      .report-card { margin:0; padding:10px; }
     }
-  </style></head><body>${slipHTML}
-  <script>window.onload=()=>window.print();<\/script></body></html>`);
+  </style></head><body>${reportHTML}
+  <script>window.addEventListener('load', () => window.print());</script></body></html>`);
   win.document.close();
 };
 
 // ---- HELPER ----
 function showMsg(id, msg, type) {
   const el = document.getElementById(id);
-  el.className = 'msg msg-'+(type==='error'?'error':'success');
+  el.className = 'msg msg-'+(type==='error'?'error':type==='info'?'info':'success');
   el.textContent = msg;
-  setTimeout(() => el.textContent = '', 5000);
+  setTimeout(() => el.textContent = '', 6000);
 }
 </script>
 </body>
