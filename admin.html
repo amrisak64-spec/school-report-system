@@ -1025,10 +1025,17 @@ window.generateProgressReports = async function() {
   const marksSnap = await getDocs(query(collection(db,'marks'),
     where('class','==',cls), where('session','==',session)));
   const marksLookup = {};
+  const notebookLookup = {};
+  const remarksLookup = {};
   marksSnap.forEach(d => {
     const m = d.data();
-    const key = `${m.studentId}_${m.exam}_${m.subject}`;
+    const subject = SUBJECT_ALIASES[m.subject] || m.subject;
+    const key = `${m.studentId}_${m.exam}_${subject}`;
     marksLookup[key] = m.marksObtained;
+    if (m.notebookMarks !== undefined && m.notebookMarks !== null) {
+      notebookLookup[key] = m.notebookMarks;
+    }
+    if (m.remarks && m.remarks.trim()) remarksLookup[m.studentId] = m.remarks.trim();
   });
 
   const win = window.open('', '_blank');
@@ -1038,13 +1045,16 @@ window.generateProgressReports = async function() {
     // Get marks for all exams
     const exams = ['PA1', 'HalfYearly', 'PA2', 'Annual'];
     const marksData = {};
+    const notebookData = {};
     
     SUBJECTS.forEach(sub => {
       marksData[sub] = {};
       exams.forEach(exam => {
         const key = `${s.id}_${exam}_${sub}`;
-        marksData[sub][exam] = marksLookup[key] || '-';
+        marksData[sub][exam] = marksLookup[key] ?? '-';
       });
+      notebookData[sub] = exams.map(exam => notebookLookup[`${s.id}_${exam}_${sub}`])
+        .findLast(value => value !== undefined) ?? '-';
     });
 
     // Calculate totals and percentages
@@ -1062,28 +1072,54 @@ window.generateProgressReports = async function() {
       if (hy !== '-') { term1Max += 80; term1Total += Number(hy); }
       if (pa2 !== '-') { term2Total += Number(pa2); term2Max += 20; }
       if (ann !== '-') { term2Total += Number(ann); term2Max += 80; }
-      if (pa1 !== '-' || hy !== '-') finalMax += 100;
-      if (pa1 !== '-' || hy !== '-') finalTotal += (pa1 !== '-' ? Number(pa1) : 0) + (hy !== '-' ? Number(hy) : 0);
-      if (pa2 !== '-' || ann !== '-') finalMax += 100;
-      if (pa2 !== '-' || ann !== '-') finalTotal += (pa2 !== '-' ? Number(pa2) : 0) + (ann !== '-' ? Number(ann) : 0);
+      [pa1, hy, pa2, ann].forEach((value, index) => {
+        if (value !== '-') {
+          finalTotal += Number(value);
+          finalMax += [20, 80, 20, 80][index];
+        }
+      });
+      if (notebookData[sub] !== '-') {
+        finalTotal += Number(notebookData[sub]);
+        finalMax += 10;
+      }
     });
 
     const term1Pct = term1Max > 0 ? ((term1Total / term1Max) * 100).toFixed(1) : 0;
     const term2Pct = term2Max > 0 ? ((term2Total / term2Max) * 100).toFixed(1) : 0;
     const finalPct = finalMax > 0 ? ((finalTotal / finalMax) * 100).toFixed(1) : 0;
+    const gradeFor = percentage => {
+      if (percentage >= 90) return 'A+';
+      if (percentage >= 75) return 'A';
+      if (percentage >= 60) return 'B';
+      if (percentage >= 45) return 'C';
+      return 'D';
+    };
 
     // Build marks table rows
-    let marksRows = SUBJECTS.map(sub => `
-      <tr>
-        <td><b>${sub}</b></td>
-        <td>${marksData[sub]['PA1'] || '-'}</td>
-        <td>${marksData[sub]['HalfYearly'] || '-'}</td>
-        <td>${marksData[sub]['PA2'] || '-'}</td>
-        <td>${marksData[sub]['Annual'] || '-'}</td>
-        <td>${(Number(marksData[sub]['PA1']||0) + Number(marksData[sub]['HalfYearly']||0) + Number(marksData[sub]['PA2']||0) + Number(marksData[sub]['Annual']||0)).toFixed(0)}</td>
-        <td>B2</td>
-      </tr>
-    `).join('');
+    let marksRows = SUBJECTS.map(sub => {
+      const values = [
+        { value: marksData[sub].PA1, max: 20 },
+        { value: marksData[sub].HalfYearly, max: 80 },
+        { value: marksData[sub].PA2, max: 20 },
+        { value: marksData[sub].Annual, max: 80 },
+        { value: notebookData[sub], max: 10 }
+      ];
+      const available = values.filter(item => item.value !== '-');
+      const subjectTotal = available.reduce((sum, item) => sum + Number(item.value), 0);
+      const subjectMax = available.reduce((sum, item) => sum + item.max, 0);
+      const subjectPct = subjectMax ? (subjectTotal / subjectMax) * 100 : 0;
+      return `
+        <tr>
+          <td><b>${sub}</b></td>
+          <td>${marksData[sub].PA1}</td>
+          <td>${marksData[sub].HalfYearly}</td>
+          <td>${marksData[sub].PA2}</td>
+          <td>${marksData[sub].Annual}</td>
+          <td>${notebookData[sub]}</td>
+          <td>${subjectMax ? `${subjectTotal}/${subjectMax}` : '-'}</td>
+          <td>${subjectMax ? gradeFor(subjectPct) : '-'}</td>
+        </tr>`;
+    }).join('');
 
     return `
     <div class="report-card">
@@ -1097,17 +1133,18 @@ window.generateProgressReports = async function() {
       <div class="student-info">
         <table>
           <tr>
-            <td><b>Name Of Student</b><br><span>${s.name}</span></td>
-            <td><b>Admission No.</b><br><span>${s.admissionNo}</span></td>
+            <td colspan="2"><b>Student Name</b><br><span>${escapeHtml(s.name)}</span></td>
+            <td colspan="2"><b>Father's Name</b><br><span>${escapeHtml(s.fatherName || '-')}</span></td>
+          </tr>
+          <tr>
+            <td><b>Class</b><br><span>${s.class}</span></td>
+            <td><b>Section</b><br><span>${s.section || '-'}</span></td>
             <td><b>Roll No.</b><br><span>${s.rollNo}</span></td>
-            <td><b>Class</b><br><span>${s.class}${s.section ? '-'+s.section : ''}</span></td>
+            <td><b>Admission No.</b><br><span>${escapeHtml(s.admissionNo)}</span></td>
           </tr>
           <tr>
-            <td colspan="2"><b>Father's Name</b><br><span>${s.fatherName || '-'}</span></td>
-            <td colspan="2"><b>Mother's Name</b><br><span>${s.motherName || '-'}</span></td>
-          </tr>
-          <tr>
-            <td colspan="4"><b>Address</b><br><span>${s.address || '-'}</span></td>
+            <td colspan="2"><b>Mother's Name</b><br><span>${escapeHtml(s.motherName || '-')}</span></td>
+            <td colspan="2"><b>Session</b><br><span>${session}</span></td>
           </tr>
         </table>
       </div>
@@ -1117,14 +1154,14 @@ window.generateProgressReports = async function() {
         <table class="marks-table">
           <thead>
             <tr>
-              <th>Subject</th>
+              <th rowspan="2">Subject</th>
               <th colspan="2">TERM - 1</th>
               <th colspan="2">TERM - 2</th>
+              <th rowspan="2">Notebook (10)</th>
               <th rowspan="2">FINAL RESULT</th>
               <th rowspan="2">GRADE</th>
             </tr>
             <tr>
-              <th></th>
               <th>PA-1 (20)</th>
               <th>HY (80)</th>
               <th>PA-2 (20)</th>
@@ -1137,68 +1174,15 @@ window.generateProgressReports = async function() {
               <td>GRAND TOTAL</td>
               <td colspan="2">${term1Total}/${term1Max}</td>
               <td colspan="2">${term2Total}/${term2Max}</td>
-              <td>${finalTotal}/${finalMax}</td>
-              <td>B1</td>
+              <td>-</td>
+              <td>${finalMax ? `${finalTotal}/${finalMax}` : '-'}</td>
+              <td>${finalMax ? gradeFor(Number(finalPct)) : '-'}</td>
             </tr>
             <tr style="background:#e8eef7;font-weight:bold;">
-              <td colspan="3">Percentage (%)</td>
+              <td>Percentage</td>
               <td colspan="2">${term1Pct}%</td>
               <td colspan="2">${term2Pct}%</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="performance-section">
-        <h4>CO-SCHOLASTIC AREAS</h4>
-        <table class="criteria-table">
-          <thead>
-            <tr>
-              <th>S.No.</th>
-              <th>Criterion</th>
-              <th>Outstanding</th>
-              <th>Very Good</th>
-              <th>Good</th>
-              <th>Average</th>
-              <th>Remark</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>1</td>
-              <td>Cleanliness</td>
-              <td style="text-align:center;">✓</td>
-              <td></td>
-              <td></td>
-              <td></td>
-              <td>Good</td>
-            </tr>
-            <tr>
-              <td>2</td>
-              <td>Discipline</td>
-              <td></td>
-              <td></td>
-              <td style="text-align:center;">✓</td>
-              <td></td>
-              <td>Average</td>
-            </tr>
-            <tr>
-              <td>3</td>
-              <td>Punctuality</td>
-              <td></td>
-              <td style="text-align:center;">✓</td>
-              <td></td>
-              <td></td>
-              <td>Very Good</td>
-            </tr>
-            <tr>
-              <td>4</td>
-              <td>Parent Interaction</td>
-              <td></td>
-              <td></td>
-              <td style="text-align:center;">✓</td>
-              <td></td>
-              <td>Good</td>
+              <td colspan="3">${finalPct}%</td>
             </tr>
           </tbody>
         </table>
@@ -1207,11 +1191,8 @@ window.generateProgressReports = async function() {
       <div class="remarks-section">
         <table>
           <tr>
-            <td style="width:50%;"><b>CLASS TEACHER'S REMARKS</b><br>
-              <div style="height:40px;border:1px solid #ddd;padding:4px;"></div>
-            </td>
-            <td style="width:50%;border-left:1px solid #ddd;padding-left:10px;"><b>PRINCIPAL'S REMARKS</b><br>
-              <div style="height:40px;border:1px solid #ddd;padding:4px;"></div>
+            <td><b>TEACHER REMARKS</b><br>
+              <div class="remarks-box">${escapeHtml(remarksLookup[s.id] || 'No remarks entered.')}</div>
             </td>
           </tr>
         </table>
@@ -1234,13 +1215,15 @@ window.generateProgressReports = async function() {
         </div>
       </div>
     </div>`;
-  }).join('<div class="page-break"></div>');
+  }).join('');
 
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Progress Reports – ${cls}</title>
   <style>
+    @page { size:A4 portrait; margin:10mm; }
     * { box-sizing:border-box; margin:0; padding:0; }
-    body { font-family:'Times New Roman',Times,serif; font-size:12px; background:#fff; padding:10px; }
-    .report-card { border:2px solid #1a3c6e; padding:15px; margin:10px; page-break-after:always; background:#fff; }
+    body { font-family:'Times New Roman',Times,serif; font-size:12px; background:#fff; }
+    .report-card { border:2px solid #1a3c6e; padding:12px; page-break-after:always; break-after:page; background:#fff; }
+    .report-card:last-child { page-break-after:auto; break-after:auto; }
     .report-header { text-align:center; margin-bottom:12px; border-bottom:2px solid #1a3c6e; padding-bottom:8px; }
     .report-header h3 { color:#1a3c6e; font-size:15px; margin:2px 0; }
     .report-header h4 { color:#d4a017; font-size:13px; font-weight:bold; margin:4px 0; }
@@ -1258,25 +1241,15 @@ window.generateProgressReports = async function() {
     .marks-table td { border:1px solid #ccc; padding:4px; text-align:center; }
     .marks-table td:first-child { text-align:left; padding-left:6px; }
     
-    .criteria-table { width:100%; border-collapse:collapse; font-size:11px; }
-    .criteria-table th { background:#1a3c6e; color:#fff; padding:5px 4px; }
-    .criteria-table td { border:1px solid #ccc; padding:4px; text-align:center; }
-    .criteria-table td:nth-child(2) { text-align:left; }
-    .criteria-table td:last-child { text-align:left; }
-    
-    .performance-section { margin-bottom:12px; }
-    .performance-section h4 { color:#1a3c6e; font-size:12px; margin-bottom:6px; background:#e8eef7; padding:4px; }
-    
     .remarks-section { margin-bottom:12px; }
     .remarks-section table { width:100%; border-collapse:collapse; }
     .remarks-section td { border:1px solid #ccc; padding:6px; font-size:11px; }
+    .remarks-box { min-height:34px; padding-top:5px; white-space:pre-wrap; }
     
     .signature-section { font-size:11px; }
-    .page-break { page-break-after:always; }
-    
     @media print { 
-      body { padding:0; } 
-      .report-card { margin:0; padding:10px; }
+      body { padding:0; }
+      .report-card { margin:0; }
     }
   </style></head><body>${reportHTML}
   <script>window.addEventListener('load', () => window.print());<\/script></body></html>`);
@@ -1289,6 +1262,12 @@ function showMsg(id, msg, type) {
   el.className = 'msg msg-'+(type==='error'?'error':type==='info'?'info':'success');
   el.textContent = msg;
   setTimeout(() => el.textContent = '', 6000);
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+  }[char]));
 }
 </script>
 </body>
