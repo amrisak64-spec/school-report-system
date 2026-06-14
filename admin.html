@@ -219,7 +219,7 @@
   <div class="tab" onclick="showTab('upload', this)">📤 Upload Excel</div>
   <div class="tab" onclick="showTab('teachers', this)">👩‍🏫 Teachers</div>
   <div class="tab" onclick="showTab('marks', this)">📊 View Marks</div>
-  <div class="tab" onclick="showTab('report', this)">🖨️ Print Slips</div>
+  <div class="tab" onclick="showTab('report', this)">🖨️ Print Report Card</div>
   <div class="tab" onclick="window.location.href='appearance.html'">📋 Appearance</div>
   <div class="tab" onclick="window.location.href='tabulation.html'">📊 Tabulation</div>
 </div>
@@ -1001,260 +1001,335 @@ window.loadMarksView = async function() {
 };
 
 // ======================================================
-// =================== PRINT SLIPS ======================
+// =================== PRINT REPORT CARD ================
 // ======================================================
 
 window.generateProgressReports = async function() {
   const cls     = document.getElementById('p-class').value;
   const section = document.getElementById('p-section').value;
   const session = document.getElementById('p-session').value;
-  
+
   if (!cls) { alert('Please select a class.'); return; }
 
-  let q = query(collection(db,'students'),
-    where('class','==',cls), where('session','==',session));
-  if (section) q = query(collection(db,'students'),
-    where('class','==',cls), where('section','==',section), where('session','==',session));
-  
-  const stuSnap = await getDocs(q);
+  let stuQ = section
+    ? query(collection(db,'students'), where('class','==',cls), where('section','==',section), where('session','==',session))
+    : query(collection(db,'students'), where('class','==',cls), where('session','==',session));
+  const stuSnap = await getDocs(stuQ);
   let students = [];
   stuSnap.forEach(d => students.push({id:d.id,...d.data()}));
   students.sort((a,b) => (a.rollNo||0) - (b.rollNo||0));
-  
   if (students.length === 0) { alert('No students found.'); return; }
 
-  // Fetch all marks for these students
+  // Marks: per-student × exam × subject + per-subject remarks
   const marksSnap = await getDocs(query(collection(db,'marks'),
     where('class','==',cls), where('session','==',session)));
   const marksLookup = {};
-  const notebookLookup = {};
-  const remarksLookup = {};
+  const remarksLookup = {}; // studentId_subject -> latest remark
   marksSnap.forEach(d => {
     const m = d.data();
-    const subject = SUBJECT_ALIASES[m.subject] || m.subject;
-    const key = `${m.studentId}_${m.exam}_${subject}`;
-    marksLookup[key] = m.marksObtained;
-    if (m.notebookMarks !== undefined && m.notebookMarks !== null) {
-      notebookLookup[key] = m.notebookMarks;
+    const sub = SUBJECT_ALIASES[m.subject] || m.subject;
+    marksLookup[`${m.studentId}_${m.exam}_${sub}`] = m.marksObtained;
+    if (m.remarks?.trim()) {
+      const rk = `${m.studentId}_${sub}`;
+      if (!remarksLookup[rk]) remarksLookup[rk] = m.remarks.trim();
     }
-    if (m.remarks && m.remarks.trim()) remarksLookup[m.studentId] = m.remarks.trim();
   });
 
-  const win = window.open('', '_blank');
-  const today = new Date().toLocaleDateString('en-IN');
-  
+  // Attendance/appearance — single doc per student per session
+  const attSnap = await getDocs(query(collection(db,'attendance'),
+    where('class','==',cls), where('session','==',session)));
+  const attLookup = {}; // studentId -> doc data
+  attSnap.forEach(d => { const data = d.data(); attLookup[data.studentId] = data; });
+
+  const GRADE = pct => {
+    if (pct >= 91) return 'A1';
+    if (pct >= 81) return 'A2';
+    if (pct >= 71) return 'B1';
+    if (pct >= 61) return 'B2';
+    if (pct >= 51) return 'C1';
+    if (pct >= 41) return 'C2';
+    if (pct >= 33) return 'D';
+    return 'E';
+  };
+  const ATT_LBL = { VeryGood:'Very Good', Good:'Good', Average:'Average', Poor:'Poor' };
+  const TICK = '&#10003;';
+  const PARTICULARS = [
+    { label:'Cleanliness',          key:'cleanliness' },
+    { label:'Discipline',           key:'discipline' },
+    { label:'Punctuality',          key:'punctuality' },
+    { label:"Parents' Interaction", key:'parentsInteraction' }
+  ];
+
   const reportHTML = students.map(s => {
-    // Get marks for all exams
-    const exams = ['PA1', 'HalfYearly', 'PA2', 'Annual'];
-    const marksData = {};
-    const notebookData = {};
-    
-    SUBJECTS.forEach(sub => {
-      marksData[sub] = {};
-      exams.forEach(exam => {
-        const key = `${s.id}_${exam}_${sub}`;
-        marksData[sub][exam] = marksLookup[key] ?? '-';
-      });
-      notebookData[sub] = exams.map(exam => notebookLookup[`${s.id}_${exam}_${sub}`])
-        .findLast(value => value !== undefined) ?? '-';
-    });
+    // ---- Marks calculation ----
+    let t1PA1s=0,t1HYs=0,t2PA2s=0,t2ANNs=0;
+    let t1PA1m=0,t1HYm=0,t2PA2m=0,t2ANNm=0;
 
-    // Calculate totals and percentages
-    let term1Total = 0, term1Max = 0;
-    let term2Total = 0, term2Max = 0;
-    let finalTotal = 0, finalMax = 0;
-    
-    SUBJECTS.forEach(sub => {
-      const pa1 = marksData[sub]['PA1'];
-      const hy = marksData[sub]['HalfYearly'];
-      const pa2 = marksData[sub]['PA2'];
-      const ann = marksData[sub]['Annual'];
-      
-      if (pa1 !== '-') { term1Total += Number(pa1); term1Max += 20; }
-      if (hy !== '-') { term1Max += 80; term1Total += Number(hy); }
-      if (pa2 !== '-') { term2Total += Number(pa2); term2Max += 20; }
-      if (ann !== '-') { term2Total += Number(ann); term2Max += 80; }
-      [pa1, hy, pa2, ann].forEach((value, index) => {
-        if (value !== '-') {
-          finalTotal += Number(value);
-          finalMax += [20, 80, 20, 80][index];
-        }
-      });
-      if (notebookData[sub] !== '-') {
-        finalTotal += Number(notebookData[sub]);
-        finalMax += 10;
-      }
-    });
+    const marksRows = SUBJECTS.map(sub => {
+      const pa1 = marksLookup[`${s.id}_PA1_${sub}`];
+      const hy  = marksLookup[`${s.id}_HalfYearly_${sub}`];
+      const pa2 = marksLookup[`${s.id}_PA2_${sub}`];
+      const ann = marksLookup[`${s.id}_Annual_${sub}`];
+      const subRemark = remarksLookup[`${s.id}_${sub}`] || '';
 
-    const term1Pct = term1Max > 0 ? ((term1Total / term1Max) * 100).toFixed(1) : 0;
-    const term2Pct = term2Max > 0 ? ((term2Total / term2Max) * 100).toFixed(1) : 0;
-    const finalPct = finalMax > 0 ? ((finalTotal / finalMax) * 100).toFixed(1) : 0;
-    const gradeFor = percentage => {
-      if (percentage >= 90) return 'A+';
-      if (percentage >= 75) return 'A';
-      if (percentage >= 60) return 'B';
-      if (percentage >= 45) return 'C';
-      return 'D';
-    };
+      if (pa1!==undefined){t1PA1s+=Number(pa1);t1PA1m+=20;}
+      if (hy !==undefined){t1HYs +=Number(hy); t1HYm +=80;}
+      if (pa2!==undefined){t2PA2s+=Number(pa2);t2PA2m+=20;}
+      if (ann!==undefined){t2ANNs+=Number(ann);t2ANNm+=80;}
 
-    // Build marks table rows
-    let marksRows = SUBJECTS.map(sub => {
-      const values = [
-        { value: marksData[sub].PA1, max: 20 },
-        { value: marksData[sub].HalfYearly, max: 80 },
-        { value: marksData[sub].PA2, max: 20 },
-        { value: marksData[sub].Annual, max: 80 },
-        { value: notebookData[sub], max: 10 }
-      ];
-      const available = values.filter(item => item.value !== '-');
-      const subjectTotal = available.reduce((sum, item) => sum + Number(item.value), 0);
-      const subjectMax = available.reduce((sum, item) => sum + item.max, 0);
-      const subjectPct = subjectMax ? (subjectTotal / subjectMax) * 100 : 0;
-      return `
-        <tr>
-          <td><b>${sub}</b></td>
-          <td>${marksData[sub].PA1}</td>
-          <td>${marksData[sub].HalfYearly}</td>
-          <td>${marksData[sub].PA2}</td>
-          <td>${marksData[sub].Annual}</td>
-          <td>${notebookData[sub]}</td>
-          <td>${subjectMax ? `${subjectTotal}/${subjectMax}` : '-'}</td>
-          <td>${subjectMax ? gradeFor(subjectPct) : '-'}</td>
-        </tr>`;
+      const t1 = pa1!==undefined&&hy !==undefined ? Number(pa1)+Number(hy)
+               : pa1!==undefined ? Number(pa1) : hy !==undefined ? Number(hy)  : null;
+      const t2 = pa2!==undefined&&ann!==undefined ? Number(pa2)+Number(ann)
+               : pa2!==undefined ? Number(pa2) : ann!==undefined ? Number(ann) : null;
+      const gt    = t1!==null&&t2!==null ? t1+t2 : t1!==null ? t1 : t2!==null ? t2 : null;
+      const gtMax = (pa1!==undefined?20:0)+(hy!==undefined?80:0)+(pa2!==undefined?20:0)+(ann!==undefined?80:0);
+      const subGrade = gt!==null&&gtMax>0 ? GRADE(gt/gtMax*100) : '-';
+      const C = v => `<td style="border:1px solid #bbb;padding:3px 4px;text-align:center;">${v!==undefined?v:'<span style="color:#ccc">-</span>'}</td>`;
+      const subLabel = sub==='Science'?'SCIENCE / E.V.S.':sub==='SST'?'S.S.T.':sub==='GK'?'G.K.':sub.toUpperCase();
+
+      return `<tr>
+        <td style="border:1px solid #bbb;padding:3px 7px;font-weight:600;white-space:nowrap;text-align:left;">${subLabel}</td>
+        ${C(pa1)}${C(hy)}
+        <td style="border:1px solid #bbb;padding:3px 4px;text-align:center;font-weight:700;background:#eaf4ff;">${t1!==null?t1:'-'}</td>
+        ${C(pa2)}${C(ann)}
+        <td style="border:1px solid #bbb;padding:3px 4px;text-align:center;font-weight:700;background:#eaf4ff;">${t2!==null?t2:'-'}</td>
+        <td style="border:1px solid #bbb;padding:3px 4px;text-align:center;font-weight:700;">${gt!==null?gt:'-'}</td>
+        <td style="border:1px solid #bbb;padding:3px 4px;text-align:center;">${subGrade}</td>
+        <td style="border:1px solid #bbb;padding:3px 5px;font-size:9px;">${escapeHtml(subRemark)}</td>
+      </tr>`;
     }).join('');
+
+    const t1Sum=t1PA1s+t1HYs, t1Max=t1PA1m+t1HYm;
+    const t2Sum=t2PA2s+t2ANNs, t2Max=t2PA2m+t2ANNm;
+    const gtSum=t1Sum+t2Sum,   gtMax=t1Max+t2Max;
+    const t1Pct   = t1Max>0 ? (t1Sum/t1Max*100).toFixed(1) : '0';
+    const t2Pct   = t2Max>0 ? (t2Sum/t2Max*100).toFixed(1) : '0';
+    const finalPct= gtMax>0 ? (gtSum/gtMax*100).toFixed(1) : '0';
+    const overallGrade = gtMax>0 ? GRADE(Number(finalPct)) : '-';
+
+    // ---- Attendance data (single doc) ----
+    const att = attLookup[s.id] || {};
+    const attTerm1Pct  = att.term1AttendancePct != null ? att.term1AttendancePct+'%' : '';
+    const attTerm2Pct  = att.term2AttendancePct != null ? att.term2AttendancePct+'%' : '';
+    // Result: prefer what teacher entered; fallback to calculated from marks
+    const t1Result     = att.term1Result || (t1Max>0 && Number(t1Pct)>=33 ? 'Passed' : '');
+    const t2Result     = att.term2Result || (t2Max>0 && Number(t2Pct)>=33 ? 'Passed' : '');
+    const overallResult= gtMax>0 ? (Number(finalPct)>=33 ? 'Passed' : 'Failed') : '';
+
+    // ---- Appearance rows (from single attendance doc) ----
+    const appearanceRows = PARTICULARS.map((p,i) => {
+      const val = att[p.key] || '';
+      return `<tr>
+        <td style="border:1px solid #bbb;padding:4px;text-align:center;">${i+1}</td>
+        <td style="border:1px solid #bbb;padding:4px 8px;text-align:left;">${p.label}</td>
+        <td style="border:1px solid #bbb;padding:4px;text-align:center;font-size:14px;">${val==='VeryGood'?TICK:''}</td>
+        <td style="border:1px solid #bbb;padding:4px;text-align:center;font-size:14px;">${val==='Good'?TICK:''}</td>
+        <td style="border:1px solid #bbb;padding:4px;text-align:center;font-size:14px;">${val==='Average'?TICK:''}</td>
+        <td style="border:1px solid #bbb;padding:4px;text-align:center;font-size:14px;">${val==='Poor'?TICK:''}</td>
+        <td style="border:1px solid #bbb;padding:4px 8px;">${ATT_LBL[val]||''}</td>
+      </tr>`;
+    }).join('');
+
+    const TH = (t,extra='') => `<th style="background:#2e86c1;color:#fff;border:1px solid #1a5276;padding:4px;text-align:center;white-space:nowrap;${extra}">${t}</th>`;
+    const TH2= (t,extra='') => `<th style="background:#1a6e3c;color:#fff;border:1px solid #145a32;padding:4px;text-align:center;white-space:nowrap;${extra}">${t}</th>`;
 
     return `
     <div class="report-card">
-      <div class="report-header">
-        <h3>PRABHA GYAN JYOTI PUBLIC SCHOOL</h3>
-        <p>Government Recognized · Gangoh, Saharanpur (U.P.)</p>
-        <h4>PROGRESS REPORT</h4>
-        <p style="font-size:11px;">Session: ${session} | Date: ${today}</p>
+      <!-- School Header -->
+      <div style="border:2px solid #1a3c6e;padding:8px 10px;margin-bottom:7px;text-align:center;">
+        <div style="font-size:17px;font-weight:700;color:#c0392b;letter-spacing:1px;">PRABHA GYAN JYOTI PUBLIC SCHOOL</div>
+        <div style="display:inline-block;background:#f1c40f;padding:2px 14px;font-size:10px;font-weight:700;margin:3px 0;border-radius:2px;">Government Recognized Affiliation No. - E24/15</div>
+        <div style="font-size:10px;font-weight:600;margin:2px 0;">RAM BAGH COLONY, OPP. BALAJI DHAM, GANGOH-247341, SAHARANPUR, (U.P.)</div>
+        <div style="font-size:10px;color:#444;">Mob.: 9837700311, 9720175848, Website: www.prabhaschoolonline.com</div>
       </div>
 
-      <div class="student-info">
-        <table>
-          <tr>
-            <td colspan="2"><b>Student Name</b><br><span>${escapeHtml(s.name)}</span></td>
-            <td colspan="2"><b>Father's Name</b><br><span>${escapeHtml(s.fatherName || '-')}</span></td>
-          </tr>
-          <tr>
-            <td><b>Class</b><br><span>${s.class}</span></td>
-            <td><b>Section</b><br><span>${s.section || '-'}</span></td>
-            <td><b>Roll No.</b><br><span>${s.rollNo}</span></td>
-            <td><b>Admission No.</b><br><span>${escapeHtml(s.admissionNo)}</span></td>
-          </tr>
-          <tr>
-            <td colspan="2"><b>Mother's Name</b><br><span>${escapeHtml(s.motherName || '-')}</span></td>
-            <td colspan="2"><b>Session</b><br><span>${session}</span></td>
-          </tr>
-        </table>
+      <!-- Title row -->
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #1a3c6e;padding-bottom:4px;margin-bottom:7px;">
+        <span style="font-size:10px;font-style:italic;">Date ..............................</span>
+        <span style="font-size:16px;font-weight:700;color:#1a3c6e;letter-spacing:2px;">PROGRESS REPORT</span>
+        <span style="font-size:10px;font-style:italic;">Session : ${escapeHtml(session)}</span>
       </div>
 
-      <div class="marks-section">
-        <h4>SCHOLASTIC AREA</h4>
-        <table class="marks-table">
-          <thead>
-            <tr>
-              <th rowspan="2">Subject</th>
-              <th colspan="2">TERM - 1</th>
-              <th colspan="2">TERM - 2</th>
-              <th rowspan="2">Notebook (10)</th>
-              <th rowspan="2">FINAL RESULT</th>
-              <th rowspan="2">GRADE</th>
-            </tr>
-            <tr>
-              <th>PA-1 (20)</th>
-              <th>HY (80)</th>
-              <th>PA-2 (20)</th>
-              <th>ANN (80)</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${marksRows}
-            <tr style="background:#e8eef7;font-weight:bold;">
-              <td>GRAND TOTAL</td>
-              <td colspan="2">${term1Total}/${term1Max}</td>
-              <td colspan="2">${term2Total}/${term2Max}</td>
-              <td>-</td>
-              <td>${finalMax ? `${finalTotal}/${finalMax}` : '-'}</td>
-              <td>${finalMax ? gradeFor(Number(finalPct)) : '-'}</td>
-            </tr>
-            <tr style="background:#e8eef7;font-weight:bold;">
-              <td>Percentage</td>
-              <td colspan="2">${term1Pct}%</td>
-              <td colspan="2">${term2Pct}%</td>
-              <td colspan="3">${finalPct}%</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <!-- Student Info — 2-column layout matching school card -->
+      <table style="width:100%;border-collapse:collapse;border:1px solid #999;margin-bottom:8px;font-size:10.5px;">
+        <tr>
+          <td style="border:1px solid #999;padding:5px 8px;width:18%;font-style:italic;">Name of The Student</td>
+          <td style="border:1px solid #999;padding:5px 8px;width:40%;font-weight:700;border-right:2px solid #555;">${escapeHtml(s.name||'')}</td>
+          <td style="border:1px solid #999;padding:5px 8px;width:16%;font-style:italic;">Admission No.</td>
+          <td style="border:1px solid #999;padding:5px 4px;width:10%;font-weight:700;">${escapeHtml(s.admissionNo||'-')}</td>
+          <td style="border:1px solid #999;padding:5px 4px;width:8%;font-style:italic;">Roll No.</td>
+          <td style="border:1px solid #999;padding:5px 4px;font-weight:700;">${s.rollNo||'-'}</td>
+        </tr>
+        <tr>
+          <td style="border:1px solid #999;padding:5px 8px;font-style:italic;">Father's Name</td>
+          <td style="border:1px solid #999;padding:5px 8px;font-weight:700;border-right:2px solid #555;">${escapeHtml(s.fatherName||'-')}</td>
+          <td style="border:1px solid #999;padding:5px 8px;font-style:italic;">Class</td>
+          <td style="border:1px solid #999;padding:5px 4px;font-weight:700;">${s.class||'-'}</td>
+          <td style="border:1px solid #999;padding:5px 4px;font-style:italic;">D.O.B</td>
+          <td style="border:1px solid #999;padding:5px 4px;font-weight:700;">${s.dob||'-'}</td>
+        </tr>
+        <tr>
+          <td style="border:1px solid #999;padding:5px 8px;font-style:italic;">Mother's Name</td>
+          <td style="border:1px solid #999;padding:5px 8px;font-weight:700;border-right:2px solid #555;">${escapeHtml(s.motherName||'-')}</td>
+          <td style="border:1px solid #999;padding:5px 8px;font-style:italic;">Address</td>
+          <td colspan="3" style="border:1px solid #999;padding:5px 8px;font-weight:700;">${escapeHtml(s.address||'-')}</td>
+        </tr>
+      </table>
 
-      <div class="remarks-section">
-        <table>
+      <!-- MARKS TABLE -->
+      <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:5px;">
+        <thead>
           <tr>
-            <td><b>TEACHER REMARKS</b><br>
-              <div class="remarks-box">${escapeHtml(remarksLookup[s.id] || 'No remarks entered.')}</div>
-            </td>
+            ${TH('SCHOLASTIC AREA / SUBJECT','text-align:left;padding-left:6px;')}
+            <th colspan="3" style="background:#2e86c1;color:#fff;border:1px solid #1a5276;padding:5px;text-align:center;">TERM - 1</th>
+            <th colspan="3" style="background:#2e86c1;color:#fff;border:1px solid #1a5276;padding:5px;text-align:center;">TERM - 2</th>
+            <th colspan="3" style="background:#1a6e3c;color:#fff;border:1px solid #145a32;padding:5px;text-align:center;">FINAL RESULT</th>
           </tr>
-        </table>
+          <tr>
+            ${TH('')}
+            ${TH('P.A. 1<br><small>(20)</small>')}${TH('Half Y.<br>Exam (80)')}${TH('TOTAL<br><small>(100)</small>','background:#1e6ea0;')}
+            ${TH('P.A. 2<br><small>(20)</small>')}${TH('Annual<br>Exam (80)')}${TH('TOTAL<br><small>(100)</small>','background:#1e6ea0;')}
+            ${TH2('G. TOTAL<br><small>(200)</small>')}${TH2('GRADE')}${TH2('REMARKS')}
+          </tr>
+        </thead>
+        <tbody>
+          ${marksRows}
+          <tr style="background:#d6eaf8;font-weight:700;font-size:10.5px;">
+            <td style="border:1px solid #aaa;padding:4px 7px;text-align:left;">GRAND TOTAL</td>
+            <td style="border:1px solid #aaa;padding:4px;text-align:center;">${t1PA1m>0?t1PA1s:'-'}</td>
+            <td style="border:1px solid #aaa;padding:4px;text-align:center;">${t1HYm>0?t1HYs:'-'}</td>
+            <td style="border:1px solid #aaa;padding:4px;text-align:center;background:#c5d9f1;">${t1Max>0?t1Sum:'-'}</td>
+            <td style="border:1px solid #aaa;padding:4px;text-align:center;">${t2PA2m>0?t2PA2s:'-'}</td>
+            <td style="border:1px solid #aaa;padding:4px;text-align:center;">${t2ANNm>0?t2ANNs:'-'}</td>
+            <td style="border:1px solid #aaa;padding:4px;text-align:center;background:#c5d9f1;">${t2Max>0?t2Sum:'-'}</td>
+            <td style="border:1px solid #aaa;padding:4px;text-align:center;">${gtMax>0?gtSum:'-'}</td>
+            <td style="border:1px solid #aaa;padding:4px;text-align:center;">${overallGrade}</td>
+            <td style="border:1px solid #aaa;padding:4px;"></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Grading Scale -->
+      <div style="font-size:8.5px;margin-bottom:6px;padding:3px 6px;border:1px solid #ccc;background:#fafafa;">
+        <b>GRADING SCALE</b> - A1=91%-100%; A2=81%-90%; B1=71%-80%; B2=61%-70%; C1=51%-60%; C2=41%-50%; D=33%-40%; <b>E=BELOW 33%</b>
       </div>
 
-      <div class="signature-section">
-        <div style="display:flex;justify-content:space-between;margin-top:20px;">
-          <div style="text-align:center;">
-            <div style="height:40px;"></div>
-            <b style="font-size:11px;">Class Teacher</b>
-          </div>
-          <div style="text-align:center;">
-            <div style="height:40px;"></div>
-            <b style="font-size:11px;">Principal</b>
-          </div>
-          <div style="text-align:center;">
-            <div style="height:40px;"></div>
-            <b style="font-size:11px;">Parent/Guardian</b>
-          </div>
+      <!-- Student's Appearance (from appearance.html, filled once) -->
+      <div style="text-align:center;font-style:italic;color:#c0392b;font-weight:700;font-size:12px;margin-bottom:4px;">STUDENT'S APPEARANCE</div>
+      <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:6px;">
+        <thead><tr>
+          ${TH('S.No.')}${TH('Particular','text-align:left;padding-left:8px;')}
+          ${TH('Very Good')}${TH('Good')}${TH('Average')}${TH('Poor')}${TH('Remark')}
+        </tr></thead>
+        <tbody>${appearanceRows}</tbody>
+      </table>
+
+      <!-- Overall Performance (marks % from marks section; attendance/result from appearance section) -->
+      <div style="text-align:center;font-style:italic;color:#c0392b;font-weight:700;font-size:12px;margin-bottom:4px;">OVERALL PERFORMANCE</div>
+      <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:8px;">
+        <thead><tr>
+          ${TH('S.No.')}${TH('PROFILE','text-align:left;padding-left:8px;')}
+          ${TH('TERM 1')}${TH('TERM 2')}${TH('TERM 1 &amp; TERM 2')}
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td style="border:1px solid #aaa;padding:4px;text-align:center;">1</td>
+            <td style="border:1px solid #aaa;padding:4px 8px;">ATTENDANCE (%)</td>
+            <td style="border:1px solid #aaa;padding:4px;text-align:center;">${attTerm1Pct}</td>
+            <td style="border:1px solid #aaa;padding:4px;text-align:center;">${attTerm2Pct}</td>
+            <td style="border:1px solid #aaa;padding:4px;text-align:center;"></td>
+          </tr>
+          <tr>
+            <td style="border:1px solid #aaa;padding:4px;text-align:center;">2</td>
+            <td style="border:1px solid #aaa;padding:4px 8px;">MARKS (%)</td>
+            <td style="border:1px solid #aaa;padding:4px;text-align:center;">${t1Max>0?t1Pct+'%':''}</td>
+            <td style="border:1px solid #aaa;padding:4px;text-align:center;">${t2Max>0?t2Pct+'%':''}</td>
+            <td style="border:1px solid #aaa;padding:4px;text-align:center;font-weight:700;">${gtMax>0?finalPct+'%':''}</td>
+          </tr>
+          <tr>
+            <td style="border:1px solid #aaa;padding:4px;text-align:center;">3</td>
+            <td style="border:1px solid #aaa;padding:4px 8px;">RESULT</td>
+            <td style="border:1px solid #aaa;padding:4px;text-align:center;font-style:italic;">${escapeHtml(t1Result)}</td>
+            <td style="border:1px solid #aaa;padding:4px;text-align:center;font-style:italic;">${escapeHtml(t2Result)}</td>
+            <td style="border:1px solid #aaa;padding:4px;text-align:center;font-style:italic;font-weight:700;">${escapeHtml(overallResult)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Note -->
+      <div style="font-size:9px;margin-bottom:10px;padding:4px 7px;border:1px solid #ccc;background:#fafafa;">
+        <b>NOTE:-</b> THE SCHOOL SHALL BE RE-OPEN FOR NEW ACADEMIC SESSION ON &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        PROMOTED TO CLASS : &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      </div>
+
+      <!-- Signatures -->
+      <div style="display:flex;justify-content:space-between;margin-top:10px;font-size:10.5px;padding:0 10px;">
+        <div style="text-align:center;">
+          <div style="border-bottom:1px solid #333;width:130px;height:26px;margin-bottom:3px;"></div>
+          <b>CLASS TEACHER</b>
+        </div>
+        <div style="text-align:center;">
+          <div style="border-bottom:1px solid #333;width:130px;height:26px;margin-bottom:3px;"></div>
+          <b>PARENT'S SIGN</b>
+        </div>
+        <div style="text-align:center;">
+          <div style="border-bottom:1px solid #333;width:130px;height:26px;margin-bottom:3px;"></div>
+          <b>PRINCIPAL</b>
         </div>
       </div>
     </div>`;
   }).join('');
 
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Progress Reports – ${cls}</title>
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Progress Report Card – Class ${escapeHtml(cls)}</title>
   <style>
-    @page { size:A4 portrait; margin:10mm; }
+    @page { size:A4 portrait; margin:8mm; }
     * { box-sizing:border-box; margin:0; padding:0; }
-    body { font-family:'Times New Roman',Times,serif; font-size:12px; background:#fff; }
-    .report-card { border:2px solid #1a3c6e; padding:12px; page-break-after:always; break-after:page; background:#fff; }
-    .report-card:last-child { page-break-after:auto; break-after:auto; }
-    .report-header { text-align:center; margin-bottom:12px; border-bottom:2px solid #1a3c6e; padding-bottom:8px; }
-    .report-header h3 { color:#1a3c6e; font-size:15px; margin:2px 0; }
-    .report-header h4 { color:#d4a017; font-size:13px; font-weight:bold; margin:4px 0; }
-    .report-header p { font-size:11px; color:#555; margin:2px 0; }
-    
-    .student-info { margin-bottom:12px; }
-    .student-info table { width:100%; border-collapse:collapse; }
-    .student-info td { border:1px solid #ccc; padding:6px; font-size:11px; }
-    .student-info span { font-weight:bold; }
-    
-    .marks-section { margin-bottom:12px; }
-    .marks-section h4 { color:#1a3c6e; font-size:12px; margin-bottom:6px; background:#e8eef7; padding:4px; }
-    .marks-table { width:100%; border-collapse:collapse; font-size:11px; }
-    .marks-table th { background:#1a3c6e; color:#fff; padding:5px 4px; text-align:center; }
-    .marks-table td { border:1px solid #ccc; padding:4px; text-align:center; }
-    .marks-table td:first-child { text-align:left; padding-left:6px; }
-    
-    .remarks-section { margin-bottom:12px; }
-    .remarks-section table { width:100%; border-collapse:collapse; }
-    .remarks-section td { border:1px solid #ccc; padding:6px; font-size:11px; }
-    .remarks-box { min-height:34px; padding-top:5px; white-space:pre-wrap; }
-    
-    .signature-section { font-size:11px; }
-    @media print { 
-      body { padding:0; }
-      .report-card { margin:0; }
+    body { font-family:'Times New Roman',Times,serif; font-size:11px; background:#fff; color:#222; }
+    .report-card {
+      border:3px double #1a3c6e; padding:10px 12px;
+      page-break-after:always; break-after:page;
+      background:#fff; min-height:272mm;
     }
-  </style></head><body>${reportHTML}
-  <script>window.addEventListener('load', () => window.print());<\/script></body></html>`);
+    .report-card:last-child { page-break-after:auto; break-after:auto; }
+    .toolbar {
+      position:fixed; top:0; left:0; right:0; z-index:999;
+      background:#1a3c6e; padding:8px 16px;
+      display:flex; gap:10px; align-items:center;
+    }
+    .toolbar span { color:#fff; font-size:13px; font-family:Arial,sans-serif; flex:1; }
+    .toolbar button {
+      padding:7px 18px; border:none; border-radius:5px;
+      cursor:pointer; font-size:13px; font-weight:600; font-family:Arial,sans-serif;
+    }
+    .btn-print { background:#27ae60; color:#fff; }
+    .btn-share { background:#e67e22; color:#fff; }
+    body { padding-top:46px; }
+    @media print {
+      .toolbar { display:none; }
+      body { padding-top:0; }
+    }
+  </style></head>
+  <body>
+  <div class="toolbar">
+    <span>🏫 Prabha Gyan Jyoti — Progress Report Card | Class ${escapeHtml(cls)} | Session ${escapeHtml(session)}</span>
+    <button class="btn-print" onclick="window.print()">🖨️ Print</button>
+    <button class="btn-share" onclick="shareCard()">📤 Share</button>
+  </div>
+  ${reportHTML}
+  <script>
+    function shareCard() {
+      if (navigator.share) {
+        navigator.share({ title: 'Progress Report Card – Class ${escapeHtml(cls)}', text: 'Prabha Gyan Jyoti Public School – Progress Report Card' })
+          .catch(() => {});
+      } else {
+        alert('To share:\\n1. Click Print above\\n2. Choose \\"Save as PDF\\" as the printer\\n3. Share the saved PDF file via WhatsApp / Email');
+      }
+    }
+    window.addEventListener('load', () => setTimeout(() => window.print(), 400));
+  <\/script>
+  </body></html>`);
   win.document.close();
 };
 
