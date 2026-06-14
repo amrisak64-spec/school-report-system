@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Marks Tabulation – Prabha Gyan Jyoti</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f4f8; }
+
+    .topbar {
+      background: #1a3c6e; color: #fff;
+      padding: 12px 24px; display: flex;
+      justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    }
+    .topbar-info h1 { font-size: 15px; }
+    .topbar-info p { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+    .topbar-right { display: flex; gap: 8px; align-items: center; }
+    .topbar-right button {
+      border: none; padding: 7px 16px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 600;
+    }
+    .btn-logout { background: #c0392b; color: #fff; }
+    .btn-back   { background: #27ae60; color: #fff; }
+    .btn-export { background: #e67e22; color: #fff; }
+
+    .content { padding: 24px; max-width: 100%; margin: 0 auto; }
+    .card {
+      background: #fff; border-radius: 10px;
+      padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 24px;
+    }
+    .card h2 { font-size: 16px; color: #1a3c6e; margin-bottom: 18px; border-bottom: 1px solid #e0e0e0; padding-bottom: 10px; }
+
+    .filter-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; align-items: flex-end; }
+    .filter-row > div { flex: 1; min-width: 130px; }
+    label { font-size: 12px; font-weight: 600; color: #555; display: block; margin-bottom: 4px; }
+    select, input[type="text"] {
+      width: 100%; padding: 9px 12px;
+      border: 1.5px solid #ccc; border-radius: 6px; font-size: 13px;
+    }
+    select:focus, input:focus { outline: none; border-color: #1a3c6e; }
+
+    .btn { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
+    .btn-primary { background: #1a3c6e; color: #fff; }
+    .btn-load { background: #2e6da4; color: #fff; }
+    .btn:hover { opacity: 0.88; }
+
+    .msg { padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 14px; }
+    .msg-success { background: #d5f5e3; color: #1e8449; }
+    .msg-error { background: #fadbd8; color: #c0392b; }
+
+    #loading { text-align: center; padding: 30px; color: #888; font-size: 14px; display: none; }
+
+    .stats-row {
+      display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .stat-box {
+      background: #f0f4f8; border-radius: 8px; padding: 12px 18px;
+      text-align: center; flex: 1; min-width: 110px;
+    }
+    .stat-box .stat-num { font-size: 22px; font-weight: 700; color: #1a3c6e; }
+    .stat-box .stat-label { font-size: 11px; color: #888; margin-top: 2px; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 1200px; }
+
+    .th-rank  { background: #c0392b; }
+    .th-info  { background: #1a3c6e; }
+    .th-subj  { background: #1a6e3c; }
+    .th-total { background: #e67e22; }
+    .th-grade { background: #8e44ad; }
+
+    th {
+      color: #fff; padding: 8px 5px; text-align: center;
+      white-space: nowrap; border: 1px solid rgba(255,255,255,0.2);
+    }
+    th.left { text-align: left; padding-left: 8px; }
+    td { padding: 6px 5px; border-bottom: 1px solid #eee; text-align: center; vertical-align: middle; }
+    td.left { text-align: left; padding-left: 8px; }
+    tr:hover td { background: #f5f8ff; }
+
+    .rank-1  { background: #fff9c4 !important; }
+    .rank-2  { background: #f3f3f3 !important; }
+    .rank-3  { background: #fdebd0 !important; }
+
+    .rank-badge {
+      display: inline-block; width: 26px; height: 26px; border-radius: 50%;
+      line-height: 26px; font-weight: 700; font-size: 12px;
+    }
+    .rank-badge.r1 { background: #f1c40f; color: #7d6608; }
+    .rank-badge.r2 { background: #bdc3c7; color: #2c3e50; }
+    .rank-badge.r3 { background: #e59866; color: #7e5109; }
+    .rank-badge.rn { background: #dde3ea; color: #555; }
+
+    .grade-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 10px;
+      font-weight: 700; font-size: 11px;
+    }
+    .gA1 { background: #d5f5e3; color: #1e8449; }
+    .gA2 { background: #a9dfbf; color: #1a7a42; }
+    .gB1 { background: #d6eaf8; color: #1a5276; }
+    .gB2 { background: #aed6f1; color: #1f618d; }
+    .gC1 { background: #fdebd0; color: #b7770d; }
+    .gC2 { background: #fadbd8; color: #a93226; }
+    .gD  { background: #f5cba7; color: #935116; }
+    .gE  { background: #f2d7d5; color: #c0392b; }
+
+    .summary-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px; flex-wrap: wrap; gap: 8px;
+    }
+
+    @media print {
+      .topbar, .filter-row, .summary-bar .btn, .stats-row { display: none; }
+      .card { box-shadow: none; padding: 0; }
+      body { background: #fff; font-size: 10px; }
+      table { font-size: 9px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-info">
+    <h1>📊 Marks Tabulation &amp; Position Sheet</h1>
+    <p id="user-info">Prabha Gyan Jyoti Public School</p>
+  </div>
+  <div class="topbar-right">
+    <button class="btn-back" onclick="goBack()">← Back</button>
+    <button class="btn-export" onclick="exportCSV()" id="btn-export" style="display:none;">⬇ Export CSV</button>
+    <button class="btn-logout" onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<div class="content">
+  <div class="card">
+    <h2>Class Marks Tabulation with Position/Rank</h2>
+
+    <div class="filter-row">
+      <div>
+        <label>Session *</label>
+        <input type="text" id="sel-session" value="2026-27"/>
+      </div>
+      <div>
+        <label>Class *</label>
+        <select id="sel-class">
+          <option value="">-- Select Class --</option>
+          <option>II</option><option>III</option><option>IV</option>
+          <option>V</option><option>VI</option><option>VII</option><option>VIII</option>
+        </select>
+      </div>
+      <div>
+        <label>Section</label>
+        <select id="sel-section">
+          <option value="">-- All Sections --</option>
+          <option value="A">A</option>
+          <option value="B">B</option>
+          <option value="C">C</option>
+        </select>
+      </div>
+      <div style="padding-top:18px;">
+        <button class="btn btn-load" onclick="loadTabulation()">🔍 Generate Tabulation</button>
+      </div>
+      <div style="padding-top:18px;">
+        <button class="btn" style="background:#6c757d;color:#fff;" onclick="window.print()">🖨️ Print</button>
+      </div>
+    </div>
+
+    <div id="tab-msg"></div>
+    <div id="loading">Loading marks data...</div>
+
+    <div id="tab-section" style="display:none;">
+      <div class="stats-row" id="stats-row"></div>
+      <div class="summary-bar">
+        <div style="font-size:13px;color:#555;" id="tab-summary"></div>
+        <button class="btn btn-primary" onclick="exportCSV()">⬇ Export CSV</button>
+      </div>
+      <div class="table-wrap">
+        <table id="tab-table">
+          <thead id="tab-thead"></thead>
+          <tbody id="tab-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { auth, db } from './firebase-config.js';
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { collection, getDocs, doc, getDoc, query, where }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const SUBJECTS = ['English','Hindi','Maths','Science','SST','GK','Computer','Sanskrit','Drawing'];
+const SUBJECT_ALIASES = { 'Science/E.V.S.':'Science', 'S.S.T.':'SST', 'G.K.':'GK' };
+const EXAMS = ['PA1','HalfYearly','PA2','Annual'];
+const EXAM_MAX = { PA1:20, HalfYearly:80, PA2:20, Annual:80 };
+const SUBJ_MAX = 200; // per subject total max
+const GRAND_MAX = SUBJECTS.length * SUBJ_MAX; // 1800
+
+let currentUser = null;
+let tableData = [];
+
+onAuthStateChanged(auth, async user => {
+  if (!user) { window.location.href = 'index.html'; return; }
+  const snap = await getDoc(doc(db, 'users', user.uid));
+  if (!snap.exists()) { window.location.href = 'index.html'; return; }
+  currentUser = snap.data();
+  document.getElementById('user-info').textContent =
+    `${currentUser.name || user.email} | ${(currentUser.role || '').toUpperCase()}`;
+
+  if (currentUser.role === 'teacher') {
+    const assigned = currentUser.assignedClasses || [];
+    const sel = document.getElementById('sel-class');
+    Array.from(sel.options).forEach(o => { if (o.value && !assigned.includes(o.value)) o.remove(); });
+  }
+});
+
+window.goBack = function() {
+  if (currentUser?.role === 'admin') window.location.href = 'admin.html';
+  else window.location.href = 'teacher.html';
+};
+window.logout = () => signOut(auth).then(() => window.location.href = 'index.html');
+
+window.loadTabulation = async function() {
+  const cls     = document.getElementById('sel-class').value;
+  const section = document.getElementById('sel-section').value;
+  const session = document.getElementById('sel-session').value.trim();
+
+  if (!cls) { showMsg('tab-msg', 'Please select a class.', 'error'); return; }
+
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('tab-section').style.display = 'none';
+  document.getElementById('tab-msg').textContent = '';
+
+  try {
+    // Load students
+    const stuSnap = await getDocs(
+      query(collection(db, 'students'), where('class', '==', cls), where('session', '==', session))
+    );
+    let students = [];
+    stuSnap.forEach(d => {
+      const data = d.data();
+      if (!section || data.section === section) students.push({ id: d.id, ...data });
+    });
+    students.sort((a, b) => (a.rollNo || 0) - (b.rollNo || 0));
+
+    if (students.length === 0) {
+      document.getElementById('loading').style.display = 'none';
+      showMsg('tab-msg', 'No students found for this class/session.', 'error');
+      return;
+    }
+
+    // Load marks
+    const marksSnap = await getDocs(
+      query(collection(db, 'marks'), where('class', '==', cls), where('session', '==', session))
+    );
+    const marksLookup = {};
+    marksSnap.forEach(d => {
+      const m = d.data();
+      const sub = SUBJECT_ALIASES[m.subject] || m.subject;
+      marksLookup[`${m.studentId}_${m.exam}_${sub}`] = m.marksObtained;
+    });
+
+    // Build tabulation data
+    tableData = students.map(s => {
+      const subjectTotals = {};
+      let grandTotal = 0;
+      let grandMax = 0;
+
+      SUBJECTS.forEach(sub => {
+        let subTotal = 0, subMax = 0;
+        const examMarks = {};
+        EXAMS.forEach(exam => {
+          const val = marksLookup[`${s.id}_${exam}_${sub}`];
+          examMarks[exam] = val !== undefined ? val : null;
+          if (val !== undefined) {
+            subTotal += val;
+            subMax += EXAM_MAX[exam];
+          }
+        });
+        subjectTotals[sub] = { examMarks, total: subMax ? subTotal : null, max: subMax };
+        if (subMax > 0) { grandTotal += subTotal; grandMax += subMax; }
+      });
+
+      const percentage = grandMax > 0 ? (grandTotal / grandMax * 100) : 0;
+      return { ...s, subjectTotals, grandTotal, grandMax, percentage };
+    });
+
+    // Assign positions (sorted by grandTotal desc)
+    const sorted = [...tableData].sort((a, b) => b.percentage - a.percentage);
+    const rankMap = {};
+    let rank = 1;
+    for (let i = 0; i < sorted.length; i++) {
+      if (i > 0 && sorted[i].percentage < sorted[i - 1].percentage) rank = i + 1;
+      rankMap[sorted[i].id] = rank;
+    }
+
+    // Render table header
+    const thead = document.getElementById('tab-thead');
+    let hRow1 = `<tr>
+      <th class="th-rank" rowspan="2" style="width:45px;">Rank</th>
+      <th class="th-info" rowspan="2">Roll</th>
+      <th class="th-info left" rowspan="2">Student Name</th>`;
+    SUBJECTS.forEach(sub => {
+      hRow1 += `<th class="th-subj" colspan="5" style="min-width:220px;">${sub}</th>`;
+    });
+    hRow1 += `<th class="th-total" rowspan="2">Grand Total</th>
+      <th class="th-total" rowspan="2">Max</th>
+      <th class="th-total" rowspan="2">%</th>
+      <th class="th-grade" rowspan="2">Grade</th></tr>`;
+    let hRow2 = '<tr>';
+    SUBJECTS.forEach(() => {
+      hRow2 += '<th class="th-subj">PA1</th><th class="th-subj">HY</th><th class="th-subj">PA2</th><th class="th-subj">ANN</th><th class="th-subj" style="background:#155f2e;">Total</th>';
+    });
+    hRow2 += '</tr>';
+    thead.innerHTML = hRow1 + hRow2;
+
+    // Render table body (sorted by rank)
+    const sortedData = [...tableData].sort((a, b) => {
+      const ra = rankMap[a.id], rb = rankMap[b.id];
+      if (ra !== rb) return ra - rb;
+      return (a.rollNo || 0) - (b.rollNo || 0);
+    });
+
+    const tbody = document.getElementById('tab-tbody');
+    tbody.innerHTML = sortedData.map(s => {
+      const rank = rankMap[s.id];
+      const pct = s.percentage.toFixed(1);
+      const grade = calcGrade(s.percentage);
+      const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : '';
+      const badgeClass = rank === 1 ? 'r1' : rank === 2 ? 'r2' : rank === 3 ? 'r3' : 'rn';
+      const gradeClass = gradeColor(grade);
+
+      let cols = '';
+      SUBJECTS.forEach(sub => {
+        const st = s.subjectTotals[sub];
+        EXAMS.forEach(exam => {
+          const val = st.examMarks[exam];
+          cols += val !== null ? `<td>${val}</td>` : `<td style="color:#ccc;">-</td>`;
+        });
+        cols += st.total !== null
+          ? `<td style="font-weight:700;background:#f0fff4;">${st.total}</td>`
+          : `<td style="color:#ccc;">-</td>`;
+      });
+
+      return `<tr class="${rankClass}">
+        <td><span class="rank-badge ${badgeClass}">${rank}</span></td>
+        <td>${s.rollNo || '-'}</td>
+        <td class="left"><b>${escHtml(s.name || '-')}</b></td>
+        ${cols}
+        <td style="font-weight:700;">${s.grandMax > 0 ? s.grandTotal : '-'}</td>
+        <td style="color:#888;">${s.grandMax || '-'}</td>
+        <td style="font-weight:700;">${s.grandMax > 0 ? pct + '%' : '-'}</td>
+        <td><span class="grade-badge ${gradeClass}">${grade}</span></td>
+      </tr>`;
+    }).join('');
+
+    // Stats
+    const passCount = tableData.filter(s => s.percentage >= 33).length;
+    const avgPct = tableData.length > 0
+      ? (tableData.reduce((sum, s) => sum + s.percentage, 0) / tableData.length).toFixed(1)
+      : 0;
+    const topPct = tableData.length > 0 ? Math.max(...tableData.map(s => s.percentage)).toFixed(1) : 0;
+
+    document.getElementById('stats-row').innerHTML = `
+      <div class="stat-box"><div class="stat-num">${students.length}</div><div class="stat-label">Total Students</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:#27ae60;">${passCount}</div><div class="stat-label">Passed</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:#c0392b;">${students.length - passCount}</div><div class="stat-label">Failed</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:#2980b9;">${avgPct}%</div><div class="stat-label">Class Average</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:#8e44ad;">${topPct}%</div><div class="stat-label">Highest Score</div></div>`;
+
+    document.getElementById('tab-summary').innerHTML =
+      `Class <b>${cls}${section ? ' - ' + section : ''}</b> | Session: <b>${session}</b> | Sorted by rank`;
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('tab-section').style.display = 'block';
+    document.getElementById('btn-export').style.display = 'inline-block';
+  } catch(e) {
+    document.getElementById('loading').style.display = 'none';
+    showMsg('tab-msg', 'Error: ' + e.message, 'error');
+  }
+};
+
+window.exportCSV = function() {
+  if (tableData.length === 0) return;
+  const cls     = document.getElementById('sel-class').value;
+  const section = document.getElementById('sel-section').value;
+  const session = document.getElementById('sel-session').value;
+
+  const headers = ['Rank','Roll No','Student Name'];
+  SUBJECTS.forEach(sub => {
+    EXAMS.forEach(exam => headers.push(`${sub} ${exam}`));
+    headers.push(`${sub} Total`);
+  });
+  headers.push('Grand Total','Max Marks','Percentage','Grade');
+
+  const sorted = [...tableData].sort((a, b) => b.percentage - a.percentage);
+  const rankMap = {};
+  let rank = 1;
+  for (let i = 0; i < sorted.length; i++) {
+    if (i > 0 && sorted[i].percentage < sorted[i-1].percentage) rank = i + 1;
+    rankMap[sorted[i].id] = rank;
+  }
+
+  const rows = sorted.map(s => {
+    const row = [rankMap[s.id], s.rollNo || '', s.name || ''];
+    SUBJECTS.forEach(sub => {
+      const st = s.subjectTotals[sub];
+      EXAMS.forEach(exam => row.push(st.examMarks[exam] !== null ? st.examMarks[exam] : ''));
+      row.push(st.total !== null ? st.total : '');
+    });
+    row.push(s.grandMax > 0 ? s.grandTotal : '');
+    row.push(s.grandMax || '');
+    row.push(s.grandMax > 0 ? s.percentage.toFixed(1) + '%' : '');
+    row.push(s.grandMax > 0 ? calcGrade(s.percentage) : '');
+    return row;
+  });
+
+  const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `Tabulation_Class${cls}${section ? '_' + section : ''}_${session}.csv`;
+  a.click();
+};
+
+function calcGrade(pct) {
+  if (pct >= 91) return 'A1';
+  if (pct >= 81) return 'A2';
+  if (pct >= 71) return 'B1';
+  if (pct >= 61) return 'B2';
+  if (pct >= 51) return 'C1';
+  if (pct >= 41) return 'C2';
+  if (pct >= 33) return 'D';
+  return 'E';
+}
+
+function gradeColor(g) {
+  const map = { A1:'gA1', A2:'gA2', B1:'gB1', B2:'gB2', C1:'gC1', C2:'gC2', D:'gD', E:'gE' };
+  return map[g] || 'gE';
+}
+
+function showMsg(id, msg, type) {
+  const el = document.getElementById(id);
+  el.className = 'msg msg-' + (type === 'error' ? 'error' : 'success');
+  el.textContent = msg;
+  if (type === 'success') setTimeout(() => el.textContent = '', 5000);
+}
+
+function escHtml(v) {
+  return String(v).replace(/[&<>"']/g, c =>
+    ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[c]));
+}
+</script>
+</body>
+</html>
