@@ -1180,6 +1180,13 @@ window.generateProgressReports = async function(singleStudentId = null) {
     let t1PA1s=0,t1HYs=0,t2PA2s=0,t2ANNs=0;
     let t1PA1m=0,t1HYm=0,t2PA2m=0,t2ANNm=0;
 
+    // Helpers defined before use
+    const logoUrl = new URL('logo.svg', window.location.href).href;
+    const TH  = (t,x='') => `<th style="background:#0a1832;color:#aad4ff;border:1px solid #c8a400;padding:4px;text-align:center;white-space:nowrap;${x}">${t}</th>`;
+    const TH2 = (t,x='') => `<th style="background:#0a2814;color:#88ee88;border:1px solid #c8a400;padding:4px;text-align:center;white-space:nowrap;${x}">${t}</th>`;
+    const TD  = (v,x='') => `<td style="border:1px solid #c8a400;padding:4px 8px;background:#111;color:#eee;${x}">${v}</td>`;
+    const resultColor = r => r==='Passed'?'#88ee88':r==='Failed'?'#ff8888':'#ccc';
+
     const marksRows = SUBJECTS.map(sub => {
       const pa1 = marksLookup[`${s.id}_PA1_${sub}`];
       const hy  = marksLookup[`${s.id}_HalfYearly_${sub}`];
@@ -1246,12 +1253,6 @@ window.generateProgressReports = async function(singleStudentId = null) {
         ${TD(ATT_LBL[val]||'','text-align:left;')}
       </tr>`;
     }).join('');
-
-    const logoUrl = new URL('logo.svg', window.location.href).href;
-    const TH  = (t,x='') => `<th style="background:#0a1832;color:#aad4ff;border:1px solid #c8a400;padding:4px;text-align:center;white-space:nowrap;${x}">${t}</th>`;
-    const TH2 = (t,x='') => `<th style="background:#0a2814;color:#88ee88;border:1px solid #c8a400;padding:4px;text-align:center;white-space:nowrap;${x}">${t}</th>`;
-    const TD  = (v,x='') => `<td style="border:1px solid #c8a400;padding:4px 8px;background:#111;color:#eee;${x}">${v}</td>`;
-    const resultColor = r => r==='Passed'?'#88ee88':r==='Failed'?'#ff8888':'#ccc';
 
     return `
     <div class="report-card">
@@ -1420,26 +1421,32 @@ window.generateProgressReports = async function(singleStudentId = null) {
     .toolbar span { color:#fff; font-size:12px; font-family:Arial,sans-serif; flex:1; }
     .toolbar button { padding:6px 14px; border:none; border-radius:5px; cursor:pointer; font-size:12px; font-weight:600; font-family:Arial,sans-serif; }
     .btn-print { background:#27ae60; color:#fff; }
-    .btn-share { background:#e67e22; color:#fff; }
+    .btn-wa    { background:#25d366; color:#fff; }
     .btn-email { background:#8e44ad; color:#fff; }
+    .btn-copy  { background:#e67e22; color:#fff; }
     body { padding-top:42px; }
     @media print { .toolbar { display:none; } body { padding-top:0; } }
   </style></head>
   <body>
   <div class="toolbar">
     <span>🏫 Prabha Gyan Jyoti — Report Card | Class ${escapeHtml(cls)} | Session ${escapeHtml(session)}</span>
-    <button class="btn-print" onclick="window.print()">🖨️ Print</button>
-    <button class="btn-share" onclick="shareCard()">📤 Share</button>
+    <button class="btn-print" onclick="window.print()">🖨️ Print / Save PDF</button>
+    <button class="btn-wa"    onclick="shareWA()">📱 WhatsApp</button>
     <button class="btn-email" onclick="emailCard()">📧 Email</button>
+    <button class="btn-copy"  onclick="copyText()">📋 Copy Text</button>
   </div>
   ${reportHTML}
   <script>
+    function shareWA() {
+      const text = encodeURIComponent('Progress Report Card – Class ${escapeHtml(cls)} | Session ${escapeHtml(session)} | Prabha Gyan Jyoti Public School, Gangoh');
+      window.open('https://wa.me/?text=' + text, '_blank');
+    }
+    function copyText() {
+      const txt = 'Progress Report Card – Class ${escapeHtml(cls)} | Session ${escapeHtml(session)} | Prabha Gyan Jyoti Public School, Gangoh';
+      navigator.clipboard.writeText(txt).then(() => alert('Copied! You can now paste in WhatsApp, SMS, or any app.')).catch(()=>{ prompt('Copy this text:', txt); });
+    }
     function shareCard() {
-      if (navigator.share) {
-        navigator.share({ title: 'Report Card – Class ${escapeHtml(cls)}', text: 'Prabha Gyan Jyoti Public School – Progress Report Card' }).catch(()=>{});
-      } else {
-        alert('To share:\\n1. Click Print above\\n2. Choose \\"Save as PDF\\" as the printer\\n3. Share the PDF via WhatsApp / Email');
-      }
+      shareWA();
     }
     function emailCard() {
       const sub  = encodeURIComponent('Progress Report Card – Class ${escapeHtml(cls)} – Session ${escapeHtml(session)}');
