@@ -209,8 +209,50 @@
   </div>
 </div>
 
+<!-- Teacher Edit Modal -->
+<div class="modal-overlay" id="teacher-edit-modal">
+  <div class="modal">
+    <h3>✏️ Edit Teacher / Staff</h3>
+    <input type="hidden" id="te-uid"/>
+    <input type="hidden" id="te-email-hidden"/>
+    <div class="form-grid">
+      <div><label>Full Name *</label><input id="te-name" placeholder="Teacher name"/></div>
+      <div>
+        <label for="te-subject">Subject *</label>
+        <select id="te-subject">
+          <option value="">-- Select --</option>
+          <option>English</option><option>Hindi</option><option>Maths</option>
+          <option>Science</option><option>SST</option><option>GK</option>
+          <option>Computer</option><option>Sanskrit</option><option>Drawing</option>
+          <option>All Subjects</option>
+        </select>
+      </div>
+      <div>
+        <label for="te-classes">Assigned Classes *</label>
+        <select id="te-classes" multiple style="height:90px;">
+          <option>II</option><option>III</option><option>IV</option>
+          <option>V</option><option>VI</option><option>VII</option><option>VIII</option>
+        </select>
+        <small style="color:#888;">Hold Ctrl to select multiple</small>
+      </div>
+    </div>
+    <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:12px;">
+      <b>🔐 Password Reset:</b> To reset this teacher's password, click the button below — they will receive a reset link via email.
+      <div style="margin-top:8px;display:flex;gap:10px;align-items:center;">
+        <button class="btn btn-warning" style="padding:6px 14px;font-size:12px;" onclick="sendPasswordReset()">📧 Send Reset Email</button>
+        <span id="te-reset-msg" style="font-size:12px;"></span>
+      </div>
+    </div>
+    <div id="te-msg"></div>
+    <div class="modal-actions">
+      <button class="btn" style="background:#ccc;color:#333;" onclick="closeTeacherEditModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditTeacher()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <div class="topbar">
-  <h1>🏫 Prabha Gyan Jyoti — Admin Dashboard</h1>
+  <h1><img src="logo.svg" alt="" style="width:36px;height:36px;border-radius:50%;vertical-align:middle;margin-right:10px;">🏫 Prabha Gyan Jyoti — Admin Dashboard</h1>
   <button onclick="logout()">Logout</button>
 </div>
 
@@ -272,9 +314,9 @@
       </div>
       <table>
         <thead><tr>
-          <th>Roll</th><th>Name</th><th>Father</th><th>Class</th><th>Adm No</th><th>DOB</th><th>Action</th>
+          <th>Adm No</th><th>Student Name</th><th>Father's Name</th><th>Mother's Name</th><th>Roll</th><th>Class</th><th>Section</th><th>DOB</th><th>Address</th><th>Action</th>
         </tr></thead>
-        <tbody id="students-tbody"><tr><td colspan="7" style="text-align:center;color:#999;">Loading...</td></tr></tbody>
+        <tbody id="students-tbody"><tr><td colspan="10" style="text-align:center;color:#999;">Loading...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -440,14 +482,14 @@
     </div>
   </div>
 
-  <!-- ===== PRINT SLIPS ===== -->
+  <!-- ===== PRINT REPORT CARD ===== -->
   <div class="section" id="sec-report">
     <div class="card">
       <h2>Generate & Print Progress Report Cards</h2>
       <div class="filter-row">
         <div>
           <label for="p-class">Class</label>
-          <select id="p-class" style="width:160px;">
+          <select id="p-class" style="width:160px;" onchange="loadReportStudents()">
             <option value="">-- Select Class --</option>
             <option>II</option><option>III</option><option>IV</option>
             <option>V</option><option>VI</option><option>VII</option><option>VIII</option><option>IX</option><option>X</option>
@@ -455,7 +497,7 @@
         </div>
         <div>
           <label for="p-section">Section</label>
-          <select id="p-section" style="width:160px;">
+          <select id="p-section" style="width:160px;" onchange="loadReportStudents()">
             <option value="">-- All Sections --</option>
             <option value="A">Section A</option>
             <option value="B">Section B</option>
@@ -463,13 +505,21 @@
         </div>
         <div>
           <label>Session</label>
-          <input id="p-session" value="2026-27" style="width:110px;"/>
+          <input id="p-session" value="2026-27" style="width:110px;" onchange="loadReportStudents()"/>
         </div>
-        <div style="padding-top:18px;">
-          <button class="btn btn-success" onclick="generateProgressReports()">🖨️ Generate & Print Reports</button>
+        <div>
+          <label for="p-student">Individual Student</label>
+          <select id="p-student" style="width:220px;">
+            <option value="">-- All Students --</option>
+          </select>
         </div>
       </div>
-      <p style="font-size:12px;color:#888;margin-top:8px;">Generates detailed progress report cards. Opens in a new printable page.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
+        <button class="btn btn-success" onclick="generateProgressReports()">🖨️ Print All Reports</button>
+        <button class="btn btn-info" onclick="generateIndividualReport()">👤 Print Individual</button>
+        <button class="btn btn-warning" onclick="shareViaEmail()">📧 Share via Email</button>
+      </div>
+      <p style="font-size:12px;color:#888;margin-top:10px;">Select an individual student from the dropdown, then click <b>Print Individual</b> for a single report card. Use <b>Print All</b> to print the entire class.</p>
     </div>
   </div>
 
@@ -572,7 +622,7 @@ window.addStudent = async function() {
 window.loadStudents = async function() {
   const cls = document.getElementById('filter-class').value;
   const tbody = document.getElementById('students-tbody');
-  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">Loading...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;">Loading...</td></tr>';
   try {
     let q = cls
       ? query(collection(db,'students'), where('class','==',cls))
@@ -583,7 +633,7 @@ window.loadStudents = async function() {
     allStudents.sort((a,b) => a.rollNo - b.rollNo);
     window._renderStudentTable(allStudents);
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="7">Error: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10">Error: ${e.message}</td></tr>`;
   }
 };
 
@@ -591,17 +641,20 @@ window._renderStudentTable = function(students) {
   window._allStudents = allStudents;
   const tbody = document.getElementById('students-tbody');
   if (students.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">No students found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;">No students found.</td></tr>';
     return;
   }
   tbody.innerHTML = students.map(s => `
     <tr>
-      <td>${s.rollNo}</td>
+      <td><b>${s.admissionNo||'-'}</b></td>
       <td><b>${s.name}</b></td>
-      <td>${s.fatherName}</td>
-      <td><b>Class ${s.class}</b></td>
-      <td>${s.admissionNo}</td>
-      <td>${s.dob || '-'}</td>
+      <td>${s.fatherName||'-'}</td>
+      <td>${s.motherName||'-'}</td>
+      <td>${s.rollNo||'-'}</td>
+      <td>Class ${s.class}</td>
+      <td>${s.section||'-'}</td>
+      <td>${s.dob||'-'}</td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${s.address||''}">${s.address||'-'}</td>
       <td style="display:flex;gap:6px;flex-wrap:wrap;">
         <button class="btn btn-info" style="padding:4px 10px;font-size:12px;" onclick="openEditModal('${s.id}')">✏️ Edit</button>
         <button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteStudent('${s.id}','${s.name}')">🗑 Delete</button>
@@ -885,7 +938,10 @@ window.addTeacher = async function() {
       name, email, subject, assignedClasses:classes, role,
       createdAt: new Date().toISOString()
     });
-    showMsg('teacher-msg', `Teacher "${name}" added successfully!`, 'success');
+    const tmsg = document.getElementById('teacher-msg');
+    tmsg.className = 'msg msg-success';
+    tmsg.innerHTML = `✅ Teacher "<b>${name}</b>" added!&nbsp; 📧 <b>${email}</b>&nbsp; 🔐 Password: <b style="background:#fff3cd;padding:2px 8px;border-radius:4px;color:#333;">${pass}</b><br><small style="color:#555;">⚠️ Save this password now — it will not be shown again.</small>`;
+    setTimeout(() => tmsg.textContent = '', 12000);
     ['t-name','t-email','t-pass'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('t-subject').value = '';
     Array.from(clsSel.options).forEach(o => o.selected = false);
@@ -914,8 +970,12 @@ window.loadTeachers = async function() {
         <td>${t.subject||'-'}</td>
         <td>${(t.assignedClasses||[]).join(', ')}</td>
         <td><span class="badge badge-${t.role}">${t.role?.toUpperCase()}</span></td>
-        <td><button class="btn btn-danger" style="padding:4px 12px;font-size:12px;"
-            onclick="deleteTeacher('${t.id}','${t.name}')">Delete</button></td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-info" style="padding:4px 10px;font-size:12px;"
+            onclick="openEditTeacherModal('${t.id}')">✏️ Edit</button>
+          <button class="btn btn-danger" style="padding:4px 12px;font-size:12px;"
+            onclick="deleteTeacher('${t.id}','${t.name}')">Delete</button>
+        </td>
       </tr>`).join('');
   } catch(e) { tbody.innerHTML = `<tr><td colspan="6">Error: ${e.message}</td></tr>`; }
 };
@@ -924,6 +984,60 @@ window.deleteTeacher = async function(id, name) {
   if (!confirm(`Delete user "${name}"? This removes them from the system.`)) return;
   await deleteDoc(doc(db,'users',id));
   loadTeachers();
+};
+
+window.openEditTeacherModal = async function(uid) {
+  try {
+    const snap = await getDoc(doc(db,'users',uid));
+    if (!snap.exists()) { alert('User not found!'); return; }
+    const t = snap.data();
+    document.getElementById('te-uid').value = uid;
+    document.getElementById('te-email-hidden').value = t.email || '';
+    document.getElementById('te-name').value = t.name || '';
+    document.getElementById('te-subject').value = t.subject || '';
+    const classes = t.assignedClasses || [];
+    Array.from(document.getElementById('te-classes').options).forEach(o => o.selected = classes.includes(o.value));
+    document.getElementById('te-msg').textContent = '';
+    document.getElementById('te-reset-msg').textContent = '';
+    document.getElementById('teacher-edit-modal').classList.add('open');
+  } catch(e) { alert('Error: '+e.message); }
+};
+
+window.closeTeacherEditModal = function() {
+  document.getElementById('teacher-edit-modal').classList.remove('open');
+};
+document.getElementById('teacher-edit-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeTeacherEditModal();
+});
+
+window.saveEditTeacher = async function() {
+  const uid     = document.getElementById('te-uid').value;
+  const name    = document.getElementById('te-name').value.trim();
+  const subject = document.getElementById('te-subject').value;
+  const classes = Array.from(document.getElementById('te-classes').selectedOptions).map(o => o.value);
+  if (!name || !subject || classes.length === 0) {
+    showMsg('te-msg','Please fill all required fields.','error'); return;
+  }
+  try {
+    await updateDoc(doc(db,'users',uid), { name, subject, assignedClasses:classes });
+    showMsg('te-msg','Teacher updated successfully!','success');
+    setTimeout(() => { closeTeacherEditModal(); loadTeachers(); }, 1200);
+  } catch(e) { showMsg('te-msg','Error: '+e.message,'error'); }
+};
+
+window.sendPasswordReset = async function() {
+  const email = document.getElementById('te-email-hidden').value;
+  const msgEl = document.getElementById('te-reset-msg');
+  if (!email) { msgEl.textContent = 'No email on record.'; return; }
+  try {
+    const { sendPasswordResetEmail } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+    await sendPasswordResetEmail(auth, email);
+    msgEl.style.color = '#1e8449';
+    msgEl.textContent = `✅ Reset link sent to ${email}`;
+  } catch(e) {
+    msgEl.style.color = '#c0392b';
+    msgEl.textContent = 'Error: '+e.message;
+  }
 };
 
 // ======================================================
@@ -1004,7 +1118,7 @@ window.loadMarksView = async function() {
 // =================== PRINT REPORT CARD ================
 // ======================================================
 
-window.generateProgressReports = async function() {
+window.generateProgressReports = async function(singleStudentId = null) {
   const cls     = document.getElementById('p-class').value;
   const section = document.getElementById('p-section').value;
   const session = document.getElementById('p-session').value;
@@ -1018,6 +1132,7 @@ window.generateProgressReports = async function() {
   let students = [];
   stuSnap.forEach(d => students.push({id:d.id,...d.data()}));
   students.sort((a,b) => (a.rollNo||0) - (b.rollNo||0));
+  if (singleStudentId) students = students.filter(s => s.id === singleStudentId);
   if (students.length === 0) { alert('No students found.'); return; }
 
   // Marks: per-student × exam × subject + per-subject remarks
@@ -1084,18 +1199,18 @@ window.generateProgressReports = async function() {
       const gt    = t1!==null&&t2!==null ? t1+t2 : t1!==null ? t1 : t2!==null ? t2 : null;
       const gtMax = (pa1!==undefined?20:0)+(hy!==undefined?80:0)+(pa2!==undefined?20:0)+(ann!==undefined?80:0);
       const subGrade = gt!==null&&gtMax>0 ? GRADE(gt/gtMax*100) : '-';
-      const C = v => `<td style="border:1px solid #bbb;padding:3px 4px;text-align:center;">${v!==undefined?v:'<span style="color:#ccc">-</span>'}</td>`;
+      const C = v => `<td style="border:1px solid #c8a400;padding:3px 4px;text-align:center;background:#111;color:#eee;">${v!==undefined?v:'<span style="color:#555">-</span>'}</td>`;
       const subLabel = sub==='Science'?'SCIENCE / E.V.S.':sub==='SST'?'S.S.T.':sub==='GK'?'G.K.':sub.toUpperCase();
 
       return `<tr>
-        <td style="border:1px solid #bbb;padding:3px 7px;font-weight:600;white-space:nowrap;text-align:left;">${subLabel}</td>
+        <td style="border:1px solid #c8a400;padding:3px 7px;font-weight:600;white-space:nowrap;text-align:left;background:#111;color:#eee;">${subLabel}</td>
         ${C(pa1)}${C(hy)}
-        <td style="border:1px solid #bbb;padding:3px 4px;text-align:center;font-weight:700;background:#eaf4ff;">${t1!==null?t1:'-'}</td>
+        <td style="border:1px solid #c8a400;padding:3px 4px;text-align:center;font-weight:700;background:#0d1a2e;color:#aad4ff;">${t1!==null?t1:'-'}</td>
         ${C(pa2)}${C(ann)}
-        <td style="border:1px solid #bbb;padding:3px 4px;text-align:center;font-weight:700;background:#eaf4ff;">${t2!==null?t2:'-'}</td>
-        <td style="border:1px solid #bbb;padding:3px 4px;text-align:center;font-weight:700;">${gt!==null?gt:'-'}</td>
-        <td style="border:1px solid #bbb;padding:3px 4px;text-align:center;">${subGrade}</td>
-        <td style="border:1px solid #bbb;padding:3px 5px;font-size:9px;">${escapeHtml(subRemark)}</td>
+        <td style="border:1px solid #c8a400;padding:3px 4px;text-align:center;font-weight:700;background:#0d1a2e;color:#aad4ff;">${t2!==null?t2:'-'}</td>
+        <td style="border:1px solid #c8a400;padding:3px 4px;text-align:center;font-weight:700;background:#0a2814;color:#88ee88;">${gt!==null?gt:'-'}</td>
+        <td style="border:1px solid #c8a400;padding:3px 4px;text-align:center;background:#111;color:#c8a400;font-weight:700;">${subGrade}</td>
+        <td style="border:1px solid #c8a400;padding:3px 5px;font-size:9px;background:#111;color:#ccc;">${escapeHtml(subRemark)}</td>
       </tr>`;
     }).join('');
 
@@ -1112,111 +1227,119 @@ window.generateProgressReports = async function() {
     const attTerm1Pct  = att.term1AttendancePct != null ? att.term1AttendancePct+'%' : '';
     const attTerm2Pct  = att.term2AttendancePct != null ? att.term2AttendancePct+'%' : '';
     // Result: prefer what teacher entered; fallback to calculated from marks
-    const t1Result     = att.term1Result || (t1Max>0 && Number(t1Pct)>=33 ? 'Passed' : '');
-    const t2Result     = att.term2Result || (t2Max>0 && Number(t2Pct)>=33 ? 'Passed' : '');
+    const t1Result = att.term1Result ||
+      (att.term1AttendancePct != null ? (att.term1AttendancePct >= 75 ? 'Passed' : 'Failed')
+        : (t1Max>0 && Number(t1Pct)>=33 ? 'Passed' : ''));
+    const t2Result = att.term2Result ||
+      (att.term2AttendancePct != null ? (att.term2AttendancePct >= 75 ? 'Passed' : 'Failed')
+        : (t2Max>0 && Number(t2Pct)>=33 ? 'Passed' : ''));
     const overallResult= gtMax>0 ? (Number(finalPct)>=33 ? 'Passed' : 'Failed') : '';
 
     // ---- Appearance rows (from single attendance doc) ----
     const appearanceRows = PARTICULARS.map((p,i) => {
       const val = att[p.key] || '';
+      const TC = (v,ck) => `<td style="border:1px solid #c8a400;padding:4px;text-align:center;font-size:13px;background:#111;color:#c8a400;">${val===ck?TICK:''}</td>`;
       return `<tr>
-        <td style="border:1px solid #bbb;padding:4px;text-align:center;">${i+1}</td>
-        <td style="border:1px solid #bbb;padding:4px 8px;text-align:left;">${p.label}</td>
-        <td style="border:1px solid #bbb;padding:4px;text-align:center;font-size:14px;">${val==='VeryGood'?TICK:''}</td>
-        <td style="border:1px solid #bbb;padding:4px;text-align:center;font-size:14px;">${val==='Good'?TICK:''}</td>
-        <td style="border:1px solid #bbb;padding:4px;text-align:center;font-size:14px;">${val==='Average'?TICK:''}</td>
-        <td style="border:1px solid #bbb;padding:4px;text-align:center;font-size:14px;">${val==='Poor'?TICK:''}</td>
-        <td style="border:1px solid #bbb;padding:4px 8px;">${ATT_LBL[val]||''}</td>
+        ${TD(i+1,'text-align:center;')}
+        ${TD(p.label,'text-align:left;')}
+        ${TC(val,'VeryGood')}${TC(val,'Good')}${TC(val,'Average')}${TC(val,'Poor')}
+        ${TD(ATT_LBL[val]||'','text-align:left;')}
       </tr>`;
     }).join('');
 
-    const TH = (t,extra='') => `<th style="background:#2e86c1;color:#fff;border:1px solid #1a5276;padding:4px;text-align:center;white-space:nowrap;${extra}">${t}</th>`;
-    const TH2= (t,extra='') => `<th style="background:#1a6e3c;color:#fff;border:1px solid #145a32;padding:4px;text-align:center;white-space:nowrap;${extra}">${t}</th>`;
+    const logoUrl = new URL('logo.svg', window.location.href).href;
+    const TH  = (t,x='') => `<th style="background:#0a1832;color:#aad4ff;border:1px solid #c8a400;padding:4px;text-align:center;white-space:nowrap;${x}">${t}</th>`;
+    const TH2 = (t,x='') => `<th style="background:#0a2814;color:#88ee88;border:1px solid #c8a400;padding:4px;text-align:center;white-space:nowrap;${x}">${t}</th>`;
+    const TD  = (v,x='') => `<td style="border:1px solid #c8a400;padding:4px 8px;background:#111;color:#eee;${x}">${v}</td>`;
+    const resultColor = r => r==='Passed'?'#88ee88':r==='Failed'?'#ff8888':'#ccc';
 
     return `
     <div class="report-card">
-      <!-- School Header -->
-      <div style="border:2px solid #1a3c6e;padding:8px 10px;margin-bottom:7px;text-align:center;">
-        <div style="font-size:17px;font-weight:700;color:#c0392b;letter-spacing:1px;">PRABHA GYAN JYOTI PUBLIC SCHOOL</div>
-        <div style="display:inline-block;background:#f1c40f;padding:2px 14px;font-size:10px;font-weight:700;margin:3px 0;border-radius:2px;">Government Recognized Affiliation No. - E24/15</div>
-        <div style="font-size:10px;font-weight:600;margin:2px 0;">RAM BAGH COLONY, OPP. BALAJI DHAM, GANGOH-247341, SAHARANPUR, (U.P.)</div>
-        <div style="font-size:10px;color:#444;">Mob.: 9837700311, 9720175848, Website: www.prabhaschoolonline.com</div>
+      <!-- School Header with Logo -->
+      <div style="display:flex;align-items:center;border:2px solid #c8a400;padding:7px 10px;margin-bottom:6px;background:#160000;">
+        <img src="${logoUrl}" style="width:50px;height:50px;border-radius:50%;flex-shrink:0;margin-right:10px;" alt="Logo">
+        <div style="flex:1;text-align:center;">
+          <div style="font-size:16px;font-weight:700;color:#ff5555;letter-spacing:1px;">PRABHA GYAN JYOTI PUBLIC SCHOOL</div>
+          <div style="display:inline-block;background:#7a5200;padding:2px 14px;font-size:9px;font-weight:700;margin:2px 0;border-radius:2px;color:#ffd700;">Government Recognized Affiliation No. - E24/15</div>
+          <div style="font-size:9px;font-weight:600;color:#d0d0d0;">RAM BAGH COLONY, OPP. BALAJI DHAM, GANGOH-247341, SAHARANPUR, (U.P.)</div>
+          <div style="font-size:9px;color:#aaa;">Mob.: 9837700311, 9720175848 &nbsp;|&nbsp; Website: www.prabhaschoolonline.com</div>
+        </div>
       </div>
 
       <!-- Title row -->
-      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #1a3c6e;padding-bottom:4px;margin-bottom:7px;">
-        <span style="font-size:10px;font-style:italic;">Date ..............................</span>
-        <span style="font-size:16px;font-weight:700;color:#1a3c6e;letter-spacing:2px;">PROGRESS REPORT</span>
-        <span style="font-size:10px;font-style:italic;">Session : ${escapeHtml(session)}</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #c8a400;padding-bottom:3px;margin-bottom:6px;">
+        <span style="font-size:9px;font-style:italic;color:#aaa;">Date ..............................</span>
+        <span style="font-size:15px;font-weight:700;color:#c8a400;letter-spacing:2px;">PROGRESS REPORT</span>
+        <span style="font-size:9px;font-style:italic;color:#aaa;">Session : ${escapeHtml(session)}</span>
       </div>
 
-      <!-- Student Info — 2-column layout matching school card -->
-      <table style="width:100%;border-collapse:collapse;border:1px solid #999;margin-bottom:8px;font-size:10.5px;">
+      <!-- Student Info 2-column -->
+      <table style="width:100%;border-collapse:collapse;border:1px solid #c8a400;margin-bottom:6px;font-size:10px;">
         <tr>
-          <td style="border:1px solid #999;padding:5px 8px;width:18%;font-style:italic;">Name of The Student</td>
-          <td style="border:1px solid #999;padding:5px 8px;width:40%;font-weight:700;border-right:2px solid #555;">${escapeHtml(s.name||'')}</td>
-          <td style="border:1px solid #999;padding:5px 8px;width:16%;font-style:italic;">Admission No.</td>
-          <td style="border:1px solid #999;padding:5px 4px;width:10%;font-weight:700;">${escapeHtml(s.admissionNo||'-')}</td>
-          <td style="border:1px solid #999;padding:5px 4px;width:8%;font-style:italic;">Roll No.</td>
-          <td style="border:1px solid #999;padding:5px 4px;font-weight:700;">${s.rollNo||'-'}</td>
+          <td style="border:1px solid #c8a400;padding:4px 7px;width:18%;font-style:italic;color:#aaa;background:#111;">Name of The Student</td>
+          <td style="border:1px solid #c8a400;padding:4px 7px;width:37%;font-weight:700;border-right:2px solid #c8a400;color:#fff;background:#111;">${escapeHtml(s.name||'')}</td>
+          <td style="border:1px solid #c8a400;padding:4px 7px;width:16%;font-style:italic;color:#aaa;background:#111;">Admission No.</td>
+          <td style="border:1px solid #c8a400;padding:4px 6px;width:10%;font-weight:700;color:#fff;background:#111;">${escapeHtml(s.admissionNo||'-')}</td>
+          <td style="border:1px solid #c8a400;padding:4px 5px;width:8%;font-style:italic;color:#aaa;background:#111;">Roll No.</td>
+          <td style="border:1px solid #c8a400;padding:4px 5px;font-weight:700;color:#fff;background:#111;">${s.rollNo||'-'}</td>
         </tr>
         <tr>
-          <td style="border:1px solid #999;padding:5px 8px;font-style:italic;">Father's Name</td>
-          <td style="border:1px solid #999;padding:5px 8px;font-weight:700;border-right:2px solid #555;">${escapeHtml(s.fatherName||'-')}</td>
-          <td style="border:1px solid #999;padding:5px 8px;font-style:italic;">Class</td>
-          <td style="border:1px solid #999;padding:5px 4px;font-weight:700;">${s.class||'-'}</td>
-          <td style="border:1px solid #999;padding:5px 4px;font-style:italic;">D.O.B</td>
-          <td style="border:1px solid #999;padding:5px 4px;font-weight:700;">${s.dob||'-'}</td>
+          <td style="border:1px solid #c8a400;padding:4px 7px;font-style:italic;color:#aaa;background:#111;">Father's Name</td>
+          <td style="border:1px solid #c8a400;padding:4px 7px;font-weight:700;border-right:2px solid #c8a400;color:#fff;background:#111;">${escapeHtml(s.fatherName||'-')}</td>
+          <td style="border:1px solid #c8a400;padding:4px 7px;font-style:italic;color:#aaa;background:#111;">Class</td>
+          <td style="border:1px solid #c8a400;padding:4px 6px;font-weight:700;color:#fff;background:#111;">${s.class||'-'}</td>
+          <td style="border:1px solid #c8a400;padding:4px 5px;font-style:italic;color:#aaa;background:#111;">D.O.B</td>
+          <td style="border:1px solid #c8a400;padding:4px 5px;font-weight:700;color:#fff;background:#111;">${s.dob||'-'}</td>
         </tr>
         <tr>
-          <td style="border:1px solid #999;padding:5px 8px;font-style:italic;">Mother's Name</td>
-          <td style="border:1px solid #999;padding:5px 8px;font-weight:700;border-right:2px solid #555;">${escapeHtml(s.motherName||'-')}</td>
-          <td style="border:1px solid #999;padding:5px 8px;font-style:italic;">Address</td>
-          <td colspan="3" style="border:1px solid #999;padding:5px 8px;font-weight:700;">${escapeHtml(s.address||'-')}</td>
+          <td style="border:1px solid #c8a400;padding:4px 7px;font-style:italic;color:#aaa;background:#111;">Mother's Name</td>
+          <td style="border:1px solid #c8a400;padding:4px 7px;font-weight:700;border-right:2px solid #c8a400;color:#fff;background:#111;">${escapeHtml(s.motherName||'-')}</td>
+          <td style="border:1px solid #c8a400;padding:4px 7px;font-style:italic;color:#aaa;background:#111;">Address</td>
+          <td colspan="3" style="border:1px solid #c8a400;padding:4px 7px;font-weight:700;color:#fff;background:#111;">${escapeHtml(s.address||'-')}</td>
         </tr>
       </table>
 
       <!-- MARKS TABLE -->
-      <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:5px;">
+      <table style="width:100%;border-collapse:collapse;font-size:9.5px;margin-bottom:5px;">
         <thead>
           <tr>
             ${TH('SCHOLASTIC AREA / SUBJECT','text-align:left;padding-left:6px;')}
-            <th colspan="3" style="background:#2e86c1;color:#fff;border:1px solid #1a5276;padding:5px;text-align:center;">TERM - 1</th>
-            <th colspan="3" style="background:#2e86c1;color:#fff;border:1px solid #1a5276;padding:5px;text-align:center;">TERM - 2</th>
-            <th colspan="3" style="background:#1a6e3c;color:#fff;border:1px solid #145a32;padding:5px;text-align:center;">FINAL RESULT</th>
+            <th colspan="3" style="background:#0a1832;color:#aad4ff;border:1px solid #c8a400;padding:4px;text-align:center;">TERM - 1</th>
+            <th colspan="3" style="background:#0a1832;color:#aad4ff;border:1px solid #c8a400;padding:4px;text-align:center;">TERM - 2</th>
+            <th colspan="3" style="background:#0a2814;color:#88ee88;border:1px solid #c8a400;padding:4px;text-align:center;">FINAL RESULT</th>
           </tr>
           <tr>
             ${TH('')}
-            ${TH('P.A. 1<br><small>(20)</small>')}${TH('Half Y.<br>Exam (80)')}${TH('TOTAL<br><small>(100)</small>','background:#1e6ea0;')}
-            ${TH('P.A. 2<br><small>(20)</small>')}${TH('Annual<br>Exam (80)')}${TH('TOTAL<br><small>(100)</small>','background:#1e6ea0;')}
-            ${TH2('G. TOTAL<br><small>(200)</small>')}${TH2('GRADE')}${TH2('REMARKS')}
+            ${TH('P.A.1<br><small>(20)</small>')}${TH('Half Y.<br>(80)')}${TH('TOTAL<br><small>(100)</small>','background:#06122a;')}
+            ${TH('P.A.2<br><small>(20)</small>')}${TH('Annual<br>(80)')}${TH('TOTAL<br><small>(100)</small>','background:#06122a;')}
+            ${TH2('G.TOTAL<br><small>(200)</small>')}${TH2('GRADE')}${TH2('REMARKS')}
           </tr>
         </thead>
         <tbody>
           ${marksRows}
-          <tr style="background:#d6eaf8;font-weight:700;font-size:10.5px;">
-            <td style="border:1px solid #aaa;padding:4px 7px;text-align:left;">GRAND TOTAL</td>
-            <td style="border:1px solid #aaa;padding:4px;text-align:center;">${t1PA1m>0?t1PA1s:'-'}</td>
-            <td style="border:1px solid #aaa;padding:4px;text-align:center;">${t1HYm>0?t1HYs:'-'}</td>
-            <td style="border:1px solid #aaa;padding:4px;text-align:center;background:#c5d9f1;">${t1Max>0?t1Sum:'-'}</td>
-            <td style="border:1px solid #aaa;padding:4px;text-align:center;">${t2PA2m>0?t2PA2s:'-'}</td>
-            <td style="border:1px solid #aaa;padding:4px;text-align:center;">${t2ANNm>0?t2ANNs:'-'}</td>
-            <td style="border:1px solid #aaa;padding:4px;text-align:center;background:#c5d9f1;">${t2Max>0?t2Sum:'-'}</td>
-            <td style="border:1px solid #aaa;padding:4px;text-align:center;">${gtMax>0?gtSum:'-'}</td>
-            <td style="border:1px solid #aaa;padding:4px;text-align:center;">${overallGrade}</td>
-            <td style="border:1px solid #aaa;padding:4px;"></td>
+          <tr style="background:#1a1200;font-weight:700;font-size:9.5px;color:#c8a400;">
+            <td style="border:1px solid #c8a400;padding:3px 7px;text-align:left;">GRAND TOTAL</td>
+            <td style="border:1px solid #c8a400;padding:3px;text-align:center;">${t1PA1m>0?t1PA1s:'-'}</td>
+            <td style="border:1px solid #c8a400;padding:3px;text-align:center;">${t1HYm>0?t1HYs:'-'}</td>
+            <td style="border:1px solid #c8a400;padding:3px;text-align:center;background:#0d2040;">${t1Max>0?t1Sum:'-'}</td>
+            <td style="border:1px solid #c8a400;padding:3px;text-align:center;">${t2PA2m>0?t2PA2s:'-'}</td>
+            <td style="border:1px solid #c8a400;padding:3px;text-align:center;">${t2ANNm>0?t2ANNs:'-'}</td>
+            <td style="border:1px solid #c8a400;padding:3px;text-align:center;background:#0d2040;">${t2Max>0?t2Sum:'-'}</td>
+            <td style="border:1px solid #c8a400;padding:3px;text-align:center;">${gtMax>0?gtSum:'-'}</td>
+            <td style="border:1px solid #c8a400;padding:3px;text-align:center;">${overallGrade}</td>
+            <td style="border:1px solid #c8a400;padding:3px;"></td>
           </tr>
         </tbody>
       </table>
 
       <!-- Grading Scale -->
-      <div style="font-size:8.5px;margin-bottom:6px;padding:3px 6px;border:1px solid #ccc;background:#fafafa;">
-        <b>GRADING SCALE</b> - A1=91%-100%; A2=81%-90%; B1=71%-80%; B2=61%-70%; C1=51%-60%; C2=41%-50%; D=33%-40%; <b>E=BELOW 33%</b>
+      <div style="font-size:7.5px;margin-bottom:5px;padding:3px 6px;border:1px solid #c8a400;background:#1a1a1a;color:#bbb;">
+        <b style="color:#c8a400;">GRADING SCALE</b> — A1=91%-100%; A2=81%-90%; B1=71%-80%; B2=61%-70%; C1=51%-60%; C2=41%-50%; D=33%-40%; <b style="color:#ff8888;">E=BELOW 33%</b>
       </div>
 
-      <!-- Student's Appearance (from appearance.html, filled once) -->
-      <div style="text-align:center;font-style:italic;color:#c0392b;font-weight:700;font-size:12px;margin-bottom:4px;">STUDENT'S APPEARANCE</div>
-      <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:6px;">
+      <!-- Student's Appearance -->
+      <div style="text-align:center;color:#ff6666;font-weight:700;font-size:11px;margin-bottom:4px;letter-spacing:1px;">STUDENT'S APPEARANCE</div>
+      <table style="width:100%;border-collapse:collapse;font-size:9.5px;margin-bottom:5px;">
         <thead><tr>
           ${TH('S.No.')}${TH('Particular','text-align:left;padding-left:8px;')}
           ${TH('Very Good')}${TH('Good')}${TH('Average')}${TH('Poor')}${TH('Remark')}
@@ -1224,57 +1347,52 @@ window.generateProgressReports = async function() {
         <tbody>${appearanceRows}</tbody>
       </table>
 
-      <!-- Overall Performance (marks % from marks section; attendance/result from appearance section) -->
-      <div style="text-align:center;font-style:italic;color:#c0392b;font-weight:700;font-size:12px;margin-bottom:4px;">OVERALL PERFORMANCE</div>
-      <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:8px;">
+      <!-- Overall Performance -->
+      <div style="text-align:center;color:#ff6666;font-weight:700;font-size:11px;margin-bottom:4px;letter-spacing:1px;">OVERALL PERFORMANCE</div>
+      <table style="width:100%;border-collapse:collapse;font-size:9.5px;margin-bottom:7px;">
         <thead><tr>
           ${TH('S.No.')}${TH('PROFILE','text-align:left;padding-left:8px;')}
           ${TH('TERM 1')}${TH('TERM 2')}${TH('TERM 1 &amp; TERM 2')}
         </tr></thead>
         <tbody>
           <tr>
-            <td style="border:1px solid #aaa;padding:4px;text-align:center;">1</td>
-            <td style="border:1px solid #aaa;padding:4px 8px;">ATTENDANCE (%)</td>
-            <td style="border:1px solid #aaa;padding:4px;text-align:center;">${attTerm1Pct}</td>
-            <td style="border:1px solid #aaa;padding:4px;text-align:center;">${attTerm2Pct}</td>
-            <td style="border:1px solid #aaa;padding:4px;text-align:center;"></td>
+            ${TD('1','text-align:center;')}${TD('ATTENDANCE (%)')}
+            ${TD(attTerm1Pct,'text-align:center;')}${TD(attTerm2Pct,'text-align:center;')}${TD('','text-align:center;')}
           </tr>
           <tr>
-            <td style="border:1px solid #aaa;padding:4px;text-align:center;">2</td>
-            <td style="border:1px solid #aaa;padding:4px 8px;">MARKS (%)</td>
-            <td style="border:1px solid #aaa;padding:4px;text-align:center;">${t1Max>0?t1Pct+'%':''}</td>
-            <td style="border:1px solid #aaa;padding:4px;text-align:center;">${t2Max>0?t2Pct+'%':''}</td>
-            <td style="border:1px solid #aaa;padding:4px;text-align:center;font-weight:700;">${gtMax>0?finalPct+'%':''}</td>
+            ${TD('2','text-align:center;')}${TD('MARKS (%)')}
+            ${TD(t1Max>0?t1Pct+'%':'','text-align:center;')}
+            ${TD(t2Max>0?t2Pct+'%':'','text-align:center;')}
+            ${TD(gtMax>0?'<b style="color:#c8a400;">'+finalPct+'%</b>':'','text-align:center;')}
           </tr>
           <tr>
-            <td style="border:1px solid #aaa;padding:4px;text-align:center;">3</td>
-            <td style="border:1px solid #aaa;padding:4px 8px;">RESULT</td>
-            <td style="border:1px solid #aaa;padding:4px;text-align:center;font-style:italic;">${escapeHtml(t1Result)}</td>
-            <td style="border:1px solid #aaa;padding:4px;text-align:center;font-style:italic;">${escapeHtml(t2Result)}</td>
-            <td style="border:1px solid #aaa;padding:4px;text-align:center;font-style:italic;font-weight:700;">${escapeHtml(overallResult)}</td>
+            ${TD('3','text-align:center;')}${TD('RESULT')}
+            <td style="border:1px solid #c8a400;padding:4px 8px;background:#111;text-align:center;font-style:italic;font-weight:600;color:${resultColor(t1Result)};">${escapeHtml(t1Result)}</td>
+            <td style="border:1px solid #c8a400;padding:4px 8px;background:#111;text-align:center;font-style:italic;font-weight:600;color:${resultColor(t2Result)};">${escapeHtml(t2Result)}</td>
+            <td style="border:1px solid #c8a400;padding:4px 8px;background:#111;text-align:center;font-style:italic;font-weight:700;color:${resultColor(overallResult)};">${escapeHtml(overallResult)}</td>
           </tr>
         </tbody>
       </table>
 
       <!-- Note -->
-      <div style="font-size:9px;margin-bottom:10px;padding:4px 7px;border:1px solid #ccc;background:#fafafa;">
-        <b>NOTE:-</b> THE SCHOOL SHALL BE RE-OPEN FOR NEW ACADEMIC SESSION ON &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        PROMOTED TO CLASS : &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <div style="font-size:8.5px;margin-bottom:8px;padding:3px 6px;border:1px solid #c8a400;background:#1a1a1a;color:#bbb;">
+        <b style="color:#c8a400;">NOTE:-</b> THE SCHOOL SHALL RE-OPEN FOR NEW ACADEMIC SESSION ON &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        PROMOTED TO CLASS : &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
       </div>
 
       <!-- Signatures -->
-      <div style="display:flex;justify-content:space-between;margin-top:10px;font-size:10.5px;padding:0 10px;">
+      <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:10px;padding:0 10px;">
         <div style="text-align:center;">
-          <div style="border-bottom:1px solid #333;width:130px;height:26px;margin-bottom:3px;"></div>
-          <b>CLASS TEACHER</b>
+          <div style="border-bottom:1px solid #c8a400;width:120px;height:24px;margin-bottom:3px;"></div>
+          <b style="color:#c8a400;">CLASS TEACHER</b>
         </div>
         <div style="text-align:center;">
-          <div style="border-bottom:1px solid #333;width:130px;height:26px;margin-bottom:3px;"></div>
-          <b>PARENT'S SIGN</b>
+          <div style="border-bottom:1px solid #c8a400;width:120px;height:24px;margin-bottom:3px;"></div>
+          <b style="color:#c8a400;">PARENT'S SIGN</b>
         </div>
         <div style="text-align:center;">
-          <div style="border-bottom:1px solid #333;width:130px;height:26px;margin-bottom:3px;"></div>
-          <b>PRINCIPAL</b>
+          <div style="border-bottom:1px solid #c8a400;width:120px;height:24px;margin-bottom:3px;"></div>
+          <b style="color:#c8a400;">PRINCIPAL</b>
         </div>
       </div>
     </div>`;
@@ -1284,53 +1402,93 @@ window.generateProgressReports = async function() {
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>Progress Report Card – Class ${escapeHtml(cls)}</title>
   <style>
-    @page { size:A4 portrait; margin:8mm; }
+    @page { size:A4 portrait; margin:8mm 10mm; }
     * { box-sizing:border-box; margin:0; padding:0; }
-    body { font-family:'Times New Roman',Times,serif; font-size:11px; background:#fff; color:#222; }
+    body { font-family:'Times New Roman',Times,serif; font-size:10px; background:#0a0a0a; color:#eee;
+           -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     .report-card {
-      border:3px double #1a3c6e; padding:10px 12px;
+      border:2px solid #c8a400; padding:8px 10px;
       page-break-after:always; break-after:page;
-      background:#fff; min-height:272mm;
+      background:#111; min-height:265mm; color:#eee;
     }
     .report-card:last-child { page-break-after:auto; break-after:auto; }
     .toolbar {
       position:fixed; top:0; left:0; right:0; z-index:999;
-      background:#1a3c6e; padding:8px 16px;
-      display:flex; gap:10px; align-items:center;
+      background:#1a3c6e; padding:6px 14px;
+      display:flex; gap:8px; align-items:center;
     }
-    .toolbar span { color:#fff; font-size:13px; font-family:Arial,sans-serif; flex:1; }
-    .toolbar button {
-      padding:7px 18px; border:none; border-radius:5px;
-      cursor:pointer; font-size:13px; font-weight:600; font-family:Arial,sans-serif;
-    }
+    .toolbar span { color:#fff; font-size:12px; font-family:Arial,sans-serif; flex:1; }
+    .toolbar button { padding:6px 14px; border:none; border-radius:5px; cursor:pointer; font-size:12px; font-weight:600; font-family:Arial,sans-serif; }
     .btn-print { background:#27ae60; color:#fff; }
     .btn-share { background:#e67e22; color:#fff; }
-    body { padding-top:46px; }
-    @media print {
-      .toolbar { display:none; }
-      body { padding-top:0; }
-    }
+    .btn-email { background:#8e44ad; color:#fff; }
+    body { padding-top:42px; }
+    @media print { .toolbar { display:none; } body { padding-top:0; } }
   </style></head>
   <body>
   <div class="toolbar">
-    <span>🏫 Prabha Gyan Jyoti — Progress Report Card | Class ${escapeHtml(cls)} | Session ${escapeHtml(session)}</span>
+    <span>🏫 Prabha Gyan Jyoti — Report Card | Class ${escapeHtml(cls)} | Session ${escapeHtml(session)}</span>
     <button class="btn-print" onclick="window.print()">🖨️ Print</button>
     <button class="btn-share" onclick="shareCard()">📤 Share</button>
+    <button class="btn-email" onclick="emailCard()">📧 Email</button>
   </div>
   ${reportHTML}
   <script>
     function shareCard() {
       if (navigator.share) {
-        navigator.share({ title: 'Progress Report Card – Class ${escapeHtml(cls)}', text: 'Prabha Gyan Jyoti Public School – Progress Report Card' })
-          .catch(() => {});
+        navigator.share({ title: 'Report Card – Class ${escapeHtml(cls)}', text: 'Prabha Gyan Jyoti Public School – Progress Report Card' }).catch(()=>{});
       } else {
-        alert('To share:\\n1. Click Print above\\n2. Choose \\"Save as PDF\\" as the printer\\n3. Share the saved PDF file via WhatsApp / Email');
+        alert('To share:\\n1. Click Print above\\n2. Choose \\"Save as PDF\\" as the printer\\n3. Share the PDF via WhatsApp / Email');
       }
+    }
+    function emailCard() {
+      const sub  = encodeURIComponent('Progress Report Card – Class ${escapeHtml(cls)} – Session ${escapeHtml(session)}');
+      const body = encodeURIComponent('Dear Parent,\\n\\nYour child\\'s progress report is ready.\\n\\nClass: ${escapeHtml(cls)}  Session: ${escapeHtml(session)}\\n\\nUse Print → Save as PDF to download a copy.\\n\\nPrabha Gyan Jyoti Public School\\nGangoh, Saharanpur (U.P.)  Mob: 9837700311');
+      window.open('mailto:?subject='+sub+'&body='+body);
     }
     window.addEventListener('load', () => setTimeout(() => window.print(), 400));
   <\/script>
   </body></html>`);
   win.document.close();
+};
+
+window.loadReportStudents = async function() {
+  const cls     = document.getElementById('p-class').value;
+  const section = document.getElementById('p-section').value;
+  const session = document.getElementById('p-session').value;
+  const sel     = document.getElementById('p-student');
+  sel.innerHTML = '<option value="">-- All Students --</option>';
+  if (!cls) return;
+  try {
+    let q = section
+      ? query(collection(db,'students'), where('class','==',cls), where('section','==',section), where('session','==',session))
+      : query(collection(db,'students'), where('class','==',cls), where('session','==',session));
+    const snap = await getDocs(q);
+    let list = [];
+    snap.forEach(d => list.push({id:d.id,...d.data()}));
+    list.sort((a,b) => (a.rollNo||0)-(b.rollNo||0));
+    list.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = `${s.rollNo||'?'}. ${s.name}`;
+      sel.appendChild(opt);
+    });
+  } catch(e) { /* silent */ }
+};
+
+window.generateIndividualReport = async function() {
+  const studentId = document.getElementById('p-student').value;
+  if (!studentId) { alert('Please select a student from the "Individual Student" dropdown first.'); return; }
+  await generateProgressReports(studentId);
+};
+
+window.shareViaEmail = function() {
+  const cls     = document.getElementById('p-class').value;
+  const session = document.getElementById('p-session').value;
+  if (!cls) { alert('Please select a class first.'); return; }
+  const sub  = encodeURIComponent(`Progress Report Card – Class ${cls} – Session ${session}`);
+  const body = encodeURIComponent(`Dear Parent,\n\nYour child's progress report card for Class ${cls}, Session ${session} is ready.\n\nPlease collect it from school or contact us:\nPrabha Gyan Jyoti Public School\nGangoh, Saharanpur (U.P.)\nMob: 9837700311, 9720175848`);
+  window.open(`mailto:?subject=${sub}&body=${body}`);
 };
 
 // ---- HELPER ----
