@@ -360,20 +360,7 @@
       <h3 style="margin-bottom:12px;color:#1a3c6e;">📚 Students per Class</h3>
       <div id="dash-class-breakdown" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;"></div>
 
-      <h3 style="margin-bottom:12px;color:#1a3c6e;">🕐 Recent Activity</h3>
-      <table style="width:100%;border-collapse:collapse;font-size:13px;">
-        <thead><tr style="background:#f0f4f8;">
-          <th style="padding:8px 12px;text-align:left;border-bottom:2px solid #ddd;">Student</th>
-          <th style="padding:8px 12px;text-align:left;border-bottom:2px solid #ddd;">Class</th>
-          <th style="padding:8px 12px;text-align:left;border-bottom:2px solid #ddd;">Subject</th>
-          <th style="padding:8px 12px;text-align:left;border-bottom:2px solid #ddd;">Exam</th>
-          <th style="padding:8px 12px;text-align:left;border-bottom:2px solid #ddd;">Marks</th>
-          <th style="padding:8px 12px;text-align:left;border-bottom:2px solid #ddd;">Entered By</th>
-          <th style="padding:8px 12px;text-align:left;border-bottom:2px solid #ddd;">Updated</th>
-        </tr></thead>
-        <tbody id="dash-recent-tbody"><tr><td colspan="7" style="padding:12px;text-align:center;color:#999;">Loading...</td></tr></tbody>
-      </table>
-      <button class="btn btn-info" style="margin-top:14px;" onclick="loadDashboard()">🔄 Refresh Stats</button>
+      <button class="btn btn-info" style="margin-top:4px;" onclick="loadDashboard()">🔄 Refresh Stats</button>
     </div>
   </div>
 
@@ -419,7 +406,10 @@
     </div>
 
     <div class="card">
-      <h2>All Students</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h2 style="margin:0;">All Students</h2>
+        <button class="btn" style="background:#c0392b;color:#fff;padding:7px 16px;font-size:13px;" onclick="deleteAllStudents()">🗑️ Delete All Students</button>
+      </div>
       <div class="search-bar">
         <select id="filter-class" aria-label="Filter by Class" onchange="loadStudents()" style="width:160px;">
           <option value="">All Classes</option>
@@ -887,6 +877,16 @@ window._renderStudentTable = function(students) {
 };
 
 // filterStudentTable registered above before imports
+
+window.deleteAllStudents = function() {
+  showConfirm('Delete ALL Students?', 'This will permanently remove every student record. This cannot be undone.', async () => {
+    const snap = await getDocs(collection(db,'students'));
+    const batch = writeBatch(db);
+    snap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+    loadStudents();
+  });
+};
 
 window.deleteStudent = function(id, name) {
   showConfirm(`Delete student "${name}"?`, 'This will permanently remove the student record.', async () => {
