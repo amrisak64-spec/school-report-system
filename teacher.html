@@ -169,8 +169,6 @@
               <th>Address</th>
               <th id="col-subject">Marks</th>
               <th>Max</th>
-              <th>Notebook (10)</th>
-              <th>Teacher Remarks</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -300,8 +298,6 @@ window.loadStudents = async function() {
     tbody.innerHTML = currentStudents.map((s, idx) => {
       const existing = existingMarks[s.id];
       const val = existing ? existing.marks : '';
-      const notebook = existing?.notebookMarks ?? '';
-      const remarks = existing?.remarks || '';
       const isSaved = existing !== undefined;
       return `
         <tr>
@@ -317,12 +313,6 @@ window.loadStudents = async function() {
               placeholder="0-${max}"/>
           </td>
           <td style="text-align:center;">${max}</td>
-          <td>
-            <input type="number" class="marks-input ${isSaved?'saved':''}" id="n_${s.id}"
-              value="${notebook}" min="0" max="10"
-              onchange="validateInput(this, 10)" placeholder="0-10"/>
-          </td>
-          <td><textarea id="r_${s.id}" maxlength="300" placeholder="Feedback for the student">${escapeHtml(remarks)}</textarea></td>
           <td id="status_${s.id}">
             ${isSaved
               ? '<span style="color:#27ae60;">✅ Saved</span>'
@@ -377,22 +367,12 @@ window.saveAllMarks = async function() {
   let errors = [], saves = [];
   currentStudents.forEach(s => {
     const input = document.getElementById('m_'+s.id);
-    const notebookInput = document.getElementById('n_'+s.id);
-    const remarksInput = document.getElementById('r_'+s.id);
     if (!input || input.value === '') return;
     const val = Number(input.value);
-    const notebook = notebookInput?.value === '' ? null : Number(notebookInput.value);
     if (isNaN(val) || val < 0 || val > max) {
       errors.push(`${s.name}: invalid (${input.value})`);
-    } else if (notebook !== null && (isNaN(notebook) || notebook < 0 || notebook > 10)) {
-      errors.push(`${s.name}: notebook marks must be between 0 and 10`);
     } else {
-      saves.push({
-        student: s,
-        marks: val,
-        notebookMarks: notebook,
-        remarks: remarksInput?.value.trim() || ''
-      });
+      saves.push({ student: s, marks: val });
     }
   });
 
@@ -414,9 +394,6 @@ window.saveAllMarks = async function() {
         session,
         marksObtained: item.marks,
         maxMarks: max,
-        notebookMarks: item.notebookMarks,
-        notebookMaxMarks: 10,
-        remarks: item.remarks,
         enteredBy: currentTeacher?.email || '',
         updatedAt: serverTimestamp()
       });
