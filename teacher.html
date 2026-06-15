@@ -78,6 +78,15 @@
     @media(max-width:700px) {
       .filter-row { flex-direction: column; }
       .marks-input { width: 60px; }
+      .topbar { flex-direction: column; align-items: flex-start; }
+      .content { padding: 12px; }
+      .card { padding: 14px; }
+      /* Horizontally scrollable marks table on mobile */
+      .table-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      table { min-width: 520px; font-size: 12px; }
+      th, td { padding: 6px 5px; }
+      /* Hide address column on small screens */
+      th:nth-child(5), td:nth-child(5) { display: none; }
     }
   </style>
 </head>
@@ -163,7 +172,7 @@
         <div id="marks-summary" style="font-size:13px; color:#555;"></div>
         <button class="btn btn-primary" onclick="saveAllMarks()">💾 Save All Marks</button>
       </div>
-      <div style="overflow-x:auto;">
+      <div class="table-scroll-wrap">
         <table>
           <thead>
             <tr>

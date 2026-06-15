@@ -138,7 +138,12 @@
     <div class="filter-row">
       <div>
         <label>Session *</label>
-        <input type="text" id="sel-session" value="2026-27"/>
+        <select id="sel-session">
+          <option value="2024-25">2024-25</option>
+          <option value="2025-26">2025-26</option>
+          <option value="2026-27" selected>2026-27</option>
+          <option value="2027-28">2027-28</option>
+        </select>
       </div>
       <div>
         <label>Class *</label>
@@ -154,6 +159,16 @@
           <option value="">-- All Sections --</option>
           <option value="A">A</option>
           <option value="B">B</option>
+        </select>
+      </div>
+      <div>
+        <label>Exam</label>
+        <select id="sel-exam">
+          <option value="">All Exams (Combined)</option>
+          <option value="PA1">PA 1 (Max: 20)</option>
+          <option value="HalfYearly">Half Yearly (Max: 80)</option>
+          <option value="PA2">PA 2 (Max: 20)</option>
+          <option value="Annual">Annual (Max: 80)</option>
         </select>
       </div>
       <div style="padding-top:18px;">
@@ -220,10 +235,13 @@ window.goBack = function() {
 };
 window.logout = () => signOut(auth).then(() => window.location.href = 'index.html');
 
+const EXAM_LABELS = { PA1:'PA 1', HalfYearly:'Half Yearly', PA2:'PA 2', Annual:'Annual' };
+
 window.loadTabulation = async function() {
-  const cls     = document.getElementById('sel-class').value;
-  const section = document.getElementById('sel-section').value;
-  const session = document.getElementById('sel-session').value.trim();
+  const cls      = document.getElementById('sel-class').value;
+  const section  = document.getElementById('sel-section').value;
+  const session  = document.getElementById('sel-session').value;
+  const examFilter = document.getElementById('sel-exam').value; // '' = all, else specific exam
 
   if (!cls) { showMsg('tab-msg', 'Please select a class.', 'error'); return; }
 
@@ -249,10 +267,11 @@ window.loadTabulation = async function() {
       return;
     }
 
-    // Load marks
-    const marksSnap = await getDocs(
-      query(collection(db, 'marks'), where('class', '==', cls), where('session', '==', session))
-    );
+    // Load marks (filter by exam if selected)
+    let marksQuery = examFilter
+      ? query(collection(db,'marks'), where('class','==',cls), where('session','==',session), where('exam','==',examFilter))
+      : query(collection(db,'marks'), where('class','==',cls), where('session','==',session));
+    const marksSnap = await getDocs(marksQuery);
     const marksLookup = {};
     marksSnap.forEach(d => {
       const m = d.data();
@@ -260,22 +279,21 @@ window.loadTabulation = async function() {
       marksLookup[`${m.studentId}_${m.exam}_${sub}`] = m.marksObtained;
     });
 
+    // Exams to show
+    const activeExams = examFilter ? [examFilter] : EXAMS;
+
     // Build tabulation data
     tableData = students.map(s => {
       const subjectTotals = {};
-      let grandTotal = 0;
-      let grandMax = 0;
+      let grandTotal = 0, grandMax = 0;
 
       SUBJECTS.forEach(sub => {
         let subTotal = 0, subMax = 0;
         const examMarks = {};
-        EXAMS.forEach(exam => {
+        activeExams.forEach(exam => {
           const val = marksLookup[`${s.id}_${exam}_${sub}`];
           examMarks[exam] = val !== undefined ? val : null;
-          if (val !== undefined) {
-            subTotal += val;
-            subMax += EXAM_MAX[exam];
-          }
+          if (val !== undefined) { subTotal += Number(val); subMax += EXAM_MAX[exam]; }
         });
         subjectTotals[sub] = { examMarks, total: subMax ? subTotal : null, max: subMax };
         if (subMax > 0) { grandTotal += subTotal; grandMax += subMax; }
@@ -285,91 +303,118 @@ window.loadTabulation = async function() {
       return { ...s, subjectTotals, grandTotal, grandMax, percentage };
     });
 
-    // Assign positions (sorted by grandTotal desc)
+    // Assign ranks
     const sorted = [...tableData].sort((a, b) => b.percentage - a.percentage);
     const rankMap = {};
     let rank = 1;
     for (let i = 0; i < sorted.length; i++) {
-      if (i > 0 && sorted[i].percentage < sorted[i - 1].percentage) rank = i + 1;
+      if (i > 0 && sorted[i].percentage < sorted[i-1].percentage) rank = i + 1;
       rankMap[sorted[i].id] = rank;
     }
 
-    // Render table header
+    // ---- Build table header ----
     const thead = document.getElementById('tab-thead');
     let hRow1 = `<tr>
       <th class="th-rank" rowspan="2" style="width:45px;">Rank</th>
       <th class="th-info" rowspan="2">Roll</th>
-      <th class="th-info left" rowspan="2">Student Name</th>`;
-    SUBJECTS.forEach(sub => {
-      hRow1 += `<th class="th-subj" colspan="5" style="min-width:220px;">${sub}</th>`;
-    });
-    hRow1 += `<th class="th-total" rowspan="2">Grand Total</th>
+      <th class="th-info left" rowspan="2" style="min-width:120px;">Student Name</th>`;
+
+    if (examFilter) {
+      // Single exam: one column per subject, no sub-header row needed (use rowspan=2)
+      SUBJECTS.forEach(sub => {
+        hRow1 += `<th class="th-subj" rowspan="2" style="min-width:55px;">${sub}<br><small style="font-weight:400;">(${EXAM_MAX[examFilter]})</small></th>`;
+      });
+    } else {
+      // All exams: subject group header + sub-row with exam names
+      SUBJECTS.forEach(sub => {
+        hRow1 += `<th class="th-subj" colspan="5" style="min-width:220px;">${sub}</th>`;
+      });
+    }
+
+    hRow1 += `<th class="th-total" rowspan="2">Total</th>
       <th class="th-total" rowspan="2">Max</th>
       <th class="th-total" rowspan="2">%</th>
       <th class="th-grade" rowspan="2">Grade</th></tr>`;
-    let hRow2 = '<tr>';
-    SUBJECTS.forEach(() => {
-      hRow2 += '<th class="th-subj">PA1</th><th class="th-subj">HY</th><th class="th-subj">PA2</th><th class="th-subj">ANN</th><th class="th-subj" style="background:#155f2e;">Total</th>';
-    });
-    hRow2 += '</tr>';
+
+    let hRow2 = '';
+    if (!examFilter) {
+      hRow2 = '<tr>';
+      SUBJECTS.forEach(() => {
+        activeExams.forEach(ex => hRow2 += `<th class="th-subj">${EXAM_LABELS[ex]||ex}</th>`);
+        hRow2 += '<th class="th-subj" style="background:#155f2e;">Total</th>';
+      });
+      hRow2 += '</tr>';
+    }
     thead.innerHTML = hRow1 + hRow2;
 
-    // Render table body (sorted by rank)
+    // ---- Build table body ----
     const sortedData = [...tableData].sort((a, b) => {
       const ra = rankMap[a.id], rb = rankMap[b.id];
-      if (ra !== rb) return ra - rb;
-      return (a.rollNo || 0) - (b.rollNo || 0);
+      return ra !== rb ? ra - rb : (a.rollNo||0) - (b.rollNo||0);
     });
 
     const tbody = document.getElementById('tab-tbody');
     tbody.innerHTML = sortedData.map(s => {
-      const rank = rankMap[s.id];
+      const r = rankMap[s.id];
       const pct = s.percentage.toFixed(1);
       const grade = calcGrade(s.percentage);
-      const rankClass = rank === 1 ? 'rank-1' : rank === 2 ? 'rank-2' : rank === 3 ? 'rank-3' : '';
-      const badgeClass = rank === 1 ? 'r1' : rank === 2 ? 'r2' : rank === 3 ? 'r3' : 'rn';
-      const gradeClass = gradeColor(grade);
+      const rankClass  = r===1?'rank-1':r===2?'rank-2':r===3?'rank-3':'';
+      const badgeClass = r===1?'r1':r===2?'r2':r===3?'r3':'rn';
 
       let cols = '';
       SUBJECTS.forEach(sub => {
         const st = s.subjectTotals[sub];
-        EXAMS.forEach(exam => {
-          const val = st.examMarks[exam];
-          cols += val !== null ? `<td>${val}</td>` : `<td style="color:#ccc;">-</td>`;
-        });
-        cols += st.total !== null
-          ? `<td style="font-weight:700;background:#f0fff4;">${st.total}</td>`
-          : `<td style="color:#ccc;">-</td>`;
+        if (examFilter) {
+          // Single column per subject
+          const val = st.examMarks[examFilter];
+          cols += val !== null
+            ? `<td style="font-weight:600;">${val}</td>`
+            : `<td style="color:#ccc;">-</td>`;
+        } else {
+          // All exams: PA1, HY, PA2, ANN + Total
+          activeExams.forEach(exam => {
+            const val = st.examMarks[exam];
+            cols += val !== null ? `<td>${val}</td>` : `<td style="color:#ccc;">-</td>`;
+          });
+          cols += st.total !== null
+            ? `<td style="font-weight:700;background:#f0fff4;">${st.total}</td>`
+            : `<td style="color:#ccc;">-</td>`;
+        }
       });
 
       return `<tr class="${rankClass}">
-        <td><span class="rank-badge ${badgeClass}">${rank}</span></td>
-        <td>${s.rollNo || '-'}</td>
-        <td class="left"><b>${escHtml(s.name || '-')}</b></td>
+        <td><span class="rank-badge ${badgeClass}">${r}</span></td>
+        <td>${s.rollNo||'-'}</td>
+        <td class="left"><b>${escHtml(s.name||'-')}</b></td>
         ${cols}
-        <td style="font-weight:700;">${s.grandMax > 0 ? s.grandTotal : '-'}</td>
-        <td style="color:#888;">${s.grandMax || '-'}</td>
-        <td style="font-weight:700;">${s.grandMax > 0 ? pct + '%' : '-'}</td>
-        <td><span class="grade-badge ${gradeClass}">${grade}</span></td>
+        <td style="font-weight:700;">${s.grandMax>0?s.grandTotal:'-'}</td>
+        <td style="color:#888;">${s.grandMax||'-'}</td>
+        <td style="font-weight:700;">${s.grandMax>0?pct+'%':'-'}</td>
+        <td><span class="grade-badge ${gradeColor(grade)}">${grade}</span></td>
       </tr>`;
     }).join('');
 
     // Stats
-    const passCount = tableData.filter(s => s.percentage >= 33).length;
+    const passThreshold = examFilter ? (EXAM_MAX[examFilter] * SUBJECTS.length * 0.33) : 0;
+    const passCount = tableData.filter(s => examFilter
+      ? s.grandTotal >= passThreshold
+      : s.percentage >= 33
+    ).length;
     const avgPct = tableData.length > 0
-      ? (tableData.reduce((sum, s) => sum + s.percentage, 0) / tableData.length).toFixed(1)
-      : 0;
-    const topPct = tableData.length > 0 ? Math.max(...tableData.map(s => s.percentage)).toFixed(1) : 0;
+      ? (tableData.reduce((sum,s) => sum+s.percentage, 0) / tableData.length).toFixed(1) : 0;
+    const topPct = tableData.length > 0
+      ? Math.max(...tableData.map(s => s.percentage)).toFixed(1) : 0;
 
+    const examLabel = examFilter ? EXAM_LABELS[examFilter] : 'All Exams';
     document.getElementById('stats-row').innerHTML = `
       <div class="stat-box"><div class="stat-num">${students.length}</div><div class="stat-label">Total Students</div></div>
       <div class="stat-box"><div class="stat-num" style="color:#27ae60;">${passCount}</div><div class="stat-label">Passed</div></div>
-      <div class="stat-box"><div class="stat-num" style="color:#c0392b;">${students.length - passCount}</div><div class="stat-label">Failed</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:#c0392b;">${students.length-passCount}</div><div class="stat-label">Failed</div></div>
       <div class="stat-box"><div class="stat-num" style="color:#2980b9;">${avgPct}%</div><div class="stat-label">Class Average</div></div>
       <div class="stat-box"><div class="stat-num" style="color:#8e44ad;">${topPct}%</div><div class="stat-label">Highest Score</div></div>`;
 
     document.getElementById('tab-summary').innerHTML =
-      `Class <b>${cls}${section ? ' - ' + section : ''}</b> | Session: <b>${session}</b> | Sorted by rank`;
+      `Class <b>${cls}${section?' - '+section:''}</b> | Session: <b>${session}</b> | Exam: <b>${examLabel}</b> | Sorted by rank`;
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('tab-section').style.display = 'block';
@@ -382,18 +427,24 @@ window.loadTabulation = async function() {
 
 window.exportCSV = function() {
   if (tableData.length === 0) return;
-  const cls     = document.getElementById('sel-class').value;
-  const section = document.getElementById('sel-section').value;
-  const session = document.getElementById('sel-session').value;
+  const cls        = document.getElementById('sel-class').value;
+  const section    = document.getElementById('sel-section').value;
+  const session    = document.getElementById('sel-session').value;
+  const examFilter = document.getElementById('sel-exam').value;
+  const activeExams = examFilter ? [examFilter] : EXAMS;
 
   const headers = ['Rank','Roll No','Student Name'];
   SUBJECTS.forEach(sub => {
-    EXAMS.forEach(exam => headers.push(`${sub} ${exam}`));
-    headers.push(`${sub} Total`);
+    if (examFilter) {
+      headers.push(`${sub} (${EXAM_LABELS[examFilter]||examFilter})`);
+    } else {
+      activeExams.forEach(exam => headers.push(`${sub} ${EXAM_LABELS[exam]||exam}`));
+      headers.push(`${sub} Total`);
+    }
   });
   headers.push('Grand Total','Max Marks','Percentage','Grade');
 
-  const sorted = [...tableData].sort((a, b) => b.percentage - a.percentage);
+  const sorted = [...tableData].sort((a,b) => b.percentage - a.percentage);
   const rankMap = {};
   let rank = 1;
   for (let i = 0; i < sorted.length; i++) {
@@ -402,24 +453,29 @@ window.exportCSV = function() {
   }
 
   const rows = sorted.map(s => {
-    const row = [rankMap[s.id], s.rollNo || '', s.name || ''];
+    const row = [rankMap[s.id], s.rollNo||'', s.name||''];
     SUBJECTS.forEach(sub => {
       const st = s.subjectTotals[sub];
-      EXAMS.forEach(exam => row.push(st.examMarks[exam] !== null ? st.examMarks[exam] : ''));
-      row.push(st.total !== null ? st.total : '');
+      if (examFilter) {
+        row.push(st.examMarks[examFilter] !== null ? st.examMarks[examFilter] : '');
+      } else {
+        activeExams.forEach(exam => row.push(st.examMarks[exam] !== null ? st.examMarks[exam] : ''));
+        row.push(st.total !== null ? st.total : '');
+      }
     });
-    row.push(s.grandMax > 0 ? s.grandTotal : '');
-    row.push(s.grandMax || '');
-    row.push(s.grandMax > 0 ? s.percentage.toFixed(1) + '%' : '');
-    row.push(s.grandMax > 0 ? calcGrade(s.percentage) : '');
+    row.push(s.grandMax>0 ? s.grandTotal : '');
+    row.push(s.grandMax||'');
+    row.push(s.grandMax>0 ? s.percentage.toFixed(1)+'%' : '');
+    row.push(s.grandMax>0 ? calcGrade(s.percentage) : '');
     return row;
   });
 
+  const examSuffix = examFilter ? `_${examFilter}` : '_AllExams';
   const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
+  const blob = new Blob([csv], { type:'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `Tabulation_Class${cls}${section ? '_' + section : ''}_${session}.csv`;
+  a.download = `Tabulation_Class${cls}${section?'_'+section:''}${examSuffix}_${session}.csv`;
   a.click();
 };
 

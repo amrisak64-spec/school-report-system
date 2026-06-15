@@ -127,6 +127,34 @@
       color: #1e8449;
     }
 
+    /* ===== CONFIRM MODAL ===== */
+    .confirm-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 1100;
+      align-items: center;
+      justify-content: center;
+    }
+    .confirm-overlay.open { display: flex; }
+    .confirm-box {
+      background: #fff;
+      border-radius: 12px;
+      padding: 28px 32px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+      text-align: center;
+    }
+    .confirm-box .confirm-icon { font-size: 40px; margin-bottom: 12px; }
+    .confirm-box h3 { font-size: 16px; color: #333; margin-bottom: 8px; }
+    .confirm-box p { font-size: 13px; color: #666; margin-bottom: 20px; }
+    .confirm-box .confirm-actions { display: flex; gap: 12px; justify-content: center; }
+    .confirm-box .confirm-actions button { padding: 9px 28px; border: none; border-radius: 7px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .btn-confirm-cancel { background: #eee; color: #333; }
+    .btn-confirm-ok     { background: #c0392b; color: #fff; }
+
     /* ===== EDIT MODAL ===== */
     .modal-overlay {
       display: none;
@@ -169,6 +197,19 @@
   </style>
 </head>
 <body>
+
+<!-- Custom Confirm Modal -->
+<div class="confirm-overlay" id="confirm-modal">
+  <div class="confirm-box">
+    <div class="confirm-icon">🗑️</div>
+    <h3 id="confirm-title">Are you sure?</h3>
+    <p id="confirm-msg">This action cannot be undone.</p>
+    <div class="confirm-actions">
+      <button class="btn-confirm-cancel" onclick="confirmCancel()">Cancel</button>
+      <button class="btn-confirm-ok" id="confirm-ok-btn" onclick="confirmOk()">Delete</button>
+    </div>
+  </div>
+</div>
 
 <!-- Edit Student Modal -->
 <div class="modal-overlay" id="edit-modal">
@@ -658,6 +699,23 @@ onAuthStateChanged(auth, async (user) => {
 // ---- LOGOUT ----
 window.logout = () => signOut(auth).then(() => window.location.href = 'index.html');
 
+// ---- CUSTOM CONFIRM MODAL ----
+let _confirmCallback = null;
+function showConfirm(title, msg, onOk) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-msg').textContent   = msg;
+  _confirmCallback = onOk;
+  document.getElementById('confirm-modal').classList.add('open');
+}
+window.confirmOk = async function() {
+  document.getElementById('confirm-modal').classList.remove('open');
+  if (_confirmCallback) { await _confirmCallback(); _confirmCallback = null; }
+};
+window.confirmCancel = function() {
+  document.getElementById('confirm-modal').classList.remove('open');
+  _confirmCallback = null;
+};
+
 // ======================================================
 // ==================== DASHBOARD =======================
 // ======================================================
@@ -814,10 +872,11 @@ window._renderStudentTable = function(students) {
 
 // filterStudentTable registered above before imports
 
-window.deleteStudent = async function(id, name) {
-  if (!confirm(`Delete student "${name}"? This cannot be undone.`)) return;
-  await deleteDoc(doc(db,'students',id));
-  loadStudents();
+window.deleteStudent = function(id, name) {
+  showConfirm(`Delete student "${name}"?`, 'This will permanently remove the student record.', async () => {
+    await deleteDoc(doc(db,'students',id));
+    loadStudents();
+  });
 };
 
 // ---- EDIT MODAL ----
@@ -1161,10 +1220,11 @@ window.loadTeachers = async function() {
   } catch(e) { tbody.innerHTML = `<tr><td colspan="6">Error: ${e.message}</td></tr>`; }
 };
 
-window.deleteTeacher = async function(id, name) {
-  if (!confirm(`Delete user "${name}"? This removes them from the system.`)) return;
-  await deleteDoc(doc(db,'users',id));
-  loadTeachers();
+window.deleteTeacher = function(id, name) {
+  showConfirm(`Delete teacher "${name}"?`, 'This will remove their login access and all assigned data.', async () => {
+    await deleteDoc(doc(db,'users',id));
+    loadTeachers();
+  });
 };
 
 window.openEditTeacherModal = async function(uid) {
