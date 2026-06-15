@@ -607,6 +607,12 @@ window.addStudent = async function() {
     showMsg('student-msg', 'Please fill all required fields.', 'error'); return;
   }
   try {
+    // Check for duplicate admission number
+    const dupSnap = await getDocs(query(collection(db,'students'), where('admissionNo','==',admno)));
+    if (!dupSnap.empty) {
+      showMsg('student-msg', `❌ Admission No. "${admno}" already exists (${dupSnap.docs[0].data().name}). Use a different number.`, 'error');
+      return;
+    }
     await addDoc(collection(db, 'students'), {
       name, fatherName:father, motherName:mother, admissionNo:admno,
       rollNo:Number(roll), class:cls, section, dob, address, session
@@ -877,12 +883,39 @@ window.confirmUpload = async function() {
   progressWrap.style.display = 'block';
 
   let uploaded = 0;
-  let failed = 0;
-  const batchSize = 20; // Firestore batch limit is 500, but keep smaller for progress
+  let skipped = 0;
+  const batchSize = 20;
 
   try {
-    for (let i = 0; i < parsedExcelData.length; i += batchSize) {
-      const chunk = parsedExcelData.slice(i, i + batchSize);
+    // Fetch all existing admission numbers to detect duplicates
+    const existingSnap = await getDocs(collection(db, 'students'));
+    const existingAdmNos = new Set();
+    existingSnap.forEach(d => {
+      const a = d.data().admissionNo;
+      if (a) existingAdmNos.add(String(a).trim());
+    });
+
+    // Filter out duplicates before uploading
+    const newStudents = [];
+    const dupStudents = [];
+    parsedExcelData.forEach(student => {
+      const admNo = String(student.admissionNo || '').trim();
+      if (existingAdmNos.has(admNo)) {
+        dupStudents.push(`${student.name} (Adm No: ${admNo})`);
+      } else {
+        newStudents.push(student);
+        existingAdmNos.add(admNo); // prevent intra-batch duplicates too
+      }
+    });
+
+    if (dupStudents.length > 0 && newStudents.length === 0) {
+      showMsg('upload-result-msg', `❌ All ${dupStudents.length} students already exist. No records uploaded.`, 'error');
+      btn.disabled = false;
+      return;
+    }
+
+    for (let i = 0; i < newStudents.length; i += batchSize) {
+      const chunk = newStudents.slice(i, i + batchSize);
       const batch = writeBatch(db);
       chunk.forEach(student => {
         const ref = doc(collection(db, 'students'));
@@ -890,14 +923,18 @@ window.confirmUpload = async function() {
       });
       await batch.commit();
       uploaded += chunk.length;
-      const pct = Math.round((uploaded / parsedExcelData.length) * 100);
+      skipped = dupStudents.length;
+      const pct = Math.round((uploaded / newStudents.length) * 100);
       progressBar.style.width = pct + '%';
-      progressText.textContent = `Uploading... ${uploaded} / ${parsedExcelData.length} students`;
+      progressText.textContent = `Uploading... ${uploaded} / ${newStudents.length} students`;
     }
 
-    progressText.textContent = `✅ Done! ${uploaded} students uploaded successfully.`;
+    const dupMsg = dupStudents.length > 0
+      ? ` (${dupStudents.length} skipped — duplicate Adm No: ${dupStudents.slice(0,3).join(', ')}${dupStudents.length>3?'…':''})`
+      : '';
+    progressText.textContent = `✅ Done! ${uploaded} students uploaded.${dupStudents.length ? ' '+dupStudents.length+' skipped.' : ''}`;
     progressBar.style.background = '#27ae60';
-    showMsg('upload-result-msg', `✅ ${uploaded} students uploaded to Firebase successfully!`, 'success');
+    showMsg('upload-result-msg', `✅ ${uploaded} students uploaded successfully!${dupMsg}`, uploaded > 0 ? 'success' : 'error');
 
     // Reset after 3 seconds
     setTimeout(() => {
