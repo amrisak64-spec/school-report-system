@@ -262,6 +262,9 @@
   <div class="modal">
     <h3>✏️ Edit Teacher / Staff</h3>
     <input type="hidden" id="te-uid"/>
+    <div style="background:#eaf0fb;border:1px solid #b0c4de;border-radius:6px;padding:8px 14px;margin-bottom:12px;font-size:12px;color:#1a3c6e;">
+      📧 <b>Email:</b> <span id="te-email-display" style="font-size:13px;font-weight:700;"></span>
+    </div>
     <input type="hidden" id="te-email-hidden"/>
     <div class="form-grid">
       <div><label>Full Name *</label><input id="te-name" placeholder="Teacher name"/></div>
@@ -1248,6 +1251,7 @@ window.openEditTeacherModal = async function(uid) {
     const t = snap.data();
     document.getElementById('te-uid').value = uid;
     document.getElementById('te-email-hidden').value = t.email || '';
+    document.getElementById('te-email-display').textContent = t.email || '';
     document.getElementById('te-name').value = t.name || '';
     document.getElementById('te-subject').value = t.subject || '';
     const classes = t.assignedClasses || [];
