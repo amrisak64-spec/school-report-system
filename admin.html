@@ -1444,7 +1444,8 @@ window.generateProgressReports = async function(singleStudentId = null) {
   // Open popup BEFORE any await so popup blocker doesn't kill it
   const win = window.open('', '_blank');
   if (!win) { alert('Popup was blocked. Please allow popups for this site and try again.'); return; }
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Loading...</title></head><body style="font-family:Arial;padding:40px;text-align:center;"><h2>Loading report cards...</h2><p>Please wait.</p></body></html>`);
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Loading...</title></head><body style="font-family:Arial;padding:40px;text-align:center;color:#555;"><p style="margin-top:80px;font-size:15px;">Please wait, loading report cards...</p></body></html>`);
+  win.document.close();
 
   let stuQ = section
     ? query(collection(db,'students'), where('class','==',cls), where('section','==',section), where('session','==',session))
@@ -1744,10 +1745,11 @@ window.generateProgressReports = async function(singleStudentId = null) {
     </div>`;
   }).join('');
 
+  win.document.open();
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>Progress Report Card – Class ${escapeHtml(cls)}</title>
   <style>
-    @page { size:A4 portrait; margin:6mm 8mm; }
+    @page { size:A4 portrait; margin:5mm 5mm; }
     * { box-sizing:border-box; margin:0; padding:0; }
     body { font-family:Arial,sans-serif; font-size:11px; background:#fff; color:#000;
            -webkit-print-color-adjust:exact; print-color-adjust:exact; }
