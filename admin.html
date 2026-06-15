@@ -1459,10 +1459,17 @@ window.generateProgressReports = async function(singleStudentId = null) {
 
     // Helpers defined before use
     const logoUrl = new URL('logo.svg', window.location.href).href;
-    const TH  = (t,x='') => `<th style="background:#1a3c6e;color:#fff;border:1px solid #333;padding:4px;text-align:center;white-space:nowrap;${x}">${t}</th>`;
-    const TH2 = (t,x='') => `<th style="background:#1a5c30;color:#fff;border:1px solid #333;padding:4px;text-align:center;white-space:nowrap;${x}">${t}</th>`;
-    const TD  = (v,x='') => `<td style="border:1px solid #333;padding:4px 8px;background:#fff;color:#000;${x}">${v}</td>`;
-    const resultColor = r => r==='Passed'?'#006600':r==='Failed'?'#cc0000':'#555';
+    // Color palette matching the screenshot
+    const C_BLUE   = '#1a3c6e'; // Term-1/Term-2 header bg
+    const C_ORANGE = '#e67e22'; // Final Result header bg
+    const C_GREEN  = '#27ae60'; // Appearance section header bg
+    const C_SUBJ   = '#c0392b'; // Subject name column bg
+    const BORDER   = '1px solid #bbb';
+    const TH  = (t,x='') => `<th style="background:${C_BLUE};color:#fff;border:${BORDER};padding:3px 4px;text-align:center;white-space:nowrap;font-size:9px;${x}">${t}</th>`;
+    const TH_OR=(t,x='') => `<th style="background:${C_ORANGE};color:#fff;border:${BORDER};padding:3px 4px;text-align:center;white-space:nowrap;font-size:9px;${x}">${t}</th>`;
+    const TH_GR=(t,x='') => `<th style="background:${C_GREEN};color:#fff;border:${BORDER};padding:3px 4px;text-align:center;white-space:nowrap;font-size:9px;${x}">${t}</th>`;
+    const TD  = (v,x='') => `<td style="border:${BORDER};padding:3px 6px;background:#fff;color:#000;font-size:9px;${x}">${v}</td>`;
+    const resultColor = r => r==='Passed'?'#006600':r==='Failed'?'#cc0000':'#333';
 
     const marksRows = SUBJECTS.map(sub => {
       const pa1 = marksLookup[`${s.id}_PA1_${sub}`];
@@ -1483,18 +1490,18 @@ window.generateProgressReports = async function(singleStudentId = null) {
       const gt    = t1!==null&&t2!==null ? t1+t2 : t1!==null ? t1 : t2!==null ? t2 : null;
       const gtMax = (pa1!==undefined?20:0)+(hy!==undefined?80:0)+(pa2!==undefined?20:0)+(ann!==undefined?80:0);
       const subGrade = gt!==null&&gtMax>0 ? GRADE(gt/gtMax*100) : '-';
-      const C = v => `<td style="border:1px solid #333;padding:3px 4px;text-align:center;background:#fff;color:#000;">${v!==undefined?v:'<span style="color:#999">-</span>'}</td>`;
+      const C = v => `<td style="border:${BORDER};padding:2px 3px;text-align:center;background:#fff;color:#000;font-size:9px;">${v!==undefined?v:'—'}</td>`;
       const subLabel = sub==='Science'?'SCIENCE / E.V.S.':sub==='SST'?'S.S.T.':sub==='GK'?'G.K.':sub.toUpperCase();
 
       return `<tr>
-        <td style="border:1px solid #333;padding:3px 7px;font-weight:600;white-space:nowrap;text-align:left;background:#fff;color:#000;">${subLabel}</td>
+        <td style="border:${BORDER};padding:2px 5px;font-weight:700;text-align:left;background:#fff;color:#000;font-size:9px;white-space:nowrap;">${subLabel}</td>
         ${C(pa1)}${C(hy)}
-        <td style="border:1px solid #333;padding:3px 4px;text-align:center;font-weight:700;background:#ddeeff;color:#1a3c6e;">${t1!==null?t1:'-'}</td>
+        <td style="border:${BORDER};padding:2px 3px;text-align:center;font-weight:700;background:#dbeafe;color:#1a3c6e;font-size:9px;">${t1!==null?t1:'—'}</td>
         ${C(pa2)}${C(ann)}
-        <td style="border:1px solid #333;padding:3px 4px;text-align:center;font-weight:700;background:#ddeeff;color:#1a3c6e;">${t2!==null?t2:'-'}</td>
-        <td style="border:1px solid #333;padding:3px 4px;text-align:center;font-weight:700;background:#ddffee;color:#006600;">${gt!==null?gt:'-'}</td>
-        <td style="border:1px solid #333;padding:3px 4px;text-align:center;background:#fff;color:#000;font-weight:700;">${subGrade}</td>
-        <td style="border:1px solid #333;padding:3px 5px;font-size:9px;background:#fff;color:#555;">${escapeHtml(subRemark)}</td>
+        <td style="border:${BORDER};padding:2px 3px;text-align:center;font-weight:700;background:#dbeafe;color:#1a3c6e;font-size:9px;">${t2!==null?t2:'—'}</td>
+        <td style="border:${BORDER};padding:2px 3px;text-align:center;font-weight:700;background:#fef3c7;color:#92400e;font-size:9px;">${gt!==null?gt:'—'}</td>
+        <td style="border:${BORDER};padding:2px 3px;text-align:center;font-weight:700;background:#fff;color:#000;font-size:9px;">${subGrade}</td>
+        <td style="border:${BORDER};padding:2px 4px;font-size:8px;background:#fff;color:#555;">${escapeHtml(subRemark)}</td>
       </tr>`;
     }).join('');
 
@@ -1533,144 +1540,159 @@ window.generateProgressReports = async function(singleStudentId = null) {
 
     return `
     <div class="report-card">
-      <!-- School Header with Logo -->
-      <div style="display:flex;align-items:center;border:2px solid #333;padding:7px 10px;margin-bottom:6px;background:#fff;">
-        <img src="${logoUrl}" style="width:50px;height:50px;border-radius:50%;flex-shrink:0;margin-right:10px;" alt="Logo">
+
+      <!-- ══ SCHOOL HEADER ══ -->
+      <div style="display:flex;align-items:center;padding:6px 8px 5px;border-bottom:2px solid #1a3c6e;margin-bottom:4px;">
+        <img src="${logoUrl}" style="width:52px;height:52px;border-radius:50%;flex-shrink:0;margin-right:10px;" alt="Logo">
         <div style="flex:1;text-align:center;">
-          <div style="font-size:16px;font-weight:700;color:#c0392b;letter-spacing:1px;">PRABHA GYAN JYOTI PUBLIC SCHOOL</div>
-          <div style="display:inline-block;background:#1a3c6e;padding:2px 14px;font-size:9px;font-weight:700;margin:2px 0;border-radius:2px;color:#fff;">Government Recognized Affiliation No. - E24/15</div>
-          <div style="font-size:9px;font-weight:600;color:#333;">RAM BAGH COLONY, OPP. BALAJI DHAM, GANGOH-247341, SAHARANPUR, (U.P.)</div>
-          <div style="font-size:9px;color:#555;">Mob.: 9837700311, 9720175848 &nbsp;|&nbsp; Website: www.prabhaschoolonline.com</div>
+          <div style="font-size:17px;font-weight:900;color:#c0392b;letter-spacing:1px;font-family:Arial,sans-serif;">PRABHA GYAN JYOTI PUBLIC SCHOOL</div>
+          <div style="font-size:8.5px;color:#555;margin-top:1px;">Government Recognized Affiliation No. - E24/15</div>
+          <div style="font-size:8px;color:#333;font-weight:600;">RAM BAGH COLONY, OPP. BALAJI DHAM, GANGOH-247341, SAHARANPUR, (U.P.)</div>
+          <div style="font-size:8px;color:#555;">Mob.: 9837700311, 9720175848 &nbsp;|&nbsp; www.prabhaschoolonline.com</div>
         </div>
+        <img src="${logoUrl}" style="width:52px;height:52px;border-radius:50%;flex-shrink:0;margin-left:10px;" alt="Logo">
       </div>
 
-      <!-- Title row -->
-      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #333;padding-bottom:3px;margin-bottom:6px;">
-        <span style="font-size:9px;font-style:italic;color:#555;">Date ..............................</span>
-        <span style="font-size:15px;font-weight:700;color:#1a3c6e;letter-spacing:2px;">PROGRESS REPORT</span>
-        <span style="font-size:9px;font-style:italic;color:#555;">Session : ${escapeHtml(session)}</span>
+      <!-- ══ TITLE ══ -->
+      <div style="text-align:center;margin-bottom:5px;">
+        <div style="font-size:16px;font-weight:900;color:#1a3c6e;letter-spacing:3px;font-family:Arial,sans-serif;">PROGRESS REPORT</div>
       </div>
 
-      <!-- Student Info 2-column -->
-      <table style="width:100%;border-collapse:collapse;border:1px solid #333;margin-bottom:6px;font-size:10px;">
+      <!-- ══ DATE / SESSION ══ -->
+      <div style="display:flex;justify-content:space-between;font-size:9px;color:#333;margin-bottom:5px;padding:0 2px;">
+        <span>Date: .......................................</span>
+        <span>Session: <b>${escapeHtml(session)}</b></span>
+      </div>
+
+      <!-- ══ STUDENT INFO ══ -->
+      <table style="width:100%;border-collapse:collapse;border:1px solid #999;margin-bottom:5px;font-size:9.5px;">
         <tr>
-          <td style="border:1px solid #333;padding:4px 7px;width:18%;font-style:italic;color:#555;background:#f5f5f5;">Name of The Student</td>
-          <td style="border:1px solid #333;padding:4px 7px;width:37%;font-weight:700;border-right:2px solid #333;color:#000;background:#fff;">${escapeHtml(s.name||'')}</td>
-          <td style="border:1px solid #333;padding:4px 7px;width:16%;font-style:italic;color:#555;background:#f5f5f5;">Admission No.</td>
-          <td style="border:1px solid #333;padding:4px 6px;width:10%;font-weight:700;color:#000;background:#fff;">${escapeHtml(s.admissionNo||'-')}</td>
-          <td style="border:1px solid #333;padding:4px 5px;width:8%;font-style:italic;color:#555;background:#f5f5f5;">Roll No.</td>
-          <td style="border:1px solid #333;padding:4px 5px;font-weight:700;color:#000;background:#fff;">${s.rollNo||'-'}</td>
+          <td style="border:1px solid #999;padding:3px 6px;background:#eaf0fb;color:#1a3c6e;font-weight:600;width:19%;">Name of The Student</td>
+          <td style="border:1px solid #999;padding:3px 6px;font-weight:700;width:30%;">${escapeHtml(s.name||'')}</td>
+          <td style="border:1px solid #999;padding:3px 6px;background:#eaf0fb;color:#1a3c6e;font-weight:600;width:14%;">Admission No.</td>
+          <td style="border:1px solid #999;padding:3px 6px;font-weight:700;width:10%;">${escapeHtml(s.admissionNo||'—')}</td>
+          <td style="border:1px solid #999;padding:3px 6px;background:#eaf0fb;color:#1a3c6e;font-weight:600;width:10%;">Roll No.</td>
+          <td style="border:1px solid #999;padding:3px 6px;font-weight:700;">${s.rollNo||'—'}</td>
         </tr>
         <tr>
-          <td style="border:1px solid #333;padding:4px 7px;font-style:italic;color:#555;background:#f5f5f5;">Father's Name</td>
-          <td style="border:1px solid #333;padding:4px 7px;font-weight:700;border-right:2px solid #333;color:#000;background:#fff;">${escapeHtml(s.fatherName||'-')}</td>
-          <td style="border:1px solid #333;padding:4px 7px;font-style:italic;color:#555;background:#f5f5f5;">Class</td>
-          <td style="border:1px solid #333;padding:4px 6px;font-weight:700;color:#000;background:#fff;">${s.class||'-'}</td>
-          <td style="border:1px solid #333;padding:4px 5px;font-style:italic;color:#555;background:#f5f5f5;">D.O.B</td>
-          <td style="border:1px solid #333;padding:4px 5px;font-weight:700;color:#000;background:#fff;">${s.dob||'-'}</td>
+          <td style="border:1px solid #999;padding:3px 6px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">Father's Name</td>
+          <td style="border:1px solid #999;padding:3px 6px;font-weight:700;">${escapeHtml(s.fatherName||'—')}</td>
+          <td style="border:1px solid #999;padding:3px 6px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">Class</td>
+          <td style="border:1px solid #999;padding:3px 6px;font-weight:700;">Class ${escapeHtml(s.class||'—')}${s.section?' - '+s.section:''}</td>
+          <td style="border:1px solid #999;padding:3px 6px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">D.O.B.</td>
+          <td style="border:1px solid #999;padding:3px 6px;font-weight:700;">${s.dob||'—'}</td>
         </tr>
         <tr>
-          <td style="border:1px solid #333;padding:4px 7px;font-style:italic;color:#555;background:#f5f5f5;">Mother's Name</td>
-          <td style="border:1px solid #333;padding:4px 7px;font-weight:700;border-right:2px solid #333;color:#000;background:#fff;">${escapeHtml(s.motherName||'-')}</td>
-          <td style="border:1px solid #333;padding:4px 7px;font-style:italic;color:#555;background:#f5f5f5;">Address</td>
-          <td colspan="3" style="border:1px solid #333;padding:4px 7px;font-weight:700;color:#000;background:#fff;">${escapeHtml(s.address||'-')}</td>
+          <td style="border:1px solid #999;padding:3px 6px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">Mother's Name</td>
+          <td style="border:1px solid #999;padding:3px 6px;font-weight:700;">${escapeHtml(s.motherName||'—')}</td>
+          <td style="border:1px solid #999;padding:3px 6px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">Address</td>
+          <td colspan="3" style="border:1px solid #999;padding:3px 6px;font-weight:700;">${escapeHtml(s.address||'—')}</td>
         </tr>
       </table>
 
-      <!-- MARKS TABLE -->
-      <table style="width:100%;border-collapse:collapse;font-size:9.5px;margin-bottom:5px;">
+      <!-- ══ MARKS TABLE ══ -->
+      <table style="width:100%;border-collapse:collapse;font-size:9px;margin-bottom:4px;">
         <thead>
           <tr>
-            ${TH('SCHOLASTIC AREA / SUBJECT','text-align:left;padding-left:6px;')}
-            <th colspan="3" style="background:#1a3c6e;color:#fff;border:1px solid #333;padding:4px;text-align:center;">TERM - 1</th>
-            <th colspan="3" style="background:#1a3c6e;color:#fff;border:1px solid #333;padding:4px;text-align:center;">TERM - 2</th>
-            <th colspan="3" style="background:#1a5c30;color:#fff;border:1px solid #333;padding:4px;text-align:center;">FINAL RESULT</th>
+            <th rowspan="2" style="background:#1a3c6e;color:#fff;border:1px solid #999;padding:3px 5px;text-align:left;font-size:9px;min-width:80px;">SCHOLASTIC AREA</th>
+            <th colspan="3" style="background:#1a3c6e;color:#fff;border:1px solid #999;padding:3px;text-align:center;font-size:9px;">TERM - 1</th>
+            <th colspan="3" style="background:#1a3c6e;color:#fff;border:1px solid #999;padding:3px;text-align:center;font-size:9px;">TERM - 2</th>
+            <th colspan="3" style="background:${C_ORANGE};color:#fff;border:1px solid #999;padding:3px;text-align:center;font-size:9px;">FINAL RESULT</th>
           </tr>
           <tr>
-            ${TH('')}
-            ${TH('P.A.1<br><small>(20)</small>')}${TH('Half Y.<br>(80)')}${TH('TOTAL<br><small>(100)</small>','background:#0f2a55;')}
-            ${TH('P.A.2<br><small>(20)</small>')}${TH('Annual<br>(80)')}${TH('TOTAL<br><small>(100)</small>','background:#0f2a55;')}
-            ${TH2('G.TOTAL<br><small>(200)</small>')}${TH2('GRADE')}${TH2('REMARKS')}
+            ${TH('P.A. 1<br>(20)')}${TH('HALF Y.<br>EXAM (80)')}${TH('TOTAL<br>(100)','background:#0f2a55;')}
+            ${TH('P.A. 2<br>(20)')}${TH('ANNUAL<br>EXAM (80)')}${TH('TOTAL<br>(100)','background:#0f2a55;')}
+            ${TH_OR('G.TOTAL<br>(200)')}${TH_OR('GRADE')}${TH_OR('REMARKS')}
           </tr>
         </thead>
         <tbody>
           ${marksRows}
-          <tr style="background:#eef4ff;font-weight:700;font-size:9.5px;color:#000;">
-            <td style="border:1px solid #333;padding:3px 7px;text-align:left;">GRAND TOTAL</td>
-            <td style="border:1px solid #333;padding:3px;text-align:center;">${t1PA1m>0?t1PA1s:'-'}</td>
-            <td style="border:1px solid #333;padding:3px;text-align:center;">${t1HYm>0?t1HYs:'-'}</td>
-            <td style="border:1px solid #333;padding:3px;text-align:center;background:#ddeeff;color:#1a3c6e;">${t1Max>0?t1Sum:'-'}</td>
-            <td style="border:1px solid #333;padding:3px;text-align:center;">${t2PA2m>0?t2PA2s:'-'}</td>
-            <td style="border:1px solid #333;padding:3px;text-align:center;">${t2ANNm>0?t2ANNs:'-'}</td>
-            <td style="border:1px solid #333;padding:3px;text-align:center;background:#ddeeff;color:#1a3c6e;">${t2Max>0?t2Sum:'-'}</td>
-            <td style="border:1px solid #333;padding:3px;text-align:center;background:#ddffee;color:#006600;">${gtMax>0?gtSum:'-'}</td>
-            <td style="border:1px solid #333;padding:3px;text-align:center;">${overallGrade}</td>
-            <td style="border:1px solid #333;padding:3px;"></td>
+          <tr style="background:#dbeafe;font-weight:700;font-size:9px;">
+            <td style="border:1px solid #999;padding:2px 5px;text-align:left;color:#1a3c6e;">GRAND TOTAL</td>
+            <td style="border:1px solid #999;padding:2px 3px;text-align:center;">${t1PA1m>0?t1PA1s:'—'}</td>
+            <td style="border:1px solid #999;padding:2px 3px;text-align:center;">${t1HYm>0?t1HYs:'—'}</td>
+            <td style="border:1px solid #999;padding:2px 3px;text-align:center;background:#bfdbfe;color:#1a3c6e;">${t1Max>0?t1Sum:'—'}</td>
+            <td style="border:1px solid #999;padding:2px 3px;text-align:center;">${t2PA2m>0?t2PA2s:'—'}</td>
+            <td style="border:1px solid #999;padding:2px 3px;text-align:center;">${t2ANNm>0?t2ANNs:'—'}</td>
+            <td style="border:1px solid #999;padding:2px 3px;text-align:center;background:#bfdbfe;color:#1a3c6e;">${t2Max>0?t2Sum:'—'}</td>
+            <td style="border:1px solid #999;padding:2px 3px;text-align:center;background:#fde68a;color:#92400e;">${gtMax>0?gtSum:'—'}</td>
+            <td style="border:1px solid #999;padding:2px 3px;text-align:center;">${overallGrade}</td>
+            <td style="border:1px solid #999;padding:2px 3px;"></td>
           </tr>
         </tbody>
       </table>
 
-      <!-- Grading Scale -->
-      <div style="font-size:7.5px;margin-bottom:5px;padding:3px 6px;border:1px solid #333;background:#f9f9f9;color:#333;">
-        <b style="color:#1a3c6e;">GRADING SCALE</b> — A1=91%-100%; A2=81%-90%; B1=71%-80%; B2=61%-70%; C1=51%-60%; C2=41%-50%; D=33%-40%; <b style="color:#cc0000;">E=BELOW 33%</b>
+      <!-- ══ GRADING SCALE ══ -->
+      <div style="font-size:7.5px;margin-bottom:4px;padding:2px 6px;border:1px solid #bbb;background:#f8faff;color:#333;">
+        <b style="color:#1a3c6e;">GRADING SCALE:</b> A1=91%-100%; A2=81%-90%; B1=71%-80%; B2=61%-70%; C1=51%-60%; C2=41%-50%; D=33%-40%; <b style="color:#cc0000;">E=20% AND BELOW</b>
       </div>
 
-      <!-- Student's Appearance -->
-      <div style="text-align:center;color:#c0392b;font-weight:700;font-size:11px;margin-bottom:4px;letter-spacing:1px;">STUDENT'S APPEARANCE</div>
-      <table style="width:100%;border-collapse:collapse;font-size:9.5px;margin-bottom:5px;">
-        <thead><tr>
-          ${TH('S.No.')}${TH('Particular','text-align:left;padding-left:8px;')}
-          ${TH('Very Good')}${TH('Good')}${TH('Average')}${TH('Poor')}${TH('Remark')}
-        </tr></thead>
+      <!-- ══ STUDENT'S APPEARANCE ══ -->
+      <table style="width:100%;border-collapse:collapse;font-size:9px;margin-bottom:4px;">
+        <thead>
+          <tr>
+            <th colspan="7" style="background:${C_GREEN};color:#fff;border:1px solid #999;padding:4px;text-align:center;font-size:10px;letter-spacing:1px;">STUDENT'S APPEARANCE</th>
+          </tr>
+          <tr>
+            ${TH_GR('S.NO.')}${TH_GR('PARTICULAR','text-align:left;padding-left:8px;min-width:90px;')}
+            ${TH_GR('VERY GOOD')}${TH_GR('GOOD')}${TH_GR('AVERAGE')}${TH_GR('POOR')}${TH_GR('REMARK')}
+          </tr>
+        </thead>
         <tbody>${appearanceRows}</tbody>
       </table>
 
-      <!-- Overall Performance -->
-      <div style="text-align:center;color:#c0392b;font-weight:700;font-size:11px;margin-bottom:4px;letter-spacing:1px;">OVERALL PERFORMANCE</div>
-      <table style="width:100%;border-collapse:collapse;font-size:9.5px;margin-bottom:7px;">
-        <thead><tr>
-          ${TH('S.No.')}${TH('PROFILE','text-align:left;padding-left:8px;')}
-          ${TH('TERM 1')}${TH('TERM 2')}${TH('TERM 1 &amp; TERM 2')}
-        </tr></thead>
+      <!-- ══ OVERALL PERFORMANCE ══ -->
+      <table style="width:100%;border-collapse:collapse;font-size:9px;margin-bottom:4px;">
+        <thead>
+          <tr>
+            <th colspan="5" style="background:${C_ORANGE};color:#fff;border:1px solid #999;padding:4px;text-align:center;font-size:10px;letter-spacing:1px;">OVERALL PERFORMANCE</th>
+          </tr>
+          <tr>
+            ${TH_OR('S.NO.')}${TH_OR('PROFILE','text-align:left;padding-left:8px;')}
+            ${TH_OR('TERM 1')}${TH_OR('TERM 2')}${TH_OR('TERM 1 &amp; TERM 2')}
+          </tr>
+        </thead>
         <tbody>
           <tr>
-            ${TD('1','text-align:center;')}${TD('ATTENDANCE (%)')}
-            ${TD(attTerm1Pct,'text-align:center;')}${TD(attTerm2Pct,'text-align:center;')}${TD('','text-align:center;')}
+            ${TD('1','text-align:center;')}${TD('ATTENDANCE (%)','font-weight:600;')}
+            ${TD(attTerm1Pct,'text-align:center;')}
+            ${TD(attTerm2Pct,'text-align:center;')}
+            ${TD(attTerm1Pct||attTerm2Pct ? (att.term2AttendancePct||att.term1AttendancePct||'')+'%' : '','text-align:center;font-weight:700;')}
           </tr>
           <tr>
-            ${TD('2','text-align:center;')}${TD('MARKS (%)')}
+            ${TD('2','text-align:center;')}${TD('MARKS (%)','font-weight:600;')}
             ${TD(t1Max>0?t1Pct+'%':'','text-align:center;')}
             ${TD(t2Max>0?t2Pct+'%':'','text-align:center;')}
-            ${TD(gtMax>0?'<b style="color:#1a3c6e;">'+finalPct+'%</b>':'','text-align:center;')}
+            ${TD(gtMax>0?'<b>'+finalPct+'%</b>':'','text-align:center;')}
           </tr>
           <tr>
-            ${TD('3','text-align:center;')}${TD('RESULT')}
-            <td style="border:1px solid #333;padding:4px 8px;background:#fff;text-align:center;font-style:italic;font-weight:600;color:${resultColor(t1Result)};">${escapeHtml(t1Result)}</td>
-            <td style="border:1px solid #333;padding:4px 8px;background:#fff;text-align:center;font-style:italic;font-weight:600;color:${resultColor(t2Result)};">${escapeHtml(t2Result)}</td>
-            <td style="border:1px solid #333;padding:4px 8px;background:#fff;text-align:center;font-style:italic;font-weight:700;color:${resultColor(overallResult)};">${escapeHtml(overallResult)}</td>
+            ${TD('3','text-align:center;')}${TD('RESULT','font-weight:600;')}
+            <td style="border:1px solid #bbb;padding:3px 6px;text-align:center;font-weight:700;font-size:9px;color:${resultColor(t1Result)};">${escapeHtml(t1Result)}</td>
+            <td style="border:1px solid #bbb;padding:3px 6px;text-align:center;font-weight:700;font-size:9px;color:${resultColor(t2Result)};">${escapeHtml(t2Result)}</td>
+            <td style="border:1px solid #bbb;padding:3px 6px;text-align:center;font-weight:700;font-size:9px;color:${resultColor(overallResult)};">${escapeHtml(overallResult)}</td>
           </tr>
         </tbody>
       </table>
 
-      <!-- Note -->
-      <div style="font-size:8.5px;margin-bottom:8px;padding:3px 6px;border:1px solid #333;background:#f9f9f9;color:#333;">
-        <b style="color:#1a3c6e;">NOTE:-</b> THE SCHOOL SHALL RE-OPEN FOR NEW ACADEMIC SESSION ON &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        PROMOTED TO CLASS : &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <!-- ══ NOTE ══ -->
+      <div style="font-size:8.5px;margin-bottom:6px;padding:3px 6px;border:1px solid #bbb;background:#fffbeb;color:#333;">
+        <b style="color:#92400e;">NOTE:-</b> THE SCHOOL SHALL RE-OPEN FOR NEW ACADEMIC SESSION ON .............................
+        &nbsp;&nbsp;&nbsp; PROMOTED TO CLASS : .....................
       </div>
 
-      <!-- Signatures -->
-      <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:10px;padding:0 10px;">
+      <!-- ══ SIGNATURES ══ -->
+      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:9.5px;padding:0 20px;">
         <div style="text-align:center;">
-          <div style="border-bottom:1px solid #333;width:120px;height:24px;margin-bottom:3px;"></div>
-          <b style="color:#000;">CLASS TEACHER</b>
+          <div style="border-bottom:1.5px solid #333;width:130px;height:28px;margin-bottom:3px;"></div>
+          <b>CLASS TEACHER</b>
         </div>
         <div style="text-align:center;">
-          <div style="border-bottom:1px solid #333;width:120px;height:24px;margin-bottom:3px;"></div>
-          <b style="color:#000;">PARENT'S SIGN</b>
+          <div style="border-bottom:1.5px solid #333;width:130px;height:28px;margin-bottom:3px;"></div>
+          <b>PARENT'S SIGN</b>
         </div>
         <div style="text-align:center;">
-          <div style="border-bottom:1px solid #333;width:120px;height:24px;margin-bottom:3px;"></div>
-          <b style="color:#000;">PRINCIPAL</b>
+          <div style="border-bottom:1.5px solid #333;width:130px;height:28px;margin-bottom:3px;"></div>
+          <b>PRINCIPAL</b>
         </div>
       </div>
     </div>`;
