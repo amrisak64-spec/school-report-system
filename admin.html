@@ -284,12 +284,25 @@
         <small style="color:#888;">Hold Ctrl to select multiple</small>
       </div>
     </div>
-    <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:12px;">
-      <b>🔐 Password Reset:</b> To reset this teacher's password, click the button below — they will receive a reset link via email.
-      <div style="margin-top:8px;display:flex;gap:10px;align-items:center;">
-        <button class="btn btn-warning" style="padding:6px 14px;font-size:12px;" onclick="sendPasswordReset()">📧 Send Reset Email</button>
-        <span id="te-reset-msg" style="font-size:12px;"></span>
+    <div style="background:#f0f4ff;border:1px solid #b0c4de;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:12px;">
+      <b style="color:#1a3c6e;">🔐 Password Management</b>
+      <div style="display:flex;gap:12px;align-items:flex-end;margin-top:8px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:160px;">
+          <label style="font-size:11px;color:#555;display:block;margin-bottom:3px;">Current Password</label>
+          <div style="position:relative;">
+            <input id="te-cur-pass" type="password" readonly style="width:100%;padding:6px 34px 6px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;background:#f9f9f9;color:#333;"/>
+            <button type="button" onclick="toggleTePass('te-cur-pass','te-eye1')" id="te-eye1" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:14px;padding:0;">👁</button>
+          </div>
+        </div>
+        <div style="flex:1;min-width:160px;">
+          <label style="font-size:11px;color:#555;display:block;margin-bottom:3px;">New Password <span style="color:#888;">(leave blank to keep)</span></label>
+          <div style="position:relative;">
+            <input id="te-new-pass" type="password" placeholder="Min 6 chars" style="width:100%;padding:6px 34px 6px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;"/>
+            <button type="button" onclick="toggleTePass('te-new-pass','te-eye2')" id="te-eye2" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:14px;padding:0;">👁</button>
+          </div>
+        </div>
       </div>
+      <span id="te-reset-msg" style="font-size:12px;display:block;margin-top:6px;"></span>
     </div>
     <div id="te-msg"></div>
     <div class="modal-actions">
@@ -1176,6 +1189,7 @@ window.addTeacher = async function() {
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
     await setDoc(doc(db,'users', cred.user.uid), {
       name, email, subject, assignedClasses:classes, role,
+      password: pass,
       createdAt: new Date().toISOString()
     });
     const tmsg = document.getElementById('teacher-msg');
@@ -1238,6 +1252,8 @@ window.openEditTeacherModal = async function(uid) {
     document.getElementById('te-subject').value = t.subject || '';
     const classes = t.assignedClasses || [];
     Array.from(document.getElementById('te-classes').options).forEach(o => o.selected = classes.includes(o.value));
+    document.getElementById('te-cur-pass').value = t.password || '';
+    document.getElementById('te-new-pass').value = '';
     document.getElementById('te-msg').textContent = '';
     document.getElementById('te-reset-msg').textContent = '';
     document.getElementById('teacher-edit-modal').classList.add('open');
@@ -1252,33 +1268,57 @@ document.getElementById('teacher-edit-modal').addEventListener('click', function
 });
 
 window.saveEditTeacher = async function() {
-  const uid     = document.getElementById('te-uid').value;
-  const name    = document.getElementById('te-name').value.trim();
-  const subject = document.getElementById('te-subject').value;
-  const classes = Array.from(document.getElementById('te-classes').selectedOptions).map(o => o.value);
+  const uid      = document.getElementById('te-uid').value;
+  const email    = document.getElementById('te-email-hidden').value;
+  const name     = document.getElementById('te-name').value.trim();
+  const subject  = document.getElementById('te-subject').value;
+  const classes  = Array.from(document.getElementById('te-classes').selectedOptions).map(o => o.value);
+  const newPass  = document.getElementById('te-new-pass').value.trim();
+  const curPass  = document.getElementById('te-cur-pass').value;
   if (!name || !subject || classes.length === 0) {
     showMsg('te-msg','Please fill all required fields.','error'); return;
   }
+  if (newPass && newPass.length < 6) {
+    showMsg('te-msg','New password must be at least 6 characters.','error'); return;
+  }
   try {
-    await updateDoc(doc(db,'users',uid), { name, subject, assignedClasses:classes });
+    const updateData = { name, subject, assignedClasses:classes };
+
+    if (newPass) {
+      if (!curPass) { showMsg('te-msg','Current password not found — cannot change password.','error'); return; }
+      // Sign in as teacher, update password, sign back in as admin
+      const adminEmail    = auth.currentUser.email;
+      const adminPassSnap = await getDoc(doc(db,'users', auth.currentUser.uid));
+      const adminPass     = adminPassSnap.data()?.password || '';
+      const { signInWithEmailAndPassword, updatePassword } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+      const teacherCred = await signInWithEmailAndPassword(auth, email, curPass);
+      await updatePassword(teacherCred.user, newPass);
+      // Sign admin back in
+      await signInWithEmailAndPassword(auth, adminEmail, adminPass);
+      updateData.password = newPass;
+      document.getElementById('te-cur-pass').value = newPass;
+      document.getElementById('te-new-pass').value = '';
+      document.getElementById('te-reset-msg').textContent = '✅ Password changed successfully!';
+      document.getElementById('te-reset-msg').style.color = '#1e8449';
+    }
+
+    await updateDoc(doc(db,'users',uid), updateData);
     showMsg('te-msg','Teacher updated successfully!','success');
-    setTimeout(() => { closeTeacherEditModal(); loadTeachers(); }, 1200);
-  } catch(e) { showMsg('te-msg','Error: '+e.message,'error'); }
+    setTimeout(() => { closeTeacherEditModal(); loadTeachers(); }, 1500);
+  } catch(e) {
+    if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+      showMsg('te-msg','Password change failed — stored password may be outdated.','error');
+    } else {
+      showMsg('te-msg','Error: '+e.message,'error');
+    }
+  }
 };
 
-window.sendPasswordReset = async function() {
-  const email = document.getElementById('te-email-hidden').value;
-  const msgEl = document.getElementById('te-reset-msg');
-  if (!email) { msgEl.textContent = 'No email on record.'; return; }
-  try {
-    const { sendPasswordResetEmail } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
-    await sendPasswordResetEmail(auth, email);
-    msgEl.style.color = '#1e8449';
-    msgEl.textContent = `✅ Reset link sent to ${email}`;
-  } catch(e) {
-    msgEl.style.color = '#c0392b';
-    msgEl.textContent = 'Error: '+e.message;
-  }
+window.toggleTePass = function(inputId, btnId) {
+  const inp = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; }
 };
 
 // ======================================================
