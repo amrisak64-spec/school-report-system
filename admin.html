@@ -1680,8 +1680,10 @@ window.generateProgressReports = async function(singleStudentId = null) {
         &nbsp;&nbsp;&nbsp; PROMOTED TO CLASS : .....................
       </div>
 
+      <div class="rc-spacer"></div>
+
       <!-- ══ SIGNATURES ══ -->
-      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:9.5px;padding:0 20px;">
+      <div class="rc-signatures" style="display:flex;justify-content:space-between;margin-top:6px;font-size:9.5px;padding:0 20px;">
         <div style="text-align:center;">
           <div style="border-bottom:1.5px solid #333;width:130px;height:28px;margin-bottom:3px;"></div>
           <b>CLASS TEACHER</b>
@@ -1706,10 +1708,13 @@ window.generateProgressReports = async function(singleStudentId = null) {
     body { font-family:'Times New Roman',Times,serif; font-size:10px; background:#fff; color:#000;
            -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     .report-card {
-      border:2px solid #333; padding:8px 10px;
+      border:2px solid #333; padding:10px 12px;
       page-break-after:always; break-after:page;
-      background:#fff; min-height:265mm; color:#000;
+      background:#fff; height:277mm; color:#000;
+      display:flex; flex-direction:column;
     }
+    .rc-spacer { flex:1; }
+    .rc-signatures { margin-top:auto; }
     .report-card:last-child { page-break-after:auto; break-after:auto; }
     .toolbar {
       position:fixed; top:0; left:0; right:0; z-index:999;
