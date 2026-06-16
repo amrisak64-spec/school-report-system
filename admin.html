@@ -288,21 +288,12 @@
       </div>
     </div>
     <div style="background:#f0f4ff;border:1px solid #b0c4de;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:12px;">
-      <b style="color:#1a3c6e;">🔐 Password Management</b>
-      <div style="display:flex;gap:12px;align-items:flex-end;margin-top:8px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:160px;">
-          <label style="font-size:11px;color:#555;display:block;margin-bottom:3px;">Current Password</label>
-          <div style="position:relative;">
-            <input id="te-cur-pass" type="password" placeholder="Enter if known" style="width:100%;padding:6px 34px 6px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;background:#fff;color:#333;"/>
-            <button type="button" onclick="toggleTePass('te-cur-pass','te-eye1')" id="te-eye1" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:14px;padding:0;">👁</button>
-          </div>
-        </div>
-        <div style="flex:1;min-width:160px;">
-          <label style="font-size:11px;color:#555;display:block;margin-bottom:3px;">New Password <span style="color:#888;">(leave blank to keep)</span></label>
-          <div style="position:relative;">
-            <input id="te-new-pass" type="password" placeholder="Min 6 chars" style="width:100%;padding:6px 34px 6px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;"/>
-            <button type="button" onclick="toggleTePass('te-new-pass','te-eye2')" id="te-eye2" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:14px;padding:0;">👁</button>
-          </div>
+      <b style="color:#1a3c6e;">🔐 Set New Password</b>
+      <p style="font-size:11px;color:#666;margin:4px 0 8px;">Leave blank to keep existing password unchanged.</p>
+      <div style="flex:1;min-width:160px;">
+        <div style="position:relative;">
+          <input id="te-new-pass" type="password" placeholder="Type new password (min 6 chars)" style="width:100%;padding:6px 34px 6px 10px;border:1px solid #ccc;border-radius:5px;font-size:13px;"/>
+          <button type="button" onclick="toggleTePass('te-new-pass','te-eye2')" id="te-eye2" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:14px;padding:0;">👁</button>
         </div>
       </div>
       <span id="te-reset-msg" style="font-size:12px;display:block;margin-top:6px;"></span>
@@ -1162,6 +1153,18 @@ window.confirmUpload = async function() {
 // =================== TEACHERS =========================
 // ======================================================
 
+async function callAdminFn(action, params) {
+  const idToken = await auth.currentUser.getIdToken();
+  const res = await fetch('/.netlify/functions/admin-teacher', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, idToken, ...params })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Server error');
+  return data;
+}
+
 window.addTeacher = async function() {
   const name    = document.getElementById('t-name').value.trim();
   const email   = document.getElementById('t-email').value.trim();
@@ -1176,25 +1179,19 @@ window.addTeacher = async function() {
   }
   if (pass.length < 6) { showMsg('teacher-msg', 'Password must be at least 6 characters.', 'error'); return; }
 
+  showMsg('teacher-msg', 'Creating teacher...', 'info');
   try {
-    const cred = await createUserWithEmailAndPassword(auth, email, pass);
-    await setDoc(doc(db,'users', cred.user.uid), {
-      name, email, subject, assignedClasses:classes, role,
-      password: pass,
-      createdAt: new Date().toISOString()
-    });
+    await callAdminFn('createTeacher', { email, password: pass, name, subject, assignedClasses: classes, role });
     const tmsg = document.getElementById('teacher-msg');
     tmsg.className = 'msg msg-success';
-    tmsg.innerHTML = `✅ Teacher "<b>${name}</b>" added!&nbsp; 📧 <b>${email}</b>&nbsp; 🔐 Password: <b style="background:#fff3cd;padding:2px 8px;border-radius:4px;color:#333;">${pass}</b><br><small style="color:#555;">⚠️ Save this password now — it will not be shown again.</small>`;
-    setTimeout(() => tmsg.textContent = '', 12000);
+    tmsg.textContent = `✅ Teacher "${name}" (${email}) created successfully!`;
+    setTimeout(() => tmsg.textContent = '', 8000);
     ['t-name','t-email','t-pass'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('t-subject').value = '';
     Array.from(clsSel.options).forEach(o => o.selected = false);
     loadTeachers();
   } catch(e) {
-    const msg = e.code === 'auth/email-already-in-use'
-      ? 'This email is already registered.' : e.message;
-    showMsg('teacher-msg', 'Error: '+msg, 'error');
+    showMsg('teacher-msg', 'Error: ' + e.message, 'error');
   }
 };
 
@@ -1226,9 +1223,13 @@ window.loadTeachers = async function() {
 };
 
 window.deleteTeacher = function(id, name) {
-  showConfirm(`Delete teacher "${name}"?`, 'This will remove their login access and all assigned data.', async () => {
-    await deleteDoc(doc(db,'users',id));
-    loadTeachers();
+  showConfirm(`Delete teacher "${name}"?`, 'This will permanently remove their login account and all assigned data. The email can be reused.', async () => {
+    try {
+      await callAdminFn('deleteTeacher', { uid: id });
+      loadTeachers();
+    } catch(e) {
+      alert('Error deleting teacher: ' + e.message);
+    }
   });
 };
 
@@ -1244,7 +1245,6 @@ window.openEditTeacherModal = async function(uid) {
     document.getElementById('te-subject').value = t.subject || '';
     const classes = t.assignedClasses || [];
     Array.from(document.getElementById('te-classes').options).forEach(o => o.selected = classes.includes(o.value));
-    document.getElementById('te-cur-pass').value = t.password || '';
     document.getElementById('te-new-pass').value = '';
     document.getElementById('te-msg').textContent = '';
     document.getElementById('te-reset-msg').textContent = '';
@@ -1260,49 +1260,37 @@ document.getElementById('teacher-edit-modal').addEventListener('click', function
 });
 
 window.saveEditTeacher = async function() {
-  const uid      = document.getElementById('te-uid').value;
-  const email    = document.getElementById('te-email-hidden').value;
-  const name     = document.getElementById('te-name').value.trim();
-  const subject  = document.getElementById('te-subject').value;
-  const classes  = Array.from(document.getElementById('te-classes').selectedOptions).map(o => o.value);
-  const newPass  = document.getElementById('te-new-pass').value.trim();
-  const curPass  = document.getElementById('te-cur-pass').value;
+  const uid     = document.getElementById('te-uid').value;
+  const name    = document.getElementById('te-name').value.trim();
+  const subject = document.getElementById('te-subject').value;
+  const classes = Array.from(document.getElementById('te-classes').selectedOptions).map(o => o.value);
+  const newPass = document.getElementById('te-new-pass').value.trim();
+
   if (!name || !subject || classes.length === 0) {
     showMsg('te-msg','Please fill all required fields.','error'); return;
   }
   if (newPass && newPass.length < 6) {
     showMsg('te-msg','New password must be at least 6 characters.','error'); return;
   }
-  try {
-    const updateData = { name, subject, assignedClasses:classes };
 
+  showMsg('te-msg','Saving...','info');
+  try {
+    // Update name, subject, classes via Netlify function
+    await callAdminFn('updateTeacher', { uid, name, subject, assignedClasses: classes });
+
+    // If new password entered, update via Netlify function (no current password needed)
     if (newPass) {
-      if (!curPass) { showMsg('te-msg','Current password not found — cannot change password.','error'); return; }
-      // Sign in as teacher, update password, sign back in as admin
-      const adminEmail    = auth.currentUser.email;
-      const adminPassSnap = await getDoc(doc(db,'users', auth.currentUser.uid));
-      const adminPass     = adminPassSnap.data()?.password || '';
-      const { signInWithEmailAndPassword, updatePassword } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
-      const teacherCred = await signInWithEmailAndPassword(auth, email, curPass);
-      await updatePassword(teacherCred.user, newPass);
-      // Sign admin back in
-      await signInWithEmailAndPassword(auth, adminEmail, adminPass);
-      updateData.password = newPass;
-      document.getElementById('te-cur-pass').value = newPass;
+      await callAdminFn('updatePassword', { uid, newPassword: newPass });
       document.getElementById('te-new-pass').value = '';
-      document.getElementById('te-reset-msg').textContent = '✅ Password changed successfully!';
-      document.getElementById('te-reset-msg').style.color = '#1e8449';
+      const rmsg = document.getElementById('te-reset-msg');
+      rmsg.textContent = '✅ Password changed successfully!';
+      rmsg.style.color = '#1e8449';
     }
 
-    await updateDoc(doc(db,'users',uid), updateData);
     showMsg('te-msg','Teacher updated successfully!','success');
     setTimeout(() => { closeTeacherEditModal(); loadTeachers(); }, 1500);
   } catch(e) {
-    if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
-      showMsg('te-msg','Password change failed — stored password may be outdated.','error');
-    } else {
-      showMsg('te-msg','Error: '+e.message,'error');
-    }
+    showMsg('te-msg','Error: '+e.message,'error');
   }
 };
 
@@ -1568,7 +1556,7 @@ window.generateProgressReports = async function(singleStudentId = null) {
       const TC = (v,ck) => `<td style="border:1px solid #333;padding:6px 4px;text-align:center;font-size:14px;background:#fff;color:#000;">${val===ck?TICK:''}</td>`;
       return `<tr>
         ${TD(i+1,'text-align:center;')}
-        ${TD(p.label,'text-align:left;')}
+        <td style="border:${BORDER};padding:6px 7px;font-weight:700;text-align:left;background:#fff;color:#000;font-size:10px;">${p.label}</td>
         ${TC(val,'VeryGood')}${TC(val,'Good')}${TC(val,'Average')}${TC(val,'Poor')}
         ${TD(ATT_LBL[val]||'','text-align:left;')}
       </tr>`;
@@ -1594,7 +1582,7 @@ window.generateProgressReports = async function(singleStudentId = null) {
       </div>
 
       <!-- ══ DATE / SESSION ══ -->
-      <div style="display:flex;justify-content:space-between;font-size:9px;color:#333;margin-bottom:5px;padding:0 2px;">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#333;margin-bottom:5px;padding:0 2px;">
         <span>Date: <b>${escapeHtml(cardDate)}</b></span>
         <span>Session: <b>${escapeHtml(session)}</b></span>
       </div>
@@ -1712,7 +1700,7 @@ window.generateProgressReports = async function(singleStudentId = null) {
       <!-- ══ NOTE ══ -->
       <div style="font-size:9.5px;margin-bottom:6px;padding:3px 6px;border:1px solid #bbb;background:#fffbeb;color:#333;">
         <b style="color:#92400e;">NOTE:-</b> THE SCHOOL SHALL RE-OPEN FOR NEW ACADEMIC SESSION ON <b>${escapeHtml(reopenDate)}</b>
-        &nbsp;&nbsp;&nbsp; PROMOTED TO CLASS : <b>${escapeHtml(promotedCls)}</b>
+        &nbsp;&nbsp;&nbsp; PROMOTED TO CLASS : <b>${t2ANNm > 0 ? escapeHtml(promotedCls) : '<span style="color:#cc0000;font-style:italic;">Annual Exam Pending</span>'}</b>
       </div>
 
       <div class="rc-spacer"></div>
@@ -1760,6 +1748,7 @@ window.generateProgressReports = async function(singleStudentId = null) {
     }
     .toolbar span { color:#fff; font-size:12px; font-family:Arial,sans-serif; flex:1; }
     .toolbar button { padding:6px 14px; border:none; border-radius:5px; cursor:pointer; font-size:12px; font-weight:600; font-family:Arial,sans-serif; }
+    .btn-back  { background:#555; color:#fff; }
     .btn-print { background:#27ae60; color:#fff; }
     .btn-wa    { background:#25d366; color:#fff; }
     .btn-email { background:#8e44ad; color:#fff; }
@@ -1769,6 +1758,7 @@ window.generateProgressReports = async function(singleStudentId = null) {
   </style></head>
   <body>
   <div class="toolbar">
+    <button class="btn-back" onclick="window.close()">← Back</button>
     <span>🏫 Prabha Gyan Jyoti — Report Card | Class ${escapeHtml(cls)} | Session ${escapeHtml(session)}</span>
     <button class="btn-print" onclick="window.print()">🖨️ Print / Save PDF</button>
     <button class="btn-wa"    onclick="shareWA()">📱 WhatsApp</button>
