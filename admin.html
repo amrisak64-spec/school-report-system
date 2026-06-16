@@ -1154,14 +1154,19 @@ window.confirmUpload = async function() {
 // ======================================================
 
 async function callAdminFn(action, params) {
-  const idToken = await auth.currentUser.getIdToken();
-  const res = await fetch('/.netlify/functions/admin-teacher', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, idToken, ...params })
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Server error');
+  const idToken = await auth.currentUser.getIdToken(true);
+  let res, data;
+  try {
+    res  = await fetch('/.netlify/functions/admin-teacher', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, idToken, ...params })
+    });
+    data = await res.json();
+  } catch(e) {
+    throw new Error('Network error — check your internet connection');
+  }
+  if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
   return data;
 }
 
@@ -1451,6 +1456,14 @@ window.generateProgressReports = async function(singleStudentId = null) {
     }
   });
 
+  // Fetch logo as base64 so it always renders in the popup (avoids cross-origin/timing issues)
+  let logoDataUrl = '';
+  try {
+    const logoRes = await fetch(new URL('logo.svg', window.location.href).href);
+    const blob = await logoRes.blob();
+    logoDataUrl = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
+  } catch(e) { logoDataUrl = ''; }
+
   // Attendance/appearance — single doc per student per session
   const attSnap = await getDocs(query(collection(db,'attendance'),
     where('class','==',cls), where('session','==',session)));
@@ -1481,8 +1494,7 @@ window.generateProgressReports = async function(singleStudentId = null) {
     let t1PA1s=0,t1HYs=0,t2PA2s=0,t2ANNs=0;
     let t1PA1m=0,t1HYm=0,t2PA2m=0,t2ANNm=0;
 
-    // Helpers defined before use
-    const logoUrl = new URL('logo.svg', window.location.href).href;
+    const logoUrl = logoDataUrl;
     // Color palette matching the screenshot
     const C_BLUE   = '#1a3c6e'; // Term-1/Term-2 header bg
     const C_ORANGE = '#e67e22'; // Final Result header bg
@@ -1541,14 +1553,10 @@ window.generateProgressReports = async function(singleStudentId = null) {
     const att = attLookup[s.id] || {};
     const attTerm1Pct  = att.term1AttendancePct != null ? att.term1AttendancePct+'%' : '';
     const attTerm2Pct  = att.term2AttendancePct != null ? att.term2AttendancePct+'%' : '';
-    // Result: prefer what teacher entered; fallback to calculated from marks
-    const t1Result = att.term1Result ||
-      (att.term1AttendancePct != null ? (att.term1AttendancePct >= 75 ? 'Passed' : 'Failed')
-        : (t1Max>0 && Number(t1Pct)>=33 ? 'Passed' : ''));
-    const t2Result = att.term2Result ||
-      (att.term2AttendancePct != null ? (att.term2AttendancePct >= 75 ? 'Passed' : 'Failed')
-        : (t2Max>0 && Number(t2Pct)>=33 ? 'Passed' : ''));
-    const overallResult= gtMax>0 ? (Number(finalPct)>=33 ? 'Passed' : 'Failed') : '';
+    // Pass/Fail decided by marks percentage only (>= 33% = Passed)
+    const t1Result     = t1Max  > 0 ? (Number(t1Pct)   >= 33 ? 'Passed' : 'Failed') : '';
+    const t2Result     = t2Max  > 0 ? (Number(t2Pct)   >= 33 ? 'Passed' : 'Failed') : '';
+    const overallResult= gtMax  > 0 ? (Number(finalPct) >= 33 ? 'Passed' : 'Failed') : '';
 
     // ---- Appearance rows (from single attendance doc) ----
     const appearanceRows = PARTICULARS.map((p,i) => {

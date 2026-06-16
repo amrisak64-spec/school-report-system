@@ -82,19 +82,10 @@
       border-radius: 5px; text-align: center; font-size: 12px;
     }
     .num-in.saved { border-color: #27ae60; background: #f0fff4; }
-    .res-sel {
-      padding: 4px 5px; border: 1.5px solid #ccc; border-radius: 5px; font-size: 11px; width: 76px;
-    }
-    .res-sel.saved { border-color: #27ae60; background: #f0fff4; }
-
     .th-appear { background: #1a6e3c !important; }
     .th-term1  { background: #2e6da4 !important; }
     .th-term2  { background: #8e44ad !important; }
     .th-status { background: #555 !important; }
-    .auto-res { display:inline-block; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700; min-width:64px; text-align:center; }
-    .ar-pass  { background:#d5f5e3; color:#1e8449; }
-    .ar-fail  { background:#fadbd8; color:#c0392b; }
-    .ar-none  { color:#999; }
   </style>
 </head>
 <body>
@@ -117,8 +108,8 @@
       Appearance is filled <b>once per student per session</b> (for the final report card).
       <ul>
         <li><b>Appearance ratings</b> (Cleanliness, Discipline, Punctuality, Parents' Interaction) — select Very Good / Good / Average / Poor for each student.</li>
-        <li><b>Term 1 &amp; Term 2</b> — enter attendance % and result (Passed / Failed) separately.</li>
-        <li>Marks % on the report card are auto-calculated from the marks section.</li>
+        <li><b>Term 1 &amp; Term 2</b> — enter attendance % only. Pass / Fail is auto-decided from marks percentage.</li>
+        <li>Marks % and Pass/Fail on the report card are auto-calculated from the marks section.</li>
       </ul>
     </div>
 
@@ -163,8 +154,8 @@
               <th class="left th-appear" rowspan="2">Adm. No</th>
               <th class="left th-appear" rowspan="2">Student Name</th>
               <th class="th-appear" colspan="4">APPEARANCE (filled once for final card)</th>
-              <th class="th-term1" colspan="2">TERM 1</th>
-              <th class="th-term2" colspan="2">TERM 2</th>
+              <th class="th-term1" colspan="1">TERM 1</th>
+              <th class="th-term2" colspan="1">TERM 2</th>
               <th class="th-status" rowspan="2">Status</th>
             </tr>
             <tr>
@@ -173,9 +164,7 @@
               <th class="th-appear">Punctuality</th>
               <th class="th-appear">Parents' Interaction</th>
               <th class="th-term1">Attendance %</th>
-              <th class="th-term1">Auto Result</th>
               <th class="th-term2">Attendance %</th>
-              <th class="th-term2">Auto Result</th>
             </tr>
           </thead>
           <tbody id="appear-tbody"></tbody>
@@ -259,19 +248,9 @@ window.loadStudents = async function() {
       OPTS.map(o => `<option value="${o}" ${val===o?'selected':''}>${OPT_LABELS[o]}</option>`).join('') +
       `</select>`;
 
-    const mkNum = (id, saved, val, resId) => {
-      const pct = val != null && val !== '' ? Number(val) : null;
-      return `<input type="number" class="num-in ${saved?'saved':''}" id="${id}"
-        value="${val??''}" min="0" max="100" placeholder="0-100"
-        oninput="calcAutoResult(this.value,'${resId}')"/>`;
-    };
-
-    const mkAutoRes = (id, pct) => {
-      const v = pct != null && pct !== '' ? Number(pct) : null;
-      const cls = v !== null ? (v >= 75 ? 'ar-pass' : 'ar-fail') : 'ar-none';
-      const txt = v !== null ? (v >= 75 ? '✓ Passed' : '✗ Failed') : '—';
-      return `<span class="auto-res ${cls}" id="${id}">${txt}</span>`;
-    };
+    const mkNum = (id, saved, val) =>
+      `<input type="number" class="num-in ${saved?'saved':''}" id="${id}"
+        value="${val??''}" min="0" max="100" placeholder="0-100"/>`;
 
     document.getElementById('appear-tbody').innerHTML = currentStudents.map((s, idx) => {
       const e = existing[s.id] || {};
@@ -284,10 +263,8 @@ window.loadStudents = async function() {
         <td>${mkSel('di_'+s.id, sv, e.discipline||'')}</td>
         <td>${mkSel('pu_'+s.id, sv, e.punctuality||'')}</td>
         <td>${mkSel('pi_'+s.id, sv, e.parentsInteraction||'')}</td>
-        <td>${mkNum('t1a_'+s.id, sv, e.term1AttendancePct, 't1r_'+s.id)}</td>
-        <td>${mkAutoRes('t1r_'+s.id, e.term1AttendancePct)}</td>
-        <td>${mkNum('t2a_'+s.id, sv, e.term2AttendancePct, 't2r_'+s.id)}</td>
-        <td>${mkAutoRes('t2r_'+s.id, e.term2AttendancePct)}</td>
+        <td>${mkNum('t1a_'+s.id, sv, e.term1AttendancePct)}</td>
+        <td>${mkNum('t2a_'+s.id, sv, e.term2AttendancePct)}</td>
         <td id="st_${s.id}">${sv
           ? '<span style="color:#27ae60;font-size:12px;">✅ Saved</span>'
           : '<span style="color:#e67e22;font-size:12px;">⏳ Pending</span>'}</td>
@@ -326,9 +303,6 @@ window.saveAll = async function() {
       const t2aVal = document.getElementById('t2a_'+s.id)?.value;
       const term1AttendancePct = t1aVal !== '' && t1aVal !== undefined ? Number(t1aVal) : null;
       const term2AttendancePct = t2aVal !== '' && t2aVal !== undefined ? Number(t2aVal) : null;
-      // Auto-calculate results from attendance %
-      const term1Result = term1AttendancePct !== null ? (term1AttendancePct >= 75 ? 'Passed' : 'Failed') : '';
-      const term2Result = term2AttendancePct !== null ? (term2AttendancePct >= 75 ? 'Passed' : 'Failed') : '';
 
       // Skip entirely empty rows
       if (!cleanliness && !discipline && !punctuality && !parentsInteraction
@@ -340,8 +314,8 @@ window.saveAll = async function() {
         studentId: s.id, studentName: s.name,
         class: cls, section: section||'', session,
         cleanliness, discipline, punctuality, parentsInteraction,
-        term1AttendancePct, term1Result,
-        term2AttendancePct, term2Result,
+        term1AttendancePct,
+        term2AttendancePct,
         savedAt: serverTimestamp()
       });
 
@@ -363,17 +337,6 @@ window.saveAll = async function() {
   }
 };
 
-window.calcAutoResult = function(val, resId) {
-  const el = document.getElementById(resId);
-  if (!el) return;
-  if (val === '' || isNaN(Number(val))) {
-    el.className = 'auto-res ar-none'; el.textContent = '—';
-  } else if (Number(val) >= 75) {
-    el.className = 'auto-res ar-pass'; el.textContent = '✓ Passed';
-  } else {
-    el.className = 'auto-res ar-fail'; el.textContent = '✗ Failed';
-  }
-};
 
 function showMsg(id, msg, type) {
   const el = document.getElementById(id);
