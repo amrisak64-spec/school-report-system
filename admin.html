@@ -1597,7 +1597,7 @@ window.generateProgressReports = async function(singleStudentId = null) {
           <td style="border:1px solid #999;padding:6px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">Class</td>
           <td style="border:1px solid #999;padding:6px 7px;font-weight:700;">Class ${escapeHtml(s.class||'—')}${s.section?' - '+s.section:''}</td>
           <td style="border:1px solid #999;padding:6px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">D.O.B.</td>
-          <td style="border:1px solid #999;padding:6px 7px;font-weight:700;">${s.dob||'—'}</td>
+          <td style="border:1px solid #999;padding:6px 7px;font-weight:700;">${s.dob ? (d => d.length===10&&d.includes('/') ? d.split('/').map((v,i)=>i===2?v.slice(-2):v).join('-') : d)(s.dob) : '—'}</td>
         </tr>
         <tr>
           <td style="border:1px solid #999;padding:6px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">Mother's Name</td>
