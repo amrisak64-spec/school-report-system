@@ -397,9 +397,12 @@
     </div>
 
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
         <h2 style="margin:0;">All Students</h2>
-        <button class="btn" style="background:#c0392b;color:#fff;padding:7px 16px;font-size:13px;" onclick="deleteAllStudents()">🗑️ Delete All Students</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-success" style="padding:7px 16px;font-size:13px;" onclick="downloadStudentsExcel()">⬇️ Download Excel</button>
+          <button class="btn" style="background:#c0392b;color:#fff;padding:7px 16px;font-size:13px;" onclick="deleteAllStudents()">🗑️ Delete All Students</button>
+        </div>
       </div>
       <div class="search-bar">
         <select id="filter-class" aria-label="Filter by Class" onchange="loadStudents()" style="width:160px;">
@@ -855,6 +858,37 @@ window._renderStudentTable = function(students) {
 };
 
 // filterStudentTable registered above before imports
+
+window.downloadStudentsExcel = async function() {
+  const filterCls = document.getElementById('filter-class').value;
+  try {
+    let snap;
+    if (filterCls) {
+      snap = await getDocs(query(collection(db,'students'), where('class','==',filterCls)));
+    } else {
+      snap = await getDocs(collection(db,'students'));
+    }
+    const rows = [];
+    snap.forEach(d => rows.push(d.data()));
+    rows.sort((a,b) => (a.class||'').localeCompare(b.class||'') || (a.rollNo||0)-(b.rollNo||0));
+
+    const data = [['Name','Father Name','Mother Name','Admission No','Roll No','Class','Section','DOB','Address','Session']];
+    rows.forEach(s => data.push([
+      s.name||'', s.fatherName||'', s.motherName||'',
+      s.admissionNo||'', s.rollNo||'', s.class||'',
+      s.section||'', s.dob||'', s.address||'', s.session||''
+    ]));
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [20,22,20,12,8,6,8,12,25,10].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb, ws, 'Students');
+    const fileName = filterCls ? `Students_Class${filterCls}.xlsx` : 'All_Students.xlsx';
+    XLSX.writeFile(wb, fileName);
+  } catch(e) {
+    alert('Download failed: ' + e.message);
+  }
+};
 
 window.deleteAllStudents = function() {
   showConfirm('Delete ALL Students?', 'This will permanently remove every student record. This cannot be undone.', async () => {
@@ -1483,10 +1517,10 @@ window.generateProgressReports = async function(singleStudentId = null) {
   const ATT_LBL = { VeryGood:'Very Good', Good:'Good', Average:'Average', Poor:'Poor' };
   const TICK = '&#10003;';
   const PARTICULARS = [
-    { label:'Cleanliness',          key:'cleanliness' },
-    { label:'Discipline',           key:'discipline' },
-    { label:'Punctuality',          key:'punctuality' },
-    { label:"Parents' Interaction", key:'parentsInteraction' }
+    { label:'CLEANLINESS',          key:'cleanliness' },
+    { label:'DISCIPLINE',           key:'discipline' },
+    { label:'PUNCTUALITY',          key:'punctuality' },
+    { label:"PARENTS' INTERACTION", key:'parentsInteraction' }
   ];
 
   const reportHTML = students.map(s => {
@@ -1596,27 +1630,27 @@ window.generateProgressReports = async function(singleStudentId = null) {
       </div>
 
       <!-- ══ STUDENT INFO ══ -->
-      <table style="width:100%;border-collapse:collapse;border:1px solid #999;margin-bottom:6px;font-size:11px;">
+      <table style="width:100%;border-collapse:collapse;border:1px solid #999;margin-bottom:6px;font-size:12px;">
         <tr>
-          <td style="border:1px solid #999;padding:6px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;width:19%;">Name of The Student</td>
+          <td style="border:1px solid #999;padding:6px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;width:19%;">NAME OF THE STUDENT</td>
           <td style="border:1px solid #999;padding:6px 7px;font-weight:700;width:30%;">${escapeHtml(s.name||'')}</td>
-          <td style="border:1px solid #999;padding:6px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;width:14%;">Admission No.</td>
+          <td style="border:1px solid #999;padding:6px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;width:14%;">ADMISSION NO.</td>
           <td style="border:1px solid #999;padding:6px 7px;font-weight:700;width:10%;">${escapeHtml(s.admissionNo||'—')}</td>
-          <td style="border:1px solid #999;padding:6px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;width:10%;">Roll No.</td>
+          <td style="border:1px solid #999;padding:6px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;width:10%;">ROLL NO.</td>
           <td style="border:1px solid #999;padding:6px 7px;font-weight:700;">${s.rollNo||'—'}</td>
         </tr>
         <tr>
-          <td style="border:1px solid #999;padding:6px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">Father's Name</td>
+          <td style="border:1px solid #999;padding:6px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">FATHER'S NAME</td>
           <td style="border:1px solid #999;padding:6px 7px;font-weight:700;">${escapeHtml(s.fatherName||'—')}</td>
-          <td style="border:1px solid #999;padding:6px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">Class</td>
-          <td style="border:1px solid #999;padding:6px 7px;font-weight:700;">Class ${escapeHtml(s.class||'—')}${s.section?' - '+s.section:''}</td>
+          <td style="border:1px solid #999;padding:6px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">CLASS</td>
+          <td style="border:1px solid #999;padding:6px 7px;font-weight:700;">CLASS ${escapeHtml(s.class||'—')}${s.section?' - '+s.section:''}</td>
           <td style="border:1px solid #999;padding:6px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">D.O.B.</td>
           <td style="border:1px solid #999;padding:6px 7px;font-weight:700;">${s.dob ? (d => d.length===10&&d.includes('/') ? d.split('/').map((v,i)=>i===2?v.slice(-2):v).join('-') : d)(s.dob) : '—'}</td>
         </tr>
         <tr>
-          <td style="border:1px solid #999;padding:6px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">Mother's Name</td>
+          <td style="border:1px solid #999;padding:6px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">MOTHER'S NAME</td>
           <td style="border:1px solid #999;padding:6px 7px;font-weight:700;">${escapeHtml(s.motherName||'—')}</td>
-          <td style="border:1px solid #999;padding:6px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">Address</td>
+          <td style="border:1px solid #999;padding:6px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">ADDRESS</td>
           <td colspan="3" style="border:1px solid #999;padding:6px 7px;font-weight:700;">${escapeHtml(s.address||'—')}</td>
         </tr>
       </table>
@@ -1662,7 +1696,7 @@ window.generateProgressReports = async function(singleStudentId = null) {
       <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:6px;">
         <thead>
           <tr>
-            <th colspan="7" style="background:${C_GREEN};color:#fff;border:1px solid #999;padding:6px;text-align:center;font-size:12px;letter-spacing:1px;">STUDENT'S APPEARANCE</th>
+            <th colspan="7" style="background:${C_GREEN};color:#fff;border:1px solid #999;padding:6px;text-align:center;font-size:10px;font-weight:700;">STUDENT'S APPEARANCE</th>
           </tr>
           <tr>
             ${TH_GR('S.NO.')}${TH_GR('PARTICULAR','text-align:left;padding-left:8px;min-width:90px;')}
@@ -1676,7 +1710,7 @@ window.generateProgressReports = async function(singleStudentId = null) {
       <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:6px;">
         <thead>
           <tr>
-            <th colspan="5" style="background:${C_ORANGE};color:#fff;border:1px solid #999;padding:6px;text-align:center;font-size:12px;letter-spacing:1px;">OVERALL PERFORMANCE</th>
+            <th colspan="5" style="background:${C_ORANGE};color:#fff;border:1px solid #999;padding:6px;text-align:center;font-size:10px;font-weight:700;">OVERALL PERFORMANCE</th>
           </tr>
           <tr>
             ${TH_OR('S.NO.')}${TH_OR('PROFILE','text-align:left;padding-left:8px;')}
