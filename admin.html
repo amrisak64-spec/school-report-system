@@ -317,6 +317,7 @@
   <div class="tab" onclick="showTab('upload', this)">📤 Upload Excel</div>
   <div class="tab" onclick="showTab('teachers', this)">👩‍🏫 Teachers</div>
   <div class="tab" onclick="showTab('marks', this)">📊 View Marks</div>
+  <div class="tab" onclick="showTab('entry', this)">✏️ Enter Marks</div>
   <div class="tab" onclick="showTab('report', this)">🖨️ Print Report Card</div>
   <div class="tab" onclick="window.location.href='appearance.html'">📋 Appearance</div>
   <div class="tab" onclick="window.location.href='tabulation.html'">📊 Tabulation</div>
@@ -587,6 +588,74 @@
     </div>
   </div>
 
+  <!-- ===== ENTER MARKS (Admin) ===== -->
+  <div class="section" id="sec-entry">
+    <div class="card">
+      <h2>✏️ Enter / Edit Student Marks</h2>
+      <div class="filter-row">
+        <div>
+          <label>Class *</label>
+          <select id="en-class" onchange="loadEntryStudents()">
+            <option value="">-- Select Class --</option>
+            <option>II</option><option>III</option><option>IV</option>
+            <option>V</option><option>VI</option><option>VII</option><option>VIII</option>
+          </select>
+        </div>
+        <div>
+          <label>Section</label>
+          <select id="en-section" onchange="loadEntryStudents()">
+            <option value="">-- All Sections --</option>
+            <option value="A">Section A</option>
+            <option value="B">Section B</option>
+          </select>
+        </div>
+        <div>
+          <label>Session</label>
+          <select id="en-session" onchange="loadEntryStudents()">
+            <option value="2024-25">2024-25</option>
+            <option value="2025-26">2025-26</option>
+            <option value="2026-27" selected>2026-27</option>
+            <option value="2027-28">2027-28</option>
+          </select>
+        </div>
+        <div>
+          <label>Student *</label>
+          <select id="en-student" onchange="loadEntryMarks()">
+            <option value="">-- Select Student --</option>
+          </select>
+        </div>
+      </div>
+      <div id="en-msg" style="margin-bottom:10px;"></div>
+      <div id="en-marks-wrap" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+          <div id="en-student-info" style="font-size:13px;font-weight:600;color:#1a3c6e;"></div>
+          <button class="btn btn-success" onclick="saveEntryMarks()">💾 Save All Marks</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table id="en-table" style="font-size:13px;border-collapse:collapse;width:100%;">
+            <thead>
+              <tr>
+                <th style="background:#1a3c6e;color:#fff;padding:10px 12px;text-align:left;min-width:130px;">Subject</th>
+                <th style="background:#2e6da4;color:#fff;padding:10px 8px;text-align:center;min-width:90px;">PA 1<br><span style="font-weight:400;font-size:11px;">(Max 20)</span></th>
+                <th style="background:#2e6da4;color:#fff;padding:10px 8px;text-align:center;min-width:110px;">Half Yearly<br><span style="font-weight:400;font-size:11px;">(Max 80)</span></th>
+                <th style="background:#1a6e3c;color:#fff;padding:10px 8px;text-align:center;min-width:90px;">PA 2<br><span style="font-weight:400;font-size:11px;">(Max 20)</span></th>
+                <th style="background:#1a6e3c;color:#fff;padding:10px 8px;text-align:center;min-width:110px;">Annual<br><span style="font-weight:400;font-size:11px;">(Max 80)</span></th>
+                <th style="background:#e67e22;color:#fff;padding:10px 8px;text-align:center;min-width:70px;">Term 1<br><span style="font-weight:400;font-size:11px;">(100)</span></th>
+                <th style="background:#e67e22;color:#fff;padding:10px 8px;text-align:center;min-width:70px;">Term 2<br><span style="font-weight:400;font-size:11px;">(100)</span></th>
+                <th style="background:#7d3c98;color:#fff;padding:10px 8px;text-align:center;min-width:80px;">Grand Total<br><span style="font-weight:400;font-size:11px;">(200)</span></th>
+                <th style="background:#7d3c98;color:#fff;padding:10px 8px;text-align:center;min-width:60px;">Grade</th>
+              </tr>
+            </thead>
+            <tbody id="en-tbody"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:14px;text-align:right;">
+          <button class="btn btn-success" onclick="saveEntryMarks()">💾 Save All Marks</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== PRINT REPORT CARD ===== -->
   <div class="section" id="sec-report">
     <div class="card">
@@ -660,6 +729,7 @@ window.showTab = function(tab, el) {
   el.classList.add('active');
   if (tab === 'marks'     && window._fbReady) loadMarksView();
   if (tab === 'dashboard' && window._fbReady) loadDashboard();
+  if (tab === 'entry'     && window._fbReady) loadEntryStudents();
 };
 
 window.closeEditModal = function() {
@@ -684,7 +754,7 @@ import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged, signOut, createUserWithEmailAndPassword }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { collection, addDoc, getDocs, doc, setDoc, deleteDoc, updateDoc,
-         query, where, orderBy, getDoc, writeBatch }
+         query, where, orderBy, getDoc, writeBatch, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const SUBJECTS = ['Hindi','English','Maths','Science','SST','Sanskrit','Computer','Drawing','GK'];
@@ -1916,6 +1986,175 @@ function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, char => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
   }[char]));
+}
+
+// ── ADMIN MARKS ENTRY ──────────────────────────────────────────────────────
+const EN_MAX = { PA1:20, HalfYearly:80, PA2:20, Annual:80 };
+const EN_EXAMS = ['PA1','HalfYearly','PA2','Annual'];
+let _entryStudents = [];
+
+window.loadEntryStudents = async function() {
+  const cls     = document.getElementById('en-class').value;
+  const section = document.getElementById('en-section').value;
+  const session = document.getElementById('en-session').value;
+  const sel     = document.getElementById('en-student');
+  sel.innerHTML = '<option value="">-- Select Student --</option>';
+  document.getElementById('en-marks-wrap').style.display = 'none';
+  document.getElementById('en-msg').textContent = '';
+  if (!cls) return;
+
+  try {
+    let q = query(collection(db,'students'), where('class','==',cls), where('session','==',session));
+    if (section) q = query(collection(db,'students'), where('class','==',cls), where('section','==',section), where('session','==',session));
+    const snap = await getDocs(q);
+    _entryStudents = [];
+    snap.forEach(d => _entryStudents.push({ id: d.id, ...d.data() }));
+    _entryStudents.sort((a,b) => (a.rollNo||0)-(b.rollNo||0));
+    _entryStudents.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = `${s.rollNo}. ${s.name}`;
+      sel.appendChild(opt);
+    });
+    if (!_entryStudents.length) showEntryMsg('No students found for this class/session.', 'error');
+  } catch(e) { showEntryMsg('Error: ' + e.message, 'error'); }
+};
+
+window.loadEntryMarks = async function() {
+  const studentId = document.getElementById('en-student').value;
+  const session   = document.getElementById('en-session').value;
+  const wrap      = document.getElementById('en-marks-wrap');
+  const tbody     = document.getElementById('en-tbody');
+  document.getElementById('en-msg').textContent = '';
+  wrap.style.display = 'none';
+  if (!studentId) return;
+
+  const student = _entryStudents.find(s => s.id === studentId);
+  if (!student) return;
+  document.getElementById('en-student-info').textContent =
+    `${student.name} | Roll No: ${student.rollNo} | Class: ${student.class}${student.section?' - '+student.section:''}`;
+
+  showEntryMsg('Loading marks...', 'info');
+  try {
+    // Fetch all marks for this student in this session
+    const snap = await getDocs(query(collection(db,'marks'),
+      where('studentId','==',studentId), where('session','==',session)));
+    const existing = {};
+    snap.forEach(d => {
+      const m = d.data();
+      existing[`${m.exam}_${m.subject}`] = { docId: d.id, val: m.marksObtained };
+    });
+
+    const GRADE = pct => {
+      if (pct>=91) return 'A1'; if (pct>=81) return 'A2';
+      if (pct>=71) return 'B1'; if (pct>=61) return 'B2';
+      if (pct>=51) return 'C1'; if (pct>=41) return 'C2';
+      if (pct>=33) return 'D'; return 'E';
+    };
+
+    tbody.innerHTML = SUBJECTS.map(sub => {
+      const subLabel = sub==='Science'?'Science / E.V.S.':sub==='SST'?'S.S.T.':sub==='GK'?'G.K.':sub;
+      const inputs = EN_EXAMS.map(ex => {
+        const key = `${ex}_${sub}`;
+        const val = existing[key] !== undefined ? existing[key].val : '';
+        const max = EN_MAX[ex];
+        return `<td style="text-align:center;padding:6px 4px;">
+          <input type="number" id="en_${ex}_${sub}"
+            min="0" max="${max}" step="1" value="${val}"
+            style="width:70px;padding:6px;border:1.5px solid #ccc;border-radius:5px;text-align:center;font-size:13px;font-weight:700;"
+            oninput="updateEntryRow('${sub}')"
+            onfocus="this.style.borderColor='#1a3c6e'" onblur="this.style.borderColor='#ccc'">
+        </td>`;
+      }).join('');
+
+      return `<tr id="en-row-${sub}" style="border-bottom:1px solid #eee;">
+        <td style="padding:8px 12px;font-weight:700;color:#333;">${subLabel}</td>
+        ${inputs}
+        <td id="en-t1-${sub}" style="text-align:center;font-weight:700;background:#dbeafe;color:#1a3c6e;padding:6px;">—</td>
+        <td id="en-t2-${sub}" style="text-align:center;font-weight:700;background:#d5f5e3;color:#1a6e3c;padding:6px;">—</td>
+        <td id="en-gt-${sub}" style="text-align:center;font-weight:700;background:#fef3c7;color:#92400e;padding:6px;">—</td>
+        <td id="en-gr-${sub}" style="text-align:center;font-weight:700;padding:6px;">—</td>
+      </tr>`;
+    }).join('');
+
+    // Calculate totals for already-filled rows
+    SUBJECTS.forEach(sub => updateEntryRow(sub));
+
+    document.getElementById('en-msg').textContent = '';
+    wrap.style.display = '';
+  } catch(e) { showEntryMsg('Error loading marks: ' + e.message, 'error'); }
+};
+
+window.updateEntryRow = function(sub) {
+  const get = ex => { const el = document.getElementById(`en_${ex}_${sub}`); return el&&el.value!==''?Number(el.value):null; };
+  const pa1=get('PA1'), hy=get('HalfYearly'), pa2=get('PA2'), ann=get('Annual');
+  const t1 = pa1!==null&&hy!==null ? pa1+hy : pa1!==null ? pa1 : hy!==null ? hy : null;
+  const t2 = pa2!==null&&ann!==null ? pa2+ann : pa2!==null ? pa2 : ann!==null ? ann : null;
+  const gt = t1!==null&&t2!==null ? t1+t2 : t1!==null ? t1 : t2!==null ? t2 : null;
+  const gtMax = (pa1!==null?20:0)+(hy!==null?80:0)+(pa2!==null?20:0)+(ann!==null?80:0);
+  const GRADE = pct => {
+    if (pct>=91) return 'A1'; if (pct>=81) return 'A2';
+    if (pct>=71) return 'B1'; if (pct>=61) return 'B2';
+    if (pct>=51) return 'C1'; if (pct>=41) return 'C2';
+    if (pct>=33) return 'D'; return 'E';
+  };
+  document.getElementById(`en-t1-${sub}`).textContent = t1!==null?t1:'—';
+  document.getElementById(`en-t2-${sub}`).textContent = t2!==null?t2:'—';
+  document.getElementById(`en-gt-${sub}`).textContent = gt!==null?gt:'—';
+  document.getElementById(`en-gr-${sub}`).textContent = gt!==null&&gtMax>0 ? GRADE(gt/gtMax*100) : '—';
+};
+
+window.saveEntryMarks = async function() {
+  const studentId = document.getElementById('en-student').value;
+  const session   = document.getElementById('en-session').value;
+  const cls       = document.getElementById('en-class').value;
+  const section   = document.getElementById('en-section').value;
+  const student   = _entryStudents.find(s => s.id === studentId);
+  if (!student) { showEntryMsg('Please select a student first.', 'error'); return; }
+
+  showEntryMsg('Saving...', 'info');
+  try {
+    const batch = writeBatch(db);
+    let count = 0;
+    for (const sub of SUBJECTS) {
+      for (const ex of EN_EXAMS) {
+        const el = document.getElementById(`en_${ex}_${sub}`);
+        if (!el || el.value === '') continue;
+        const val = Number(el.value);
+        if (isNaN(val) || val < 0 || val > EN_MAX[ex]) {
+          showEntryMsg(`Invalid value for ${sub} - ${ex}. Max is ${EN_MAX[ex]}.`, 'error');
+          return;
+        }
+        const docId = `${studentId}_${ex}_${sub}_${session}`;
+        batch.set(doc(db,'marks',docId), {
+          studentId, session,
+          class: cls, section: section||student.section||'',
+          exam: ex, subject: sub,
+          marksObtained: val,
+          studentName: student.name,
+          rollNo: student.rollNo,
+          updatedAt: serverTimestamp()
+        });
+        count++;
+      }
+    }
+    await batch.commit();
+    showEntryMsg(`✅ ${count} marks saved successfully for ${student.name}!`, 'success');
+    // Highlight all inputs green briefly
+    SUBJECTS.forEach(sub => EN_EXAMS.forEach(ex => {
+      const el = document.getElementById(`en_${ex}_${sub}`);
+      if (el && el.value !== '') { el.style.borderColor='#27ae60'; el.style.background='#f0fff4'; }
+    }));
+  } catch(e) { showEntryMsg('Error saving: ' + e.message, 'error'); }
+};
+
+function showEntryMsg(msg, type) {
+  const el = document.getElementById('en-msg');
+  el.style.cssText = `padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:10px;background:${
+    type==='error'?'#fadbd8':type==='success'?'#d5f5e3':'#eaf0fb'};color:${
+    type==='error'?'#c0392b':type==='success'?'#1e8449':'#1a3c6e'};`;
+  el.textContent = msg;
+  if (type==='success') setTimeout(() => el.textContent='', 5000);
 }
 </script>
 </body>
