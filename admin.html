@@ -1626,10 +1626,10 @@ window.generateProgressReports = async function(singleStudentId = null) {
     const C_ORANGE = '#e67e22'; // Final Result header bg
     const C_GREEN  = '#27ae60'; // Appearance section header bg
     const C_SUBJ   = '#c0392b'; // Subject name column bg
-    const BORDER   = '1px solid #bbb';
-    const TH  = (t,x='') => `<th style="background:${C_BLUE};color:#fff;border:${BORDER};padding:7px 4px;text-align:center;white-space:nowrap;font-size:10px;${x}">${t}</th>`;
-    const TH_OR=(t,x='') => `<th style="background:${C_ORANGE};color:#fff;border:${BORDER};padding:7px 4px;text-align:center;white-space:nowrap;font-size:10px;${x}">${t}</th>`;
-    const TH_GR=(t,x='') => `<th style="background:${C_GREEN};color:#fff;border:${BORDER};padding:7px 4px;text-align:center;white-space:nowrap;font-size:10px;${x}">${t}</th>`;
+    const BORDER   = '1px solid #555';
+    const TH  = (t,x='') => `<th style="background:#222;color:#fff;border:${BORDER};padding:7px 4px;text-align:center;white-space:nowrap;font-size:10px;${x}">${t}</th>`;
+    const TH_OR=(t,x='') => `<th style="background:#444;color:#fff;border:${BORDER};padding:7px 4px;text-align:center;white-space:nowrap;font-size:10px;${x}">${t}</th>`;
+    const TH_GR=(t,x='') => `<th style="background:#333;color:#fff;border:${BORDER};padding:7px 4px;text-align:center;white-space:nowrap;font-size:10px;${x}">${t}</th>`;
     const TD  = (v,x='') => `<td style="border:${BORDER};padding:7px 7px;background:#fff;color:#000;font-size:10px;${x}">${v}</td>`;
     const resultColor = r => r==='Passed'?'#006600':r==='Failed'?'#cc0000':'#333';
 
@@ -1659,10 +1659,10 @@ window.generateProgressReports = async function(singleStudentId = null) {
       return `<tr>
         <td style="border:${BORDER};padding:7px 7px;font-weight:700;text-align:left;background:#fff;color:#000;font-size:10px;white-space:nowrap;">${subLabel}</td>
         ${C(pa1)}${C(hy)}
-        <td style="border:${BORDER};padding:7px 3px;text-align:center;font-weight:700;background:#dbeafe;color:#1a3c6e;font-size:10px;">${t1!==null?t1:'—'}</td>
+        <td style="border:${BORDER};padding:7px 3px;text-align:center;font-weight:700;background:#e8e8e8;color:#000;font-size:10px;">${t1!==null?t1:'—'}</td>
         ${C(pa2)}${C(ann)}
-        <td style="border:${BORDER};padding:7px 3px;text-align:center;font-weight:700;background:#dbeafe;color:#1a3c6e;font-size:10px;">${t2!==null?t2:'—'}</td>
-        <td style="border:${BORDER};padding:7px 3px;text-align:center;font-weight:700;background:#fef3c7;color:#92400e;font-size:10px;">${gt!==null?gt:'—'}</td>
+        <td style="border:${BORDER};padding:7px 3px;text-align:center;font-weight:700;background:#e8e8e8;color:#000;font-size:10px;">${t2!==null?t2:'—'}</td>
+        <td style="border:${BORDER};padding:7px 3px;text-align:center;font-weight:700;background:#bbb;color:#000;font-size:10px;">${gt!==null?gt:'—'}</td>
         <td style="border:${BORDER};padding:7px 3px;text-align:center;font-weight:700;background:#fff;color:#000;font-size:10px;">${subGrade}</td>
         <td style="border:${BORDER};padding:7px 4px;font-size:10px;background:#fff;color:#555;">${escapeHtml(displayRemark)}</td>
       </tr>`;
@@ -1701,19 +1701,19 @@ window.generateProgressReports = async function(singleStudentId = null) {
     <div class="report-card">
 
       <!-- ══ SCHOOL HEADER ══ -->
-      <div style="display:flex;align-items:center;padding:6px 8px 5px;border-bottom:2px solid #1a3c6e;margin-bottom:4px;">
-        <img src="${logoUrl}" style="width:64px;height:64px;border-radius:50%;flex-shrink:0;margin-right:12px;" alt="Logo">
+      <div style="display:flex;align-items:center;padding:6px 8px 5px;border-bottom:2px solid #000;margin-bottom:4px;">
+        <img src="${logoUrl}" style="width:82px;height:82px;border-radius:50%;flex-shrink:0;margin-right:12px;" alt="Logo">
         <div style="flex:1;text-align:center;">
-          <div style="font-size:20px;font-weight:900;color:#c0392b;letter-spacing:1px;font-family:Arial,sans-serif;">PRABHA GYAN JYOTI PUBLIC SCHOOL</div>
-          <div style="font-size:10.5px;color:#555;margin-top:1px;">Government Recognized Affiliation No. - E24/15</div>
-          <div style="font-size:10px;color:#333;font-weight:600;">RAM BAGH COLONY, OPP. BALAJI DHAM, GANGOH-247341, SAHARANPUR, (U.P.)</div>
-          <div style="font-size:10px;color:#555;">Mob.: 9837700311, 9720175848 &nbsp;|&nbsp; www.prabhaschoolonline.com</div>
+          <div style="font-size:20px;font-weight:900;color:#000;letter-spacing:1px;font-family:Arial,sans-serif;">PRABHA GYAN JYOTI PUBLIC SCHOOL</div>
+          <div style="font-size:10.5px;color:#333;margin-top:1px;">Government Recognized Affiliation No. - E24/15</div>
+          <div style="font-size:10px;color:#000;font-weight:600;">RAM BAGH COLONY, OPP. BALAJI DHAM, GANGOH-247341, SAHARANPUR, (U.P.)</div>
+          <div style="font-size:10px;color:#333;">Mob.: 9837700311, 9720175848, 8791484600 &nbsp;|&nbsp; www.prabhaschoolonline.com</div>
         </div>
       </div>
 
       <!-- ══ TITLE ══ -->
       <div style="text-align:center;margin-bottom:5px;">
-        <div style="font-size:16px;font-weight:900;color:#1a3c6e;letter-spacing:3px;font-family:Arial,sans-serif;">PROGRESS REPORT</div>
+        <div style="font-size:16px;font-weight:900;color:#000;letter-spacing:3px;font-family:Arial,sans-serif;">PROGRESS REPORT</div>
       </div>
 
       <!-- ══ DATE / SESSION ══ -->
@@ -1725,26 +1725,26 @@ window.generateProgressReports = async function(singleStudentId = null) {
       <!-- ══ STUDENT INFO ══ -->
       <table style="width:100%;border-collapse:collapse;border:1px solid #999;margin-bottom:6px;font-size:12px;">
         <tr>
-          <td style="border:1px solid #999;padding:7px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;width:19%;">NAME OF THE STUDENT</td>
-          <td style="border:1px solid #999;padding:7px 7px;font-weight:700;width:30%;">${escapeHtml(s.name||'')}</td>
-          <td style="border:1px solid #999;padding:7px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;width:14%;">ADMISSION NO.</td>
-          <td style="border:1px solid #999;padding:7px 7px;font-weight:700;width:10%;">${escapeHtml(s.admissionNo||'—')}</td>
-          <td style="border:1px solid #999;padding:7px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;width:10%;">ROLL NO.</td>
-          <td style="border:1px solid #999;padding:7px 7px;font-weight:700;">${s.rollNo||'—'}</td>
+          <td style="border:1px solid #555;padding:7px 7px;background:#d8d8d8;color:#000;font-weight:600;width:19%;">NAME OF THE STUDENT</td>
+          <td style="border:1px solid #555;padding:7px 7px;font-weight:700;width:30%;">${escapeHtml(s.name||'')}</td>
+          <td style="border:1px solid #555;padding:7px 7px;background:#d8d8d8;color:#000;font-weight:600;width:14%;">ADMISSION NO.</td>
+          <td style="border:1px solid #555;padding:7px 7px;font-weight:700;width:10%;">${escapeHtml(s.admissionNo||'—')}</td>
+          <td style="border:1px solid #555;padding:7px 7px;background:#d8d8d8;color:#000;font-weight:600;width:10%;">ROLL NO.</td>
+          <td style="border:1px solid #555;padding:7px 7px;font-weight:700;">${s.rollNo||'—'}</td>
         </tr>
         <tr>
-          <td style="border:1px solid #999;padding:7px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">FATHER'S NAME</td>
-          <td style="border:1px solid #999;padding:7px 7px;font-weight:700;">${escapeHtml(s.fatherName||'—')}</td>
-          <td style="border:1px solid #999;padding:7px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">CLASS</td>
-          <td style="border:1px solid #999;padding:7px 7px;font-weight:700;">${escapeHtml(s.class||'—')}${s.section?' - '+s.section:''}</td>
-          <td style="border:1px solid #999;padding:7px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">D.O.B.</td>
-          <td style="border:1px solid #999;padding:7px 7px;font-weight:700;">${s.dob ? (d => d.length===10&&d.includes('/') ? d.split('/').map((v,i)=>i===2?v.slice(-2):v).join('-') : d)(s.dob) : '—'}</td>
+          <td style="border:1px solid #555;padding:7px 7px;background:#d8d8d8;color:#000;font-weight:600;">FATHER'S NAME</td>
+          <td style="border:1px solid #555;padding:7px 7px;font-weight:700;">${escapeHtml(s.fatherName||'—')}</td>
+          <td style="border:1px solid #555;padding:7px 7px;background:#d8d8d8;color:#000;font-weight:600;">CLASS</td>
+          <td style="border:1px solid #555;padding:7px 7px;font-weight:700;">${escapeHtml(s.class||'—')}${s.section?' - '+s.section:''}</td>
+          <td style="border:1px solid #555;padding:7px 7px;background:#d8d8d8;color:#000;font-weight:600;">D.O.B.</td>
+          <td style="border:1px solid #555;padding:7px 7px;font-weight:700;">${s.dob ? (d => d.length===10&&d.includes('/') ? d.split('/').map((v,i)=>i===2?v.slice(-2):v).join('-') : d)(s.dob) : '—'}</td>
         </tr>
         <tr>
-          <td style="border:1px solid #999;padding:7px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">MOTHER'S NAME</td>
-          <td style="border:1px solid #999;padding:7px 7px;font-weight:700;">${escapeHtml(s.motherName||'—')}</td>
-          <td style="border:1px solid #999;padding:7px 7px;background:#eaf0fb;color:#1a3c6e;font-weight:600;">ADDRESS</td>
-          <td colspan="3" style="border:1px solid #999;padding:7px 7px;font-weight:700;">${escapeHtml(s.address||'—')}</td>
+          <td style="border:1px solid #555;padding:7px 7px;background:#d8d8d8;color:#000;font-weight:600;">MOTHER'S NAME</td>
+          <td style="border:1px solid #555;padding:7px 7px;font-weight:700;">${escapeHtml(s.motherName||'—')}</td>
+          <td style="border:1px solid #555;padding:7px 7px;background:#d8d8d8;color:#000;font-weight:600;">ADDRESS</td>
+          <td colspan="3" style="border:1px solid #555;padding:7px 7px;font-weight:700;">${escapeHtml(s.address||'—')}</td>
         </tr>
       </table>
 
@@ -1752,7 +1752,7 @@ window.generateProgressReports = async function(singleStudentId = null) {
       <table style="width:100%;border-collapse:collapse;font-size:10px;margin-bottom:6px;">
         <thead>
           <tr>
-            <th rowspan="2" style="background:#1a3c6e;color:#fff;border:1px solid #999;padding:7px 7px;text-align:left;font-size:10px;min-width:90px;">SCHOLASTIC AREA</th>
+            <th rowspan="2" style="background:#1a3c6e;color:#fff;border:1px solid #555;padding:7px 7px;text-align:left;font-size:10px;min-width:90px;">SCHOLASTIC AREA</th>
             <th colspan="3" style="background:#1a3c6e;color:#fff;border:1px solid #999;padding:7px;text-align:center;font-size:10px;">TERM - 1</th>
             <th colspan="3" style="background:#1a3c6e;color:#fff;border:1px solid #999;padding:7px;text-align:center;font-size:10px;">TERM - 2</th>
             <th colspan="3" style="background:${C_ORANGE};color:#fff;border:1px solid #999;padding:7px;text-align:center;font-size:10px;">FINAL RESULT</th>
@@ -1765,17 +1765,17 @@ window.generateProgressReports = async function(singleStudentId = null) {
         </thead>
         <tbody>
           ${marksRows}
-          <tr style="background:#dbeafe;font-weight:700;font-size:10px;">
-            <td style="border:1px solid #999;padding:7px 7px;text-align:left;color:#1a3c6e;">GRAND TOTAL</td>
-            <td style="border:1px solid #999;padding:6px 3px;text-align:center;">${t1PA1m>0?t1PA1s:'—'}</td>
-            <td style="border:1px solid #999;padding:6px 3px;text-align:center;">${t1HYm>0?t1HYs:'—'}</td>
-            <td style="border:1px solid #999;padding:6px 3px;text-align:center;background:#bfdbfe;color:#1a3c6e;">${t1Max>0?t1Sum:'—'}</td>
-            <td style="border:1px solid #999;padding:6px 3px;text-align:center;">${t2PA2m>0?t2PA2s:'—'}</td>
-            <td style="border:1px solid #999;padding:6px 3px;text-align:center;">${t2ANNm>0?t2ANNs:'—'}</td>
-            <td style="border:1px solid #999;padding:6px 3px;text-align:center;background:#bfdbfe;color:#1a3c6e;">${t2Max>0?t2Sum:'—'}</td>
-            <td style="border:1px solid #999;padding:6px 3px;text-align:center;background:#fde68a;color:#92400e;">${gtMax>0?gtSum:'—'}</td>
-            <td style="border:1px solid #999;padding:6px 3px;text-align:center;">${overallGrade}</td>
-            <td style="border:1px solid #999;padding:6px 3px;"></td>
+          <tr style="background:#e0e0e0;font-weight:700;font-size:10px;">
+            <td style="border:1px solid #555;padding:7px 7px;text-align:left;color:#000;">GRAND TOTAL</td>
+            <td style="border:1px solid #555;padding:6px 3px;text-align:center;">${t1PA1m>0?t1PA1s:'—'}</td>
+            <td style="border:1px solid #555;padding:6px 3px;text-align:center;">${t1HYm>0?t1HYs:'—'}</td>
+            <td style="border:1px solid #555;padding:6px 3px;text-align:center;background:#c8c8c8;color:#000;">${t1Max>0?t1Sum:'—'}</td>
+            <td style="border:1px solid #555;padding:6px 3px;text-align:center;">${t2PA2m>0?t2PA2s:'—'}</td>
+            <td style="border:1px solid #555;padding:6px 3px;text-align:center;">${t2ANNm>0?t2ANNs:'—'}</td>
+            <td style="border:1px solid #555;padding:6px 3px;text-align:center;background:#c8c8c8;color:#000;">${t2Max>0?t2Sum:'—'}</td>
+            <td style="border:1px solid #555;padding:6px 3px;text-align:center;background:#aaa;color:#000;">${gtMax>0?gtSum:'—'}</td>
+            <td style="border:1px solid #555;padding:6px 3px;text-align:center;">${overallGrade}</td>
+            <td style="border:1px solid #555;padding:6px 3px;"></td>
           </tr>
         </tbody>
       </table>
@@ -1888,6 +1888,7 @@ window.generateProgressReports = async function(singleStudentId = null) {
     .btn-wa    { background:#25d366; color:#fff; }
     .btn-email { background:#8e44ad; color:#fff; }
     .btn-copy  { background:#e67e22; color:#fff; }
+    .btn-share { background:#2980b9; color:#fff; }
     body { padding-top:42px; }
     @media print { .toolbar { display:none; } body { padding-top:0; background:#fff; } }
   </style></head>
@@ -1896,12 +1897,24 @@ window.generateProgressReports = async function(singleStudentId = null) {
     <button class="btn-back" onclick="window.close()">← Back</button>
     <span>🏫 Prabha Gyan Jyoti — Report Card | Class ${escapeHtml(cls)} | Session ${escapeHtml(session)}</span>
     <button class="btn-print" onclick="window.print()">🖨️ Print / Save PDF</button>
+    <button class="btn-share" onclick="sharePDF()">📤 Share PDF</button>
     <button class="btn-wa"    onclick="shareWA()">📱 WhatsApp</button>
     <button class="btn-email" onclick="emailCard()">📧 Email</button>
     <button class="btn-copy"  onclick="copyText()">📋 Copy Text</button>
   </div>
   ${reportHTML}
   <script>
+    function sharePDF() {
+      if (navigator.share) {
+        navigator.share({
+          title: 'Progress Report Card – Class ${escapeHtml(cls)}',
+          text: 'Progress Report Card – Class ${escapeHtml(cls)} | Session ${escapeHtml(session)} | Prabha Gyan Jyoti Public School, Gangoh. Please use Print → Save as PDF to download.',
+          url: window.location.href
+        }).catch(() => {});
+      } else {
+        alert('To share PDF:\\n1. Click "Print / Save PDF"\\n2. Choose "Save as PDF" as the printer\\n3. Save the file\\n4. Share the PDF file via WhatsApp or Email');
+      }
+    }
     function shareWA() {
       const text = encodeURIComponent('Progress Report Card – Class ${escapeHtml(cls)} | Session ${escapeHtml(session)} | Prabha Gyan Jyoti Public School, Gangoh');
       window.open('https://wa.me/?text=' + text, '_blank');
