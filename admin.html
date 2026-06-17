@@ -318,6 +318,7 @@
   <div class="tab" onclick="showTab('teachers', this)">👩‍🏫 Teachers</div>
   <div class="tab" onclick="showTab('marks', this)">📊 View Marks</div>
   <div class="tab" onclick="showTab('entry', this)">✏️ Enter Marks</div>
+  <div class="tab" onclick="showTab('performance', this)">📈 Performance</div>
   <div class="tab" onclick="showTab('report', this)">🖨️ Print Report Card</div>
   <div class="tab" onclick="window.location.href='appearance.html'">📋 Appearance</div>
   <div class="tab" onclick="window.location.href='tabulation.html'">📊 Tabulation</div>
@@ -656,6 +657,64 @@
     </div>
   </div>
 
+  <!-- ===== PERFORMANCE & IMPROVEMENT ===== -->
+  <div class="section" id="sec-performance">
+    <div class="card">
+      <h2>📈 Performance & Improvement Analysis</h2>
+      <div class="filter-row" style="margin-bottom:16px;">
+        <div>
+          <label>Session</label>
+          <select id="perf-session" style="width:140px;">
+            <option value="2024-25">2024-25</option>
+            <option value="2025-26">2025-26</option>
+            <option value="2026-27" selected>2026-27</option>
+            <option value="2027-28">2027-28</option>
+          </select>
+        </div>
+        <div style="padding-top:18px;">
+          <button class="btn btn-primary" onclick="loadPerformance()">🔍 Load Analysis</button>
+        </div>
+      </div>
+      <div id="perf-msg" style="font-size:13px;color:#888;margin-bottom:8px;"></div>
+    </div>
+
+    <!-- SECTION 1: Subject-wise Class Ranking -->
+    <div class="card" id="perf-subj-card" style="display:none;">
+      <h2>🏆 Subject-wise Class Ranking <span id="perf-subj-session" style="font-size:13px;font-weight:400;color:#888;"></span></h2>
+      <p style="font-size:12px;color:#666;margin-bottom:14px;">Average marks per class for each subject — ranked best to lowest.</p>
+      <div style="overflow-x:auto;">
+        <table style="font-size:12px;border-collapse:collapse;width:100%;">
+          <thead id="perf-subj-thead"></thead>
+          <tbody id="perf-subj-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SECTION 2: Class Improvement (HY → Annual) -->
+    <div class="card" id="perf-improve-card" style="display:none;">
+      <h2>📊 Class Improvement: Half Yearly → Annual <span id="perf-improve-session" style="font-size:13px;font-weight:400;color:#888;"></span></h2>
+      <p style="font-size:12px;color:#666;margin-bottom:14px;">Comparison of class average between Half Yearly and Annual exam — shows improvement or decline.</p>
+      <div style="overflow-x:auto;">
+        <table style="font-size:12px;border-collapse:collapse;width:100%;">
+          <thead id="perf-improve-thead"></thead>
+          <tbody id="perf-improve-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SECTION 3: Top 10 Students All Classes -->
+    <div class="card" id="perf-top-card" style="display:none;">
+      <h2>🥇 Top 10 Students — All Classes <span id="perf-top-session" style="font-size:13px;font-weight:400;color:#888;"></span></h2>
+      <p style="font-size:12px;color:#666;margin-bottom:14px;">Top 10 students ranked by overall percentage across all classes and subjects.</p>
+      <div style="overflow-x:auto;">
+        <table style="font-size:12px;border-collapse:collapse;width:100%;">
+          <thead id="perf-top-thead"></thead>
+          <tbody id="perf-top-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== PRINT REPORT CARD ===== -->
   <div class="section" id="sec-report">
     <div class="card">
@@ -729,7 +788,8 @@ window.showTab = function(tab, el) {
   el.classList.add('active');
   if (tab === 'marks'     && window._fbReady) loadMarksView();
   if (tab === 'dashboard' && window._fbReady) loadDashboard();
-  if (tab === 'entry'     && window._fbReady) loadEntryStudents();
+  if (tab === 'entry'       && window._fbReady) loadEntryStudents();
+  if (tab === 'performance' && window._fbReady) loadPerformance();
 };
 
 window.closeEditModal = function() {
@@ -2159,6 +2219,197 @@ window.saveEntryMarks = async function() {
       if (el && el.value !== '') { el.style.borderColor='#27ae60'; el.style.background='#f0fff4'; }
     }));
   } catch(e) { showEntryMsg('Error saving: ' + e.message, 'error'); }
+};
+
+// ── PERFORMANCE & IMPROVEMENT ─────────────────────────────────────────────
+window.loadPerformance = async function() {
+  const session = document.getElementById('perf-session').value;
+  const msgEl   = document.getElementById('perf-msg');
+  msgEl.textContent = '⏳ Loading data, please wait...';
+  ['perf-subj-card','perf-improve-card','perf-top-card'].forEach(id => document.getElementById(id).style.display = 'none');
+
+  try {
+    // ── Load all students ──
+    const studSnap = await getDocs(query(collection(db,'students'), where('session','==',session)));
+    const students = {};
+    studSnap.forEach(d => { students[d.id] = { id:d.id, ...d.data() }; });
+
+    // ── Load all marks ──
+    const marksSnap = await getDocs(query(collection(db,'marks'), where('session','==',session)));
+    // marks[studentId][exam][subject] = marksObtained
+    const marks = {};
+    marksSnap.forEach(d => {
+      const m = d.data();
+      if (!marks[m.studentId]) marks[m.studentId] = {};
+      if (!marks[m.studentId][m.exam]) marks[m.studentId][m.exam] = {};
+      marks[m.studentId][m.exam][m.subject] = Number(m.marksObtained);
+    });
+
+    if (!studSnap.size) { msgEl.textContent = 'No student data found for this session.'; return; }
+    msgEl.textContent = `Loaded ${studSnap.size} students. Analysing...`;
+
+    const CLASSES = VALID_CLASSES;
+    const EXAMS   = ['PA1','HalfYearly','PA2','Annual'];
+    const MAX_MAP = { PA1:20, HalfYearly:80, PA2:20, Annual:80 };
+
+    // ── Build per-student totals ──
+    // studentStats[id] = { class, name, rollNo, totalObtained, totalMax, pct, subjAvg:{sub:pct} }
+    const studentStats = {};
+    Object.values(students).forEach(s => {
+      let tot = 0, mx = 0;
+      const subjPct = {};
+      SUBJECTS.forEach(sub => {
+        let so = 0, sm = 0;
+        EXAMS.forEach(ex => {
+          const v = marks[s.id]?.[ex]?.[sub];
+          if (v !== undefined) { so += v; sm += MAX_MAP[ex]; }
+        });
+        if (sm > 0) { tot += so; mx += sm; subjPct[sub] = so/sm*100; }
+      });
+      studentStats[s.id] = { ...s, totalObtained:tot, totalMax:mx, pct: mx>0?tot/mx*100:0, subjPct };
+    });
+
+    // ── Build per-class averages ──
+    // classSubjAvg[cls][sub] = average pct
+    // classExamAvg[cls][exam] = average pct  (for improvement)
+    const classSubjAvg   = {};
+    const classExamAvg   = {};
+    const classStudCount = {};
+    CLASSES.forEach(cls => {
+      classSubjAvg[cls]   = {};
+      classExamAvg[cls]   = {};
+      classStudCount[cls] = 0;
+      const clsStudents = Object.values(studentStats).filter(s => s.class === cls);
+      classStudCount[cls] = clsStudents.length;
+      if (!clsStudents.length) return;
+
+      SUBJECTS.forEach(sub => {
+        const vals = clsStudents.map(s => s.subjPct[sub]).filter(v => v !== undefined);
+        classSubjAvg[cls][sub] = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+      });
+
+      ['HalfYearly','Annual'].forEach(exam => {
+        const MAX = MAX_MAP[exam];
+        const vals = clsStudents.map(s => {
+          let so = 0, sm = 0;
+          SUBJECTS.forEach(sub => {
+            const v = marks[s.id]?.[exam]?.[sub];
+            if (v !== undefined) { so += v; sm += MAX; }
+          });
+          return sm > 0 ? so/sm*100 : null;
+        }).filter(v => v !== null);
+        classExamAvg[cls][exam] = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+      });
+    });
+
+    const TH = (t,bg='#1a3c6e') => `<th style="background:${bg};color:#fff;border:1px solid #555;padding:8px 10px;text-align:center;white-space:nowrap;">${t}</th>`;
+    const TD = (v,x='') => `<td style="border:1px solid #ddd;padding:7px 10px;${x}">${v}</td>`;
+    const badge = n => n===1?'🥇':n===2?'🥈':n===3?'🥉':`#${n}`;
+    const pctColor = p => p>=75?'color:#1e8449;font-weight:700;':p>=50?'color:#1a5276;font-weight:700;':p>=33?'color:#784212;':'color:#c0392b;font-weight:700;';
+
+    // ════ SECTION 1: Subject-wise Class Ranking ════
+    const subjHead = `<tr>${TH('Rank')}${TH('Class')}${TH('Students')}
+      ${SUBJECTS.map(s=>TH(s==='Science'?'Sci/EVS':s==='SST'?'SST':s==='GK'?'GK':s,'#2e6da4')).join('')}
+      ${TH('Overall Avg %','#444')}</tr>`;
+
+    // rank classes by overall average
+    const clsOverall = CLASSES.map(cls => {
+      const vals = SUBJECTS.map(sub => classSubjAvg[cls][sub]).filter(v => v!==null);
+      const avg  = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+      return { cls, avg, count: classStudCount[cls] };
+    }).filter(x => x.count > 0).sort((a,b) => (b.avg||0)-(a.avg||0));
+
+    const subjRows = clsOverall.map((item,i) => {
+      const cls = item.cls;
+      const subjCells = SUBJECTS.map(sub => {
+        const p = classSubjAvg[cls][sub];
+        return TD(p!==null ? p.toFixed(1)+'%' : '—', p!==null?pctColor(p):'color:#aaa;text-align:center;');
+      }).join('');
+      return `<tr style="${i<3?'background:#f9f9f9':''}">
+        ${TD(badge(i+1),'text-align:center;font-size:15px;')}
+        ${TD('<b>Class '+cls+'</b>')}
+        ${TD(item.count,'text-align:center;')}
+        ${subjCells}
+        ${TD(item.avg!==null?item.avg.toFixed(1)+'%':'—','text-align:center;font-weight:700;'+(item.avg!==null?pctColor(item.avg):''))}
+      </tr>`;
+    }).join('');
+
+    document.getElementById('perf-subj-thead').innerHTML = subjHead;
+    document.getElementById('perf-subj-tbody').innerHTML  = subjRows || '<tr><td colspan="20" style="text-align:center;padding:20px;color:#aaa;">No data</td></tr>';
+    document.getElementById('perf-subj-session').textContent = `| Session: ${session}`;
+    document.getElementById('perf-subj-card').style.display = '';
+
+    // ════ SECTION 2: Improvement HY → Annual ════
+    const impHead = `<tr>
+      ${TH('Class')}${TH('Students')}
+      ${TH('Half Yearly Avg %','#2e6da4')}${TH('Annual Avg %','#1a6e3c')}
+      ${TH('Change','#444')}${TH('Status','#444')}
+    </tr>`;
+
+    const impData = CLASSES.map(cls => ({
+      cls,
+      count : classStudCount[cls],
+      hy    : classExamAvg[cls]['HalfYearly'],
+      ann   : classExamAvg[cls]['Annual']
+    })).filter(x => x.count > 0 && (x.hy !== null || x.ann !== null))
+      .sort((a,b) => {
+        const da = (a.ann||0)-(a.hy||0), db = (b.ann||0)-(b.hy||0);
+        return db - da;
+      });
+
+    const impRows = impData.map(item => {
+      const diff = (item.hy!==null && item.ann!==null) ? (item.ann - item.hy) : null;
+      const arrow = diff===null ? '—' : diff>0 ? `<span style="color:#1e8449;">▲ +${diff.toFixed(1)}%</span>`
+                                      : diff<0 ? `<span style="color:#c0392b;">▼ ${diff.toFixed(1)}%</span>`
+                                               : `<span style="color:#888;">= 0.0%</span>`;
+      const status = diff===null ? '—' : diff>2 ? '✅ Improved' : diff>0 ? '🔼 Slight Gain' : diff===0 ? '➡️ Stable' : '🔻 Declined';
+      return `<tr>
+        ${TD('<b>Class '+item.cls+'</b>')}
+        ${TD(item.count,'text-align:center;')}
+        ${TD(item.hy!==null?item.hy.toFixed(1)+'%':'—','text-align:center;'+(item.hy!==null?pctColor(item.hy):''))}
+        ${TD(item.ann!==null?item.ann.toFixed(1)+'%':'—','text-align:center;'+(item.ann!==null?pctColor(item.ann):''))}
+        ${TD(arrow,'text-align:center;')}
+        ${TD(status,'text-align:center;font-weight:600;')}
+      </tr>`;
+    }).join('');
+
+    document.getElementById('perf-improve-thead').innerHTML = impHead;
+    document.getElementById('perf-improve-tbody').innerHTML  = impRows || '<tr><td colspan="6" style="text-align:center;padding:20px;color:#aaa;">Annual exam data not yet available</td></tr>';
+    document.getElementById('perf-improve-session').textContent = `| Session: ${session}`;
+    document.getElementById('perf-improve-card').style.display = '';
+
+    // ════ SECTION 3: Top 10 Students All Classes ════
+    const top10 = Object.values(studentStats)
+      .filter(s => s.totalMax > 0)
+      .sort((a,b) => b.pct - a.pct)
+      .slice(0, 10);
+
+    const topHead = `<tr>
+      ${TH('Rank')}${TH('Student Name')}${TH('Class')}${TH('Roll No')}
+      ${TH('Total Marks')}${TH('Max Marks')}${TH('Percentage','#1a6e3c')}${TH('Grade','#1a6e3c')}
+    </tr>`;
+
+    const GRADE = p => p>=91?'A1':p>=81?'A2':p>=71?'B1':p>=61?'B2':p>=51?'C1':p>=41?'C2':p>=33?'D':'E';
+
+    const topRows = top10.map((s,i) => `<tr style="${i<3?'background:#fffbea':''}">
+      ${TD(badge(i+1),'text-align:center;font-size:15px;')}
+      ${TD('<b>'+escapeHtml(s.name||'—')+'</b>')}
+      ${TD('Class '+escapeHtml(s.class||'—'),'text-align:center;')}
+      ${TD(s.rollNo||'—','text-align:center;')}
+      ${TD(s.totalObtained,'text-align:center;font-weight:700;')}
+      ${TD(s.totalMax,'text-align:center;')}
+      ${TD(s.pct.toFixed(1)+'%','text-align:center;font-weight:700;'+pctColor(s.pct))}
+      ${TD(GRADE(s.pct),'text-align:center;font-weight:700;')}
+    </tr>`).join('');
+
+    document.getElementById('perf-top-thead').innerHTML = topHead;
+    document.getElementById('perf-top-tbody').innerHTML  = topRows || '<tr><td colspan="8" style="text-align:center;padding:20px;color:#aaa;">No data</td></tr>';
+    document.getElementById('perf-top-session').textContent = `| Session: ${session}`;
+    document.getElementById('perf-top-card').style.display = '';
+
+    msgEl.textContent = `✅ Analysis complete — ${studSnap.size} students across ${clsOverall.length} classes.`;
+
+  } catch(e) { msgEl.textContent = '❌ Error: ' + e.message; }
 };
 
 function showEntryMsg(msg, type) {
