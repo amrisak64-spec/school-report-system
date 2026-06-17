@@ -318,6 +318,7 @@
   <div class="tab" onclick="showTab('teachers', this)">👩‍🏫 Teachers</div>
   <div class="tab" onclick="showTab('marks', this)">📊 View Marks</div>
   <div class="tab" onclick="showTab('entry', this)">✏️ Enter Marks</div>
+  <div class="tab" onclick="showTab('promote', this)">🎓 Promote</div>
   <div class="tab" onclick="showTab('performance', this)">📈 Performance</div>
   <div class="tab" onclick="showTab('report', this)">🖨️ Print Report Card</div>
   <div class="tab" onclick="window.location.href='appearance.html'">📋 Appearance</div>
@@ -421,50 +422,53 @@
         <tbody id="students-tbody"><tr><td colspan="10" style="text-align:center;color:#999;">Loading...</td></tr></tbody>
       </table>
     </div>
-  <!-- ===== PROMOTE STUDENTS ===== -->
-  <div class="card" id="promote-card" style="border:2px solid #e67e22;">
-    <h2 style="color:#e67e22;">🎓 Promote Students to Next Class</h2>
-    <p style="font-size:13px;color:#555;margin-bottom:14px;">
-      Promotes all students one class up (II→III→…→VIII). Class VIII students are marked <b>Passed Out</b> instead.
-      Student IDs stay the same — all old marks remain linked.
-    </p>
-    <div class="filter-row" style="margin-bottom:14px;">
-      <div>
-        <label>Current Session (promote FROM) *</label>
-        <select id="promo-from-session">
-          <option value="2024-25">2024-25</option>
-          <option value="2025-26">2025-26</option>
-          <option value="2026-27" selected>2026-27</option>
-          <option value="2027-28">2027-28</option>
-        </select>
-      </div>
-      <div>
-        <label>New Session (promote TO) *</label>
-        <select id="promo-to-session">
-          <option value="2025-26">2025-26</option>
-          <option value="2026-27">2026-27</option>
-          <option value="2027-28" selected>2027-28</option>
-          <option value="2028-29">2028-29</option>
-        </select>
-      </div>
-      <div style="display:flex;align-items:flex-end;gap:8px;">
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
-          <input type="checkbox" id="promo-reset-roll" style="width:auto;"> Reset roll numbers class-wise
-        </label>
-      </div>
-      <div style="padding-top:18px;">
-        <button class="btn btn-warning" onclick="previewPromotion()">👁️ Preview Promotion</button>
-      </div>
-    </div>
-    <div id="promo-preview" style="display:none;">
-      <div id="promo-preview-table"></div>
-      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn btn-success" id="promo-confirm-btn" onclick="runPromotion()">✅ Confirm & Promote</button>
-        <button class="btn" style="background:#ccc;color:#333;" onclick="document.getElementById('promo-preview').style.display='none'">✖ Cancel</button>
-      </div>
-    </div>
-    <div id="promo-msg" style="margin-top:10px;font-size:13px;"></div>
   </div>
+
+  <!-- ===== PROMOTE STUDENTS ===== -->
+  <div class="section" id="sec-promote">
+    <div class="card" style="border:2px solid #e67e22;">
+      <h2 style="color:#e67e22;">🎓 Promote Students to Next Class</h2>
+      <p style="font-size:13px;color:#555;margin-bottom:14px;">
+        Promotes all students one class up (II→III→…→VIII). Class VIII students are marked <b>Passed Out</b> instead.
+        Student IDs stay the same — all old marks remain linked.
+      </p>
+      <div class="filter-row" style="margin-bottom:14px;">
+        <div>
+          <label>Current Session (promote FROM) *</label>
+          <select id="promo-from-session">
+            <option value="2024-25">2024-25</option>
+            <option value="2025-26">2025-26</option>
+            <option value="2026-27" selected>2026-27</option>
+            <option value="2027-28">2027-28</option>
+          </select>
+        </div>
+        <div>
+          <label>New Session (promote TO) *</label>
+          <select id="promo-to-session">
+            <option value="2025-26">2025-26</option>
+            <option value="2026-27">2026-27</option>
+            <option value="2027-28" selected>2027-28</option>
+            <option value="2028-29">2028-29</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:flex-end;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+            <input type="checkbox" id="promo-reset-roll" style="width:auto;"> Reset roll numbers class-wise
+          </label>
+        </div>
+        <div style="padding-top:18px;">
+          <button class="btn btn-warning" onclick="previewPromotion()">👁️ Preview Promotion</button>
+        </div>
+      </div>
+      <div id="promo-preview" style="display:none;">
+        <div id="promo-preview-table"></div>
+        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-success" id="promo-confirm-btn" onclick="runPromotion()">✅ Confirm & Promote</button>
+          <button class="btn" style="background:#ccc;color:#333;" onclick="document.getElementById('promo-preview').style.display='none'">✖ Cancel</button>
+        </div>
+      </div>
+      <div id="promo-msg" style="margin-top:10px;font-size:13px;"></div>
+    </div>
   </div>
 
   <!-- ===== EXCEL UPLOAD ===== -->
@@ -833,6 +837,7 @@ window.showTab = function(tab, el) {
   if (tab === 'marks'     && window._fbReady) loadMarksView();
   if (tab === 'dashboard' && window._fbReady) loadDashboard();
   if (tab === 'entry'       && window._fbReady) loadEntryStudents();
+  if (tab === 'promote'     && window._fbReady) {} // no auto-load needed
   if (tab === 'performance' && window._fbReady) loadPerformance();
 };
 
