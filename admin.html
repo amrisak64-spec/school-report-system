@@ -421,6 +421,50 @@
         <tbody id="students-tbody"><tr><td colspan="10" style="text-align:center;color:#999;">Loading...</td></tr></tbody>
       </table>
     </div>
+  <!-- ===== PROMOTE STUDENTS ===== -->
+  <div class="card" id="promote-card" style="border:2px solid #e67e22;">
+    <h2 style="color:#e67e22;">🎓 Promote Students to Next Class</h2>
+    <p style="font-size:13px;color:#555;margin-bottom:14px;">
+      Promotes all students one class up (II→III→…→VIII). Class VIII students are marked <b>Passed Out</b> instead.
+      Student IDs stay the same — all old marks remain linked.
+    </p>
+    <div class="filter-row" style="margin-bottom:14px;">
+      <div>
+        <label>Current Session (promote FROM) *</label>
+        <select id="promo-from-session">
+          <option value="2024-25">2024-25</option>
+          <option value="2025-26">2025-26</option>
+          <option value="2026-27" selected>2026-27</option>
+          <option value="2027-28">2027-28</option>
+        </select>
+      </div>
+      <div>
+        <label>New Session (promote TO) *</label>
+        <select id="promo-to-session">
+          <option value="2025-26">2025-26</option>
+          <option value="2026-27">2026-27</option>
+          <option value="2027-28" selected>2027-28</option>
+          <option value="2028-29">2028-29</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:8px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="promo-reset-roll" style="width:auto;"> Reset roll numbers class-wise
+        </label>
+      </div>
+      <div style="padding-top:18px;">
+        <button class="btn btn-warning" onclick="previewPromotion()">👁️ Preview Promotion</button>
+      </div>
+    </div>
+    <div id="promo-preview" style="display:none;">
+      <div id="promo-preview-table"></div>
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-success" id="promo-confirm-btn" onclick="runPromotion()">✅ Confirm & Promote</button>
+        <button class="btn" style="background:#ccc;color:#333;" onclick="document.getElementById('promo-preview').style.display='none'">✖ Cancel</button>
+      </div>
+    </div>
+    <div id="promo-msg" style="margin-top:10px;font-size:13px;"></div>
+  </div>
   </div>
 
   <!-- ===== EXCEL UPLOAD ===== -->
@@ -1602,15 +1646,59 @@ window.generateProgressReports = async function(singleStudentId = null) {
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Loading...</title></head><body style="font-family:Arial;padding:40px;text-align:center;color:#555;"><p style="margin-top:80px;font-size:15px;">Please wait, loading report cards...</p></body></html>`);
   win.document.close();
 
+  // ── Build student list ──
+  // For past sessions: students may have been promoted, so their current
+  // class/session in the students doc won't match. Instead, reconstruct
+  // the class roster from the marks collection (which stores class+session
+  // at the time marks were entered), then fetch personal details by studentId.
+  let students = [];
+
+  // Try direct students query first (works for current session)
   let stuQ = section
     ? query(collection(db,'students'), where('class','==',cls), where('section','==',section), where('session','==',session))
     : query(collection(db,'students'), where('class','==',cls), where('session','==',session));
   const stuSnap = await getDocs(stuQ);
-  let students = [];
   stuSnap.forEach(d => students.push({id:d.id,...d.data()}));
+
+  // If no students found (past session after promotion), rebuild from marks
+  if (students.length === 0) {
+    const mQ = section
+      ? query(collection(db,'marks'), where('class','==',cls), where('section','==',section), where('session','==',session))
+      : query(collection(db,'marks'), where('class','==',cls), where('session','==',session));
+    const mSnap = await getDocs(mQ);
+
+    // Collect unique studentIds with their class-time metadata from marks
+    const seen = {};
+    mSnap.forEach(d => {
+      const m = d.data();
+      if (!seen[m.studentId]) seen[m.studentId] = {
+        id: m.studentId, class: m.class, section: m.section||'',
+        rollNo: m.rollNo||0, name: m.studentName||''
+      };
+    });
+
+    // Fetch full personal details from student docs
+    const ids = Object.keys(seen);
+    await Promise.all(ids.map(async sid => {
+      const sDoc = await getDoc(doc(db,'students', sid));
+      const base = seen[sid];
+      if (sDoc.exists()) {
+        const d = sDoc.data();
+        students.push({
+          ...base,
+          fatherName: d.fatherName||'', motherName: d.motherName||'',
+          admissionNo: d.admissionNo||'', dob: d.dob||'', address: d.address||''
+        });
+      } else {
+        // Student doc deleted — use whatever we have from marks
+        students.push(base);
+      }
+    }));
+  }
+
   students.sort((a,b) => (a.rollNo||0) - (b.rollNo||0));
   if (singleStudentId) students = students.filter(s => s.id === singleStudentId);
-  if (students.length === 0) { alert('No students found.'); return; }
+  if (students.length === 0) { alert('No students found for this class and session.'); return; }
 
   // Marks: per-student × exam × subject + per-subject remarks
   const marksSnap = await getDocs(query(collection(db,'marks'),
@@ -2220,6 +2308,136 @@ window.saveEntryMarks = async function() {
     }));
   } catch(e) { showEntryMsg('Error saving: ' + e.message, 'error'); }
 };
+
+// ── PROMOTE STUDENTS ──────────────────────────────────────────────────────
+const CLASS_NEXT = { 'II':'III','III':'IV','IV':'V','V':'VI','VI':'VII','VII':'VIII' };
+let _promoStudents = [];
+
+window.previewPromotion = async function() {
+  const fromSession = document.getElementById('promo-from-session').value;
+  const toSession   = document.getElementById('promo-to-session').value;
+  if (!fromSession || !toSession || fromSession === toSession) {
+    showPromoMsg('Please select different From and To sessions.','error'); return;
+  }
+  showPromoMsg('Loading student data...','info');
+  document.getElementById('promo-preview').style.display = 'none';
+
+  const snap = await getDocs(query(collection(db,'students'), where('session','==',fromSession)));
+  _promoStudents = [];
+  snap.forEach(d => _promoStudents.push({ id:d.id, ...d.data() }));
+
+  if (!_promoStudents.length) { showPromoMsg('No students found in session '+fromSession,'error'); return; }
+
+  // Build summary by class
+  const summary = {};
+  VALID_CLASSES.forEach(c => summary[c] = []);
+  summary['VIII_passout'] = [];
+  _promoStudents.forEach(s => {
+    if (s.class === 'VIII') summary['VIII_passout'].push(s);
+    else if (CLASS_NEXT[s.class]) summary[s.class].push(s);
+  });
+
+  let tableHtml = `<table style="border-collapse:collapse;width:100%;font-size:13px;">
+    <thead><tr>
+      <th style="background:#1a3c6e;color:#fff;padding:8px 12px;border:1px solid #ddd;">Current Class</th>
+      <th style="background:#1a3c6e;color:#fff;padding:8px 12px;border:1px solid #ddd;">Students</th>
+      <th style="background:#1a3c6e;color:#fff;padding:8px 12px;border:1px solid #ddd;">Promoted To</th>
+      <th style="background:#1a3c6e;color:#fff;padding:8px 12px;border:1px solid #ddd;">New Session</th>
+    </tr></thead><tbody>`;
+
+  let totalPromote = 0, totalPassout = 0;
+  VALID_CLASSES.forEach(cls => {
+    const count = summary[cls]?.length || 0;
+    if (!count) return;
+    const nextCls = CLASS_NEXT[cls];
+    tableHtml += `<tr>
+      <td style="border:1px solid #ddd;padding:7px 12px;font-weight:700;">Class ${cls}</td>
+      <td style="border:1px solid #ddd;padding:7px 12px;text-align:center;">${count}</td>
+      <td style="border:1px solid #ddd;padding:7px 12px;color:#1a6e3c;font-weight:700;">Class ${nextCls}</td>
+      <td style="border:1px solid #ddd;padding:7px 12px;text-align:center;">${toSession}</td>
+    </tr>`;
+    totalPromote += count;
+  });
+  const passCount = summary['VIII_passout'].length;
+  if (passCount) {
+    tableHtml += `<tr style="background:#fff8e1;">
+      <td style="border:1px solid #ddd;padding:7px 12px;font-weight:700;">Class VIII</td>
+      <td style="border:1px solid #ddd;padding:7px 12px;text-align:center;">${passCount}</td>
+      <td style="border:1px solid #ddd;padding:7px 12px;color:#e67e22;font-weight:700;">🎓 Passed Out</td>
+      <td style="border:1px solid #ddd;padding:7px 12px;text-align:center;">—</td>
+    </tr>`;
+    totalPassout = passCount;
+  }
+  tableHtml += `<tr style="background:#f0f4f8;font-weight:700;">
+    <td style="border:1px solid #ddd;padding:7px 12px;">TOTAL</td>
+    <td style="border:1px solid #ddd;padding:7px 12px;text-align:center;">${totalPromote + totalPassout}</td>
+    <td style="border:1px solid #ddd;padding:7px 12px;color:#1a3c6e;">${totalPromote} promoted + ${totalPassout} passed out</td>
+    <td style="border:1px solid #ddd;padding:7px 12px;"></td>
+  </tr></tbody></table>`;
+
+  document.getElementById('promo-preview-table').innerHTML = tableHtml;
+  document.getElementById('promo-preview').style.display = '';
+  showPromoMsg('','');
+};
+
+window.runPromotion = async function() {
+  const fromSession  = document.getElementById('promo-from-session').value;
+  const toSession    = document.getElementById('promo-to-session').value;
+  const resetRolls   = document.getElementById('promo-reset-roll').checked;
+  if (!_promoStudents.length) { showPromoMsg('Run Preview first.','error'); return; }
+
+  document.getElementById('promo-confirm-btn').disabled = true;
+  showPromoMsg('Promoting students... please wait.','info');
+
+  try {
+    // Build roll counters per class (for reset-roll option)
+    const rollCounter = {};
+
+    // Chunk into batches of 499
+    const chunks = [];
+    for (let i = 0; i < _promoStudents.length; i += 499)
+      chunks.push(_promoStudents.slice(i, i + 499));
+
+    let promoted = 0, passedOut = 0;
+    for (const chunk of chunks) {
+      const batch = writeBatch(db);
+      chunk.forEach(s => {
+        const ref = doc(db, 'students', s.id);
+        if (s.class === 'VIII') {
+          batch.update(ref, { passedOut: true, passedOutSession: fromSession });
+          passedOut++;
+        } else if (CLASS_NEXT[s.class]) {
+          const nextCls = CLASS_NEXT[s.class];
+          const updates = { class: nextCls, session: toSession, previousClass: s.class, previousSession: fromSession };
+          if (resetRolls) {
+            rollCounter[nextCls] = (rollCounter[nextCls] || 0) + 1;
+            updates.rollNo = rollCounter[nextCls];
+          }
+          batch.update(ref, updates);
+          promoted++;
+        }
+      });
+      await batch.commit();
+    }
+
+    document.getElementById('promo-preview').style.display = 'none';
+    _promoStudents = [];
+    showPromoMsg(`✅ Done! ${promoted} students promoted to new classes in session ${toSession}. ${passedOut} Class VIII students marked as Passed Out.`, 'success');
+    loadStudents();
+  } catch(e) {
+    showPromoMsg('❌ Error: ' + e.message, 'error');
+  } finally {
+    document.getElementById('promo-confirm-btn').disabled = false;
+  }
+};
+
+function showPromoMsg(msg, type) {
+  const el = document.getElementById('promo-msg');
+  el.style.cssText = msg ? `padding:10px 14px;border-radius:6px;font-size:13px;background:${
+    type==='error'?'#fadbd8':type==='success'?'#d5f5e3':'#eaf0fb'};color:${
+    type==='error'?'#c0392b':type==='success'?'#1e8449':'#1a3c6e'};` : '';
+  el.textContent = msg;
+}
 
 // ── PERFORMANCE & IMPROVEMENT ─────────────────────────────────────────────
 window.loadPerformance = async function() {
