@@ -194,6 +194,27 @@
       </div>
     </div>
   </div>
+
+  <!-- ══ DASHBOARD ══ -->
+  <div class="card">
+    <h2>📊 My Marks Entry Dashboard</h2>
+    <div id="dashboard-msg" style="font-size:13px;color:#888;margin-bottom:12px;">Loading dashboard...</div>
+    <div class="table-scroll-wrap">
+      <table id="dashboard-table" style="display:none;">
+        <thead>
+          <tr>
+            <th>Class</th>
+            <th>Total Students</th>
+            <th style="background:#2e6da4;">PA 1 (20)</th>
+            <th style="background:#2e6da4;">Half Yearly (80)</th>
+            <th style="background:#1a6e3c;">PA 2 (20)</th>
+            <th style="background:#1a6e3c;">Annual (80)</th>
+          </tr>
+        </thead>
+        <tbody id="dashboard-tbody"></tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <script type="module">
@@ -221,11 +242,13 @@ onAuthStateChanged(auth, async user => {
   currentTeacher.assignedClasses = currentTeacher.assignedClasses || [];
   currentTeacher.subject = SUBJECT_ALIASES[currentTeacher.subject] || currentTeacher.subject;
 
-  document.getElementById('welcome-text').textContent = `👋 Welcome, ${currentTeacher.name || 'Teacher'}`;
+  document.getElementById('welcome-text').textContent = `👋 Welcome, ${currentTeacher.name || ''} Teacher`;
   document.getElementById('teacher-info').textContent = `Subject: ${currentTeacher.subject} | Classes: ${(currentTeacher.assignedClasses||[]).join(', ')}`;
   document.getElementById('teacher-subject-info').innerHTML =
     `You are assigned: <b>${currentTeacher.subject}</b> | Classes: <b>${(currentTeacher.assignedClasses||[]).join(', ')}</b>.<br>
      Select session, class, section, exam and subject then click <b>Load Students</b>.`;
+
+  loadDashboard();
 
   // Pre-select subject if teacher has one assigned
   const classSelect = document.getElementById('sel-class');
@@ -437,6 +460,66 @@ function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, char => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
   }[char]));
+}
+
+async function loadDashboard() {
+  const session = document.getElementById('sel-session').value || '2026-27';
+  const classes = currentTeacher.assignedClasses || [];
+  const subject = currentTeacher.subject;
+  const exams   = ['PA1','HalfYearly','PA2','Annual'];
+  const msgEl   = document.getElementById('dashboard-msg');
+  const table   = document.getElementById('dashboard-table');
+  const tbody   = document.getElementById('dashboard-tbody');
+
+  if (!classes.length) { msgEl.textContent = 'No classes assigned.'; return; }
+  msgEl.textContent = 'Loading...';
+
+  try {
+    // Count students per class
+    const studentCounts = {};
+    for (const cls of classes) {
+      const snap = await getDocs(query(collection(db,'students'), where('class','==',cls), where('session','==',session)));
+      studentCounts[cls] = snap.size;
+    }
+
+    // Count marks entered per class per exam
+    const marksCounts = {};
+    for (const cls of classes) {
+      marksCounts[cls] = {};
+      for (const exam of exams) {
+        const q = subject && subject !== 'All Subjects'
+          ? query(collection(db,'marks'), where('class','==',cls), where('exam','==',exam), where('subject','==',subject), where('session','==',session))
+          : query(collection(db,'marks'), where('class','==',cls), where('exam','==',exam), where('session','==',session));
+        const snap = await getDocs(q);
+        // Count distinct students (one mark doc per student)
+        const students = new Set();
+        snap.forEach(d => students.add(d.data().studentId));
+        marksCounts[cls][exam] = students.size;
+      }
+    }
+
+    tbody.innerHTML = '';
+    for (const cls of classes) {
+      const total = studentCounts[cls] || 0;
+      const cell = (exam, bg) => {
+        const done = marksCounts[cls][exam] || 0;
+        const full = done >= total && total > 0;
+        const color = full ? '#d5f5e3' : done > 0 ? '#fef9e7' : '#fdf2f2';
+        const icon  = full ? '✅' : done > 0 ? '⚠️' : '❌';
+        return `<td style="text-align:center;background:${color};font-weight:600;">${icon} ${done}/${total}</td>`;
+      };
+      tbody.innerHTML += `<tr>
+        <td style="font-weight:700;">Class ${cls}</td>
+        <td style="text-align:center;">${total}</td>
+        ${cell('PA1')}${cell('HalfYearly')}${cell('PA2')}${cell('Annual')}
+      </tr>`;
+    }
+
+    msgEl.textContent = `Session: ${session} | Subject: ${subject} — ✅ Complete  ⚠️ Partial  ❌ Not started`;
+    table.style.display = '';
+  } catch(e) {
+    msgEl.textContent = 'Error loading dashboard: ' + e.message;
+  }
 }
 </script>
 </body>

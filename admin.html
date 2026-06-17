@@ -642,8 +642,9 @@
         <button class="btn btn-success" onclick="generateProgressReports()">🖨️ Print All Reports</button>
         <button class="btn btn-info" onclick="generateIndividualReport()">👤 Print Individual</button>
         <button class="btn btn-warning" onclick="shareViaEmail()">📧 Share via Email</button>
+        <button class="btn" style="background:#25d366;color:#fff;" onclick="shareReportWhatsApp()">📱 Share via WhatsApp</button>
       </div>
-      <p style="font-size:12px;color:#888;margin-top:10px;">Select an individual student from the dropdown, then click <b>Print Individual</b> for a single report card. Use <b>Print All</b> to print the entire class.</p>
+      <p style="font-size:12px;color:#888;margin-top:10px;">Select an individual student from the dropdown, then click <b>Print Individual</b> for a single report card. Use <b>Print All</b> to print the entire class. Use <b>Share</b> buttons to send a link or message to parents.</p>
     </div>
   </div>
 
@@ -882,6 +883,12 @@ window.downloadStudentsExcel = async function() {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(data);
     ws['!cols'] = [20,22,20,12,8,6,8,12,25,10].map(w=>({wch:w}));
+    // Force DOB column (index 7) as text so Excel never auto-converts dates
+    const wsRange = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    for (let r = 1; r <= wsRange.e.r; r++) {
+      const cellRef = XLSX.utils.encode_cell({ r, c: 7 });
+      if (ws[cellRef]) { ws[cellRef].t = 's'; ws[cellRef].z = '@'; }
+    }
     XLSX.utils.book_append_sheet(wb, ws, 'Students');
     const fileName = filterCls ? `Students_Class${filterCls}.xlsx` : 'All_Students.xlsx';
     XLSX.writeFile(wb, fileName);
@@ -1874,6 +1881,18 @@ window.generateIndividualReport = async function() {
   const studentId = document.getElementById('p-student').value;
   if (!studentId) { alert('Please select a student from the "Individual Student" dropdown first.'); return; }
   await generateProgressReports(studentId);
+};
+
+window.shareReportWhatsApp = function() {
+  const cls     = document.getElementById('p-class').value;
+  const session = document.getElementById('p-session').value;
+  const student = document.getElementById('p-student');
+  const studentName = student.options[student.selectedIndex]?.text || '';
+  if (!cls) { alert('Please select a class first.'); return; }
+  const msg = studentName && student.value
+    ? `Dear Parent,\n\nProgress Report Card of *${studentName}* for Class ${cls}, Session ${session} is ready.\n\nPlease collect it from school or contact us:\n📞 9837700311 / 9720175848\n🏫 Prabha Gyan Jyoti Public School, Gangoh`
+    : `Dear Parents,\n\nProgress Report Cards for Class *${cls}*, Session ${session} are ready.\n\nPlease collect from school or contact us:\n📞 9837700311 / 9720175848\n🏫 Prabha Gyan Jyoti Public School, Gangoh`;
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
 };
 
 window.shareViaEmail = function() {
