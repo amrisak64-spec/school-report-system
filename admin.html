@@ -321,6 +321,7 @@
   <div class="tab" onclick="showTab('promote', this)">🎓 Promote</div>
   <div class="tab" onclick="showTab('performance', this)">📈 Performance</div>
   <div class="tab" onclick="showTab('report', this)">🖨️ Print Report Card</div>
+  <div class="tab" onclick="showTab('markslip', this)">📋 Marks Slip</div>
   <div class="tab" onclick="window.location.href='appearance.html'">📋 Appearance</div>
   <div class="tab" onclick="window.location.href='tabulation.html'">📊 Tabulation</div>
 </div>
@@ -821,6 +822,55 @@
         <button class="btn" style="background:#25d366;color:#fff;" onclick="shareReportWhatsApp()">📱 Share via WhatsApp</button>
       </div>
       <p style="font-size:12px;color:#888;margin-top:10px;">Select an individual student from the dropdown, then click <b>Print Individual</b> for a single report card. Use <b>Print All</b> to print the entire class. Use <b>Share</b> buttons to send a link or message to parents.</p>
+    </div>
+  </div>
+
+  <!-- ===== MARKS SLIP ===== -->
+  <div class="section" id="sec-markslip">
+    <div class="card">
+      <h2>📋 Print Marks Slips (Class-wise)</h2>
+      <p style="font-size:13px;color:#555;margin-bottom:14px;">Select session, class, section and exam — prints 6 mini slips per A4 page with subject marks, percentage &amp; class position.</p>
+      <div class="filter-row">
+        <div>
+          <label>Session</label>
+          <select id="ms-session">
+            <option value="2024-25">2024-25</option>
+            <option value="2025-26">2025-26</option>
+            <option value="2026-27" selected>2026-27</option>
+            <option value="2027-28">2027-28</option>
+          </select>
+        </div>
+        <div>
+          <label>Class</label>
+          <select id="ms-class" style="width:140px;">
+            <option value="">-- Select --</option>
+            <option>II</option><option>III</option><option>IV</option>
+            <option>V</option><option>VI</option><option>VII</option>
+            <option>VIII</option><option>IX</option><option>X</option>
+          </select>
+        </div>
+        <div>
+          <label>Section</label>
+          <select id="ms-section" style="width:140px;">
+            <option value="">-- All --</option>
+            <option value="A">Section A</option>
+            <option value="B">Section B</option>
+          </select>
+        </div>
+        <div>
+          <label>Exam</label>
+          <select id="ms-exam" style="width:160px;">
+            <option value="PA1">PA-1 (20 marks)</option>
+            <option value="HalfYearly">Half Yearly (80 marks)</option>
+            <option value="PA2">PA-2 (20 marks)</option>
+            <option value="Annual">Annual (80 marks)</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-success" onclick="generateMarksSlips()">🖨️ Print Marks Slips</button>
+        <span style="font-size:12px;color:#888;">Opens a print-ready page with 6 slips per A4 sheet.</span>
+      </div>
     </div>
   </div>
 
@@ -2061,16 +2111,16 @@ window.generateProgressReports = async function(singleStudentId = null) {
       if (navigator.share) {
         navigator.share({
           title: 'Progress Report Card – Class ${escapeHtml(cls)}',
-          text: 'Progress Report Card – Class ${escapeHtml(cls)} | Session ${escapeHtml(session)} | Prabha Gyan Jyoti Public School, Gangoh. Please use Print → Save as PDF to download.',
-          url: window.location.href
+          text: 'Progress Report Card – Class ${escapeHtml(cls)} | Session ${escapeHtml(session)} | Prabha Gyan Jyoti Public School, Gangoh.\\n\\nSteps to get the PDF:\\n1. Open the report card page\\n2. Click "Print / Save PDF"\\n3. Choose "Save as PDF" as the printer\\n4. Share the saved PDF file',
+          url: 'https://www.prabhaschoolonline.com'
         }).catch(() => {});
       } else {
         alert('To share PDF:\\n1. Click "Print / Save PDF"\\n2. Choose "Save as PDF" as the printer\\n3. Save the file\\n4. Share the PDF file via WhatsApp or Email');
       }
     }
     function shareWA() {
-      const text = encodeURIComponent('Progress Report Card – Class ${escapeHtml(cls)} | Session ${escapeHtml(session)} | Prabha Gyan Jyoti Public School, Gangoh');
-      window.open('https://wa.me/?text=' + text, '_blank');
+      const msg = 'Dear Parent,\\n\\n📋 *Progress Report Card*\\n👤 Class: *${escapeHtml(cls)}* | Session: *${escapeHtml(session)}*\\n🏫 Prabha Gyan Jyoti Public School, Gangoh\\n\\n✅ Steps to get PDF:\\n1. Ask the school to email/print the report card\\n2. Or contact us:\\n📞 9837700311 / 9720175848\\n\\nThank you!';
+      window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
     }
     function copyText() {
       const txt = 'Progress Report Card – Class ${escapeHtml(cls)} | Session ${escapeHtml(session)} | Prabha Gyan Jyoti Public School, Gangoh';
@@ -2633,6 +2683,165 @@ window.loadPerformance = async function() {
     msgEl.textContent = `✅ Analysis complete — ${studSnap.size} students across ${clsOverall.length} classes.`;
 
   } catch(e) { msgEl.textContent = '❌ Error: ' + e.message; }
+};
+
+window.generateMarksSlips = async function() {
+  const session = document.getElementById('ms-session').value;
+  const cls     = document.getElementById('ms-class').value;
+  const section = document.getElementById('ms-section').value;
+  const exam    = document.getElementById('ms-exam').value;
+  if (!cls) { alert('Please select a class.'); return; }
+
+  const examLabels = { PA1:'PA-1', HalfYearly:'Half Yearly', PA2:'PA-2', Annual:'Annual Exam' };
+  const examMax    = { PA1:20, HalfYearly:80, PA2:20, Annual:80 };
+  const examLabel  = examLabels[exam] || exam;
+  const maxPerSub  = examMax[exam] || 100;
+
+  const win = window.open('', '_blank');
+  if (!win) { alert('Popup was blocked. Please allow popups for this site.'); return; }
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Loading...</title></head><body style="font-family:Arial;padding:40px;text-align:center;color:#555;"><p style="margin-top:80px;font-size:15px;">Loading marks slips...</p></body></html>`);
+  win.document.close();
+
+  // Fetch students
+  let students = [];
+  let stuQ = section
+    ? query(collection(db,'students'), where('class','==',cls), where('section','==',section), where('session','==',session))
+    : query(collection(db,'students'), where('class','==',cls), where('session','==',session));
+  const stuSnap = await getDocs(stuQ);
+  stuSnap.forEach(d => students.push({id:d.id,...d.data()}));
+
+  if (students.length === 0) {
+    // Fallback: reconstruct from marks
+    const mQ = section
+      ? query(collection(db,'marks'), where('class','==',cls), where('section','==',section), where('session','==',session), where('exam','==',exam))
+      : query(collection(db,'marks'), where('class','==',cls), where('session','==',session), where('exam','==',exam));
+    const mSnap = await getDocs(mQ);
+    const seen = {};
+    mSnap.forEach(d => {
+      const m = d.data();
+      if (!seen[m.studentId]) seen[m.studentId] = { id:m.studentId, class:m.class, section:m.section||'', rollNo:m.rollNo||0, name:m.studentName||'' };
+    });
+    const ids = Object.keys(seen);
+    await Promise.all(ids.map(async sid => {
+      const sDoc = await getDoc(doc(db,'students', sid));
+      if (sDoc.exists()) students.push({...seen[sid], ...sDoc.data(), id:sid});
+      else students.push(seen[sid]);
+    }));
+  }
+
+  students.sort((a,b) => (a.rollNo||0)-(b.rollNo||0));
+  if (students.length === 0) { win.close(); alert('No students found.'); return; }
+
+  // Fetch marks for this exam
+  const marksSnap = await getDocs(query(collection(db,'marks'),
+    where('class','==',cls), where('session','==',session), where('exam','==',exam)));
+  const marksMap = {}; // studentId -> { subject: marks }
+  marksSnap.forEach(d => {
+    const m = d.data();
+    const sub = SUBJECT_ALIASES[m.subject] || m.subject;
+    if (!marksMap[m.studentId]) marksMap[m.studentId] = {};
+    marksMap[m.studentId][sub] = Number(m.marksObtained);
+  });
+
+  // Calculate totals & rank
+  const studentTotals = students.map(s => {
+    const sm = marksMap[s.id] || {};
+    let total = 0, maxTotal = 0;
+    SUBJECTS.forEach(sub => {
+      if (sm[sub] !== undefined) { total += sm[sub]; maxTotal += maxPerSub; }
+    });
+    return { id:s.id, total, maxTotal, pct: maxTotal>0 ? (total/maxTotal*100) : 0 };
+  });
+  // Rank by total (descending)
+  const sorted = [...studentTotals].sort((a,b) => b.total - a.total || a.total - b.total);
+  const rankMap = {};
+  sorted.forEach((s, i) => { rankMap[s.id] = i+1; });
+
+  const GRADE = p => p>=91?'A1':p>=81?'A2':p>=71?'B1':p>=61?'B2':p>=51?'C1':p>=41?'C2':p>=33?'D':'E';
+
+  const slips = students.map(s => {
+    const sm = marksMap[s.id] || {};
+    const tot = studentTotals.find(t => t.id === s.id) || {};
+    const pct = tot.pct || 0;
+    const rank = rankMap[s.id] || '—';
+    const grade = tot.maxTotal > 0 ? GRADE(pct) : '—';
+    const subRows = SUBJECTS.map(sub => {
+      const v = sm[sub];
+      const subLabel = sub==='Science'?'Sci/EVS':sub==='SST'?'SST':sub==='GK'?'G.K.':sub;
+      return `<tr>
+        <td style="padding:2px 5px;border:1px solid #ccc;font-size:9.5px;">${subLabel}</td>
+        <td style="padding:2px 5px;border:1px solid #ccc;text-align:center;font-size:9.5px;">${v!==undefined?v:'—'}</td>
+        <td style="padding:2px 5px;border:1px solid #ccc;text-align:center;font-size:9.5px;">${maxPerSub}</td>
+      </tr>`;
+    }).join('');
+
+    return `<div class="slip">
+      <div style="background:#1a3c6e;color:#fff;text-align:center;padding:4px 6px;border-radius:4px 4px 0 0;">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.5px;">PRABHA GYAN JYOTI PUBLIC SCHOOL</div>
+        <div style="font-size:8.5px;opacity:.85;">Gangoh, Saharanpur (U.P.) &nbsp;|&nbsp; Session: ${escapeHtml(session)}</div>
+      </div>
+      <div style="background:#e8f0fb;padding:3px 6px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #c0d0ee;">
+        <span style="font-size:9.5px;font-weight:700;">📋 ${escapeHtml(examLabel)} — Marks Slip</span>
+        <span style="font-size:9px;color:#555;">Class: <b>${escapeHtml(cls)}${s.section?' ('+s.section+')':''}</b></span>
+      </div>
+      <div style="padding:3px 6px 2px;font-size:9.5px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid #ddd;">
+        <span><b>Roll No:</b> ${escapeHtml(String(s.rollNo||'—'))}</span>
+        <span><b>Name:</b> ${escapeHtml(s.name||'—')}</span>
+        <span><b>Father:</b> ${escapeHtml(s.fatherName||'—')}</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-top:3px;">
+        <thead>
+          <tr style="background:#f0f0f0;">
+            <th style="padding:2px 5px;border:1px solid #ccc;font-size:9px;text-align:left;">Subject</th>
+            <th style="padding:2px 5px;border:1px solid #ccc;font-size:9px;">Obtained</th>
+            <th style="padding:2px 5px;border:1px solid #ccc;font-size:9px;">Max</th>
+          </tr>
+        </thead>
+        <tbody>${subRows}</tbody>
+        <tfoot>
+          <tr style="background:#fffde7;">
+            <td style="padding:3px 5px;border:1px solid #ccc;font-size:9.5px;font-weight:700;">TOTAL</td>
+            <td style="padding:3px 5px;border:1px solid #ccc;text-align:center;font-size:9.5px;font-weight:700;">${tot.total||0}</td>
+            <td style="padding:3px 5px;border:1px solid #ccc;text-align:center;font-size:9.5px;">${tot.maxTotal||0}</td>
+          </tr>
+        </tfoot>
+      </table>
+      <div style="display:flex;justify-content:space-between;padding:3px 6px;background:#f5f5f5;border-top:1px solid #ddd;margin-top:2px;border-radius:0 0 4px 4px;">
+        <span style="font-size:9.5px;"><b>%:</b> ${pct.toFixed(1)}%</span>
+        <span style="font-size:9.5px;"><b>Grade:</b> ${grade}</span>
+        <span style="font-size:9.5px;"><b>Position:</b> ${rank} / ${students.length}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  win.document.open();
+  win.document.write(`<!DOCTYPE html><html><head>
+  <meta charset="UTF-8">
+  <title>Marks Slips – Class ${escapeHtml(cls)} – ${escapeHtml(examLabel)}</title>
+  <style>
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:#fff; font-family:Arial,sans-serif; }
+    .toolbar { position:fixed;top:0;left:0;right:0;z-index:999;background:#1a3c6e;padding:6px 14px;display:flex;gap:8px;align-items:center; }
+    .toolbar span { color:#fff;font-size:12px;flex:1; }
+    .toolbar button { padding:6px 16px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600; }
+    .page { padding:8mm; padding-top:44px; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:6mm; }
+    .slip { border:1.5px solid #1a3c6e;border-radius:4px;overflow:hidden;break-inside:avoid;page-break-inside:avoid; }
+    @media print {
+      .toolbar { display:none; }
+      .page { padding:6mm; padding-top:6mm; }
+      .grid { gap:5mm; }
+    }
+  </style>
+  </head><body>
+  <div class="toolbar">
+    <button onclick="window.close()" style="background:#555;color:#fff;">← Back</button>
+    <span>📋 Marks Slips – Class ${escapeHtml(cls)} | ${escapeHtml(examLabel)} | Session ${escapeHtml(session)} | ${students.length} students</span>
+    <button onclick="window.print()" style="background:#27ae60;color:#fff;">🖨️ Print / Save PDF</button>
+  </div>
+  <div class="page"><div class="grid">${slips}</div></div>
+  </body></html>`);
+  win.document.close();
 };
 
 function showEntryMsg(msg, type) {
