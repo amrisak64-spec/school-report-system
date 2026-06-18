@@ -116,7 +116,29 @@
     <div class="filter-row">
       <div>
         <label>Session *</label>
-        <input type="text" id="sel-session" value="2026-27"/>
+        <select id="sel-session">
+          <option value="2024-25">2024-25</option>
+          <option value="2025-26">2025-26</option>
+          <option value="2026-27">2026-27</option>
+          <option value="2027-28">2027-28</option>
+          <option value="2028-29">2028-29</option>
+          <option value="2029-30">2029-30</option>
+        </select>
+        <script>
+          (function(){
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = now.getMonth()+1; // 1-12
+            // Academic session: April (m>=4) of year Y → "Y-(Y+1)" else "(Y-1)-Y"
+            const startYear = m >= 4 ? y : y - 1;
+            const sess = startYear + '-' + String(startYear+1).slice(-2);
+            const sel = document.getElementById('sel-session');
+            // Set matching option, or add it if not in list
+            let found = false;
+            for(let o of sel.options){ if(o.value===sess){ o.selected=true; found=true; break; } }
+            if(!found){ const o=document.createElement('option'); o.value=sess; o.textContent=sess; o.selected=true; sel.appendChild(o); }
+          })();
+        </script>
       </div>
       <div>
         <label>Class *</label>
