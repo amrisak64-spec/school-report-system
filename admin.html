@@ -727,6 +727,18 @@
       <div id="perf-msg" style="font-size:13px;color:#888;margin-bottom:8px;"></div>
     </div>
 
+    <!-- SECTION 4: Year-over-Year Class Comparison -->
+    <div class="card" id="perf-yoy-card" style="display:none;">
+      <h2>📅 Year-over-Year Class Performance <span id="perf-yoy-session" style="font-size:13px;font-weight:400;color:#888;"></span></h2>
+      <p style="font-size:12px;color:#666;margin-bottom:14px;">Compares each class's Annual exam average between last year and the selected session — highlights which classes improved or declined.</p>
+      <div style="overflow-x:auto;">
+        <table style="font-size:12px;border-collapse:collapse;width:100%;">
+          <thead id="perf-yoy-thead"></thead>
+          <tbody id="perf-yoy-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- SECTION 1: Subject-wise Class Ranking -->
     <div class="card" id="perf-subj-card" style="display:none;">
       <h2>🏆 Subject-wise Class Ranking <span id="perf-subj-session" style="font-size:13px;font-weight:400;color:#888;"></span></h2>
@@ -751,10 +763,10 @@
       </div>
     </div>
 
-    <!-- SECTION 3: Top 10 Students All Classes -->
+    <!-- SECTION 3: Top 20 Students All Classes -->
     <div class="card" id="perf-top-card" style="display:none;">
-      <h2>🥇 Top 10 Students — All Classes <span id="perf-top-session" style="font-size:13px;font-weight:400;color:#888;"></span></h2>
-      <p style="font-size:12px;color:#666;margin-bottom:14px;">Top 10 students ranked by overall percentage across all classes and subjects.</p>
+      <h2>🥇 Top 20 Students — All Classes <span id="perf-top-session" style="font-size:13px;font-weight:400;color:#888;"></span></h2>
+      <p style="font-size:12px;color:#666;margin-bottom:14px;">Top 20 students ranked by overall percentage across all classes and subjects.</p>
       <div style="overflow-x:auto;">
         <table style="font-size:12px;border-collapse:collapse;width:100%;">
           <thead id="perf-top-thead"></thead>
@@ -2499,7 +2511,7 @@ window.loadPerformance = async function() {
   const session = document.getElementById('perf-session').value;
   const msgEl   = document.getElementById('perf-msg');
   msgEl.textContent = '⏳ Loading data, please wait...';
-  ['perf-subj-card','perf-improve-card','perf-top-card'].forEach(id => document.getElementById(id).style.display = 'none');
+  ['perf-subj-card','perf-improve-card','perf-top-card','perf-yoy-card'].forEach(id => document.getElementById(id).style.display = 'none');
 
   try {
     // ── Load all students ──
@@ -2651,11 +2663,11 @@ window.loadPerformance = async function() {
     document.getElementById('perf-improve-session').textContent = `| Session: ${session}`;
     document.getElementById('perf-improve-card').style.display = '';
 
-    // ════ SECTION 3: Top 10 Students All Classes ════
+    // ════ SECTION 3: Top 20 Students All Classes ════
     const top10 = Object.values(studentStats)
       .filter(s => s.totalMax > 0)
       .sort((a,b) => b.pct - a.pct)
-      .slice(0, 10);
+      .slice(0, 20);
 
     const topHead = `<tr>
       ${TH('Rank')}${TH('Student Name')}${TH('Class')}${TH('Roll No')}
@@ -2679,6 +2691,101 @@ window.loadPerformance = async function() {
     document.getElementById('perf-top-tbody').innerHTML  = topRows || '<tr><td colspan="8" style="text-align:center;padding:20px;color:#aaa;">No data</td></tr>';
     document.getElementById('perf-top-session').textContent = `| Session: ${session}`;
     document.getElementById('perf-top-card').style.display = '';
+
+    // ════ SECTION 4: Year-over-Year Classwise Comparison ════
+    // Derive previous session string (e.g. "2025-26" → "2024-25")
+    const prevSession = (() => {
+      const m = session.match(/^(\d{4})-(\d{2,4})$/);
+      if (!m) return null;
+      const y = parseInt(m[1]) - 1;
+      const y2 = String(y + 1).slice(-2);
+      return `${y}-${y2}`;
+    })();
+
+    if (prevSession) {
+      document.getElementById('perf-yoy-session').textContent = `| ${prevSession} vs ${session}`;
+      try {
+        // Load last year's Annual marks
+        const prevMarksSnap = await getDocs(query(collection(db,'marks'),
+          where('session','==',prevSession), where('exam','==','Annual')));
+        const prevStudSnap  = await getDocs(query(collection(db,'students'), where('session','==',prevSession)));
+        const prevStudents  = {};
+        prevStudSnap.forEach(d => { prevStudents[d.id] = d.data(); });
+        const prevMarks = {}; // studentId -> { subject: marks }
+        prevMarksSnap.forEach(d => {
+          const m2 = d.data();
+          if (!prevMarks[m2.studentId]) prevMarks[m2.studentId] = {};
+          prevMarks[m2.studentId][m2.subject] = Number(m2.marksObtained);
+        });
+
+        // Build per-class Annual avg for previous session
+        const prevClassAvg = {};
+        CLASSES.forEach(cls => {
+          const clsStuds = Object.entries(prevStudents).filter(([,s]) => s.class === cls);
+          if (!clsStuds.length) { prevClassAvg[cls] = null; return; }
+          const vals = clsStuds.map(([sid]) => {
+            let so = 0, sm = 0;
+            SUBJECTS.forEach(sub => {
+              const v = prevMarks[sid]?.[sub];
+              if (v !== undefined) { so += v; sm += 80; }
+            });
+            return sm > 0 ? so/sm*100 : null;
+          }).filter(v => v !== null);
+          prevClassAvg[cls] = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+        });
+
+        const yoyHead = `<tr>
+          ${TH('Class')}
+          ${TH(`${prevSession} Annual Avg %`,'#555')}
+          ${TH(`${session} Annual Avg %`,'#1a6e3c')}
+          ${TH('Change','#444')}
+          ${TH('Status','#444')}
+        </tr>`;
+
+        // Sort: best improvement first
+        const yoyData = CLASSES.map(cls => ({
+          cls,
+          prev : prevClassAvg[cls],
+          curr : classExamAvg[cls]['Annual'],
+          count: classStudCount[cls]
+        })).filter(x => x.count > 0 || x.prev !== null)
+          .sort((a,b) => {
+            const da = (a.curr!==null&&a.prev!==null) ? a.curr-a.prev : -999;
+            const db2 = (b.curr!==null&&b.prev!==null) ? b.curr-b.prev : -999;
+            return db2 - da;
+          });
+
+        const yoyRows = yoyData.map((item, i) => {
+          const diff = (item.prev!==null && item.curr!==null) ? (item.curr - item.prev) : null;
+          const arrow = diff===null ? '—'
+            : diff > 0 ? `<span style="color:#1e8449;font-weight:700;">▲ +${diff.toFixed(1)}%</span>`
+            : diff < 0 ? `<span style="color:#c0392b;font-weight:700;">▼ ${diff.toFixed(1)}%</span>`
+            : `<span style="color:#888;">= 0.0%</span>`;
+          const status = diff===null ? '—'
+            : diff > 5  ? '🚀 Strong Improvement'
+            : diff > 2  ? '✅ Improved'
+            : diff > 0  ? '🔼 Slight Gain'
+            : diff === 0 ? '➡️ No Change'
+            : diff > -3 ? '🔻 Slight Decline'
+            : '❌ Poor Performance';
+          const rowBg = diff===null ? '' : diff > 2 ? 'background:#f0fff4;' : diff < -2 ? 'background:#fff5f5;' : '';
+          return `<tr style="${rowBg}">
+            ${TD('<b>Class '+item.cls+'</b>')}
+            ${TD(item.prev!==null?item.prev.toFixed(1)+'%':'No Data','text-align:center;'+(item.prev!==null?pctColor(item.prev):'color:#aaa;'))}
+            ${TD(item.curr!==null?item.curr.toFixed(1)+'%':'No Data','text-align:center;'+(item.curr!==null?pctColor(item.curr):'color:#aaa;'))}
+            ${TD(arrow,'text-align:center;')}
+            ${TD(status,'text-align:center;font-weight:600;')}
+          </tr>`;
+        }).join('');
+
+        document.getElementById('perf-yoy-thead').innerHTML = yoyHead;
+        document.getElementById('perf-yoy-tbody').innerHTML  = yoyRows || '<tr><td colspan="5" style="text-align:center;padding:20px;color:#aaa;">No previous year data found</td></tr>';
+        document.getElementById('perf-yoy-card').style.display = '';
+      } catch(e2) {
+        document.getElementById('perf-yoy-tbody').innerHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;color:#c0392b;">Could not load previous year data: ${e2.message}</td></tr>`;
+        document.getElementById('perf-yoy-card').style.display = '';
+      }
+    }
 
     msgEl.textContent = `✅ Analysis complete — ${studSnap.size} students across ${clsOverall.length} classes.`;
 
