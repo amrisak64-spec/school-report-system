@@ -234,7 +234,7 @@
         <select id="edit-class">
           <option value="">-- Select --</option>
           <option>II</option><option>III</option><option>IV</option>
-          <option>V</option><option>VI</option><option>VII</option><option>VIII</option><option>IX</option><option>X</option>
+          <option>V</option><option>VI</option><option>VII</option><option>VIII</option>
         </select>
       </div>
       <div>
@@ -245,7 +245,7 @@
           <option value="B">Section B</option>
         </select>
       </div>
-      <div><label>Date of Birth</label><input id="edit-dob" type="date"/></div>
+      <div><label>Date of Birth</label><input id="edit-dob" type="text" placeholder="DD/MM/YYYY" maxlength="10"/></div>
       <div><label>Address</label><input id="edit-address"/></div>
       <div><label>Session</label>
         <select id="edit-session">
@@ -382,7 +382,7 @@
           <select id="s-class">
             <option value="">-- Select --</option>
             <option>II</option><option>III</option><option>IV</option>
-            <option>V</option><option>VI</option><option>VII</option><option>VIII</option><option>IX</option><option>X</option>
+            <option>V</option><option>VI</option><option>VII</option><option>VIII</option>
           </select>
         </div>
         <div>
@@ -393,7 +393,7 @@
             <option value="B">Section B</option>
           </select>
         </div>
-        <div><label>Date of Birth</label><input id="s-dob" type="date"/></div>
+        <div><label>Date of Birth</label><input id="s-dob" type="text" placeholder="DD/MM/YYYY" maxlength="10"/></div>
         <div><label>Address</label><input id="s-address" placeholder="Village / City"/></div>
         <div><label>Session *</label>
           <select id="s-session">
@@ -404,7 +404,7 @@
           </select>
         </div>
       </div>
-      <button class="btn btn-primary" onclick="addStudent()">+ Add Student</button>
+      <button class="btn btn-primary" id="add-student-btn" onclick="addStudent()">+ Add Student</button>
     </div>
 
     <div class="card">
@@ -421,14 +421,48 @@
           <option>II</option><option>III</option><option>IV</option>
           <option>V</option><option>VI</option><option>VII</option><option>VIII</option>
         </select>
-        <input id="search-student" placeholder="🔍 Search by name or adm no..." oninput="filterStudentTable()" style="flex:1;min-width:200px;"/>
+        <select id="filter-session" aria-label="Filter by Session" onchange="loadStudents()" style="width:160px;">
+          <option value="">All Sessions</option>
+          <option value="2024-25">2024-25</option>
+          <option value="2025-26">2025-26</option>
+          <option value="2026-27">2026-27</option>
+          <option value="2027-28">2027-28</option>
+          <option value="2028-29">2028-29</option>
+          <option value="2029-30">2029-30</option>
+        </select>
+        <script>
+          (function(){
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = now.getMonth()+1; // 1-12
+            // Academic session: April (m>=4) of year Y → "Y-(Y+1)" else "(Y-1)-Y"
+            const startYear = m >= 4 ? y : y - 1;
+            const sess = startYear + '-' + String(startYear+1).slice(-2);
+            const sel = document.getElementById('filter-session');
+            let found = false;
+            for(let o of sel.options){ if(o.value===sess){ o.selected=true; found=true; break; } }
+            if(!found){ const o=document.createElement('option'); o.value=sess; o.textContent=sess; o.selected=true; sel.appendChild(o); }
+          })();
+        </script>
+        <input id="search-student" placeholder="🔍 Search by name or adm no..." oninput="debouncedFilterStudentTable()" style="flex:1;min-width:200px;"/>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#555;white-space:nowrap;">
+          <input type="checkbox" id="show-left-students" onchange="loadStudents()"/> Show Left Students
+        </label>
       </div>
+      <div class="marks-table-wrap">
       <table>
-        <thead><tr>
-          <th>Adm No</th><th>Student Name</th><th>Father's Name</th><th>Mother's Name</th><th>Roll</th><th>Class</th><th>Section</th><th>DOB</th><th>Address</th><th>Action</th>
+        <thead><tr id="students-thead-row">
+          <th style="cursor:pointer;" onclick="sortStudentTable('admissionNo')">Adm No<span id="sort-ind-admissionNo"></span></th>
+          <th style="cursor:pointer;" onclick="sortStudentTable('name')">Student Name<span id="sort-ind-name"></span></th>
+          <th>Father's Name</th><th>Mother's Name</th>
+          <th style="cursor:pointer;" onclick="sortStudentTable('rollNo')">Roll<span id="sort-ind-rollNo"></span></th>
+          <th>Class</th><th>Section</th><th>DOB</th>
+          <th style="cursor:pointer;" onclick="sortStudentTable('address')">Address<span id="sort-ind-address"></span></th>
+          <th>Action</th>
         </tr></thead>
         <tbody id="students-tbody"><tr><td colspan="10" style="text-align:center;color:#999;">Loading...</td></tr></tbody>
       </table>
+      </div>
     </div>
   </div>
 
@@ -489,7 +523,7 @@
         <b style="color:#b7770d;">Step 1 — Download the Excel Template</b>
         <p style="font-size:13px;color:#555;margin:6px 0;">Your Excel file must have these columns in order:</p>
         <p style="font-size:13px;font-family:monospace;background:#f5f5f5;padding:8px;border-radius:4px;margin:6px 0;">
-          name | fatherName | motherName | admissionNo | rollNo | class | dob | address | session
+          name | fatherName | motherName | admissionNo | rollNo | class | section | dob | address | session
         </p>
         <button class="btn btn-warning" style="margin-top:8px;" onclick="downloadTemplate()">⬇ Download Sample Template</button>
       </div>
@@ -539,6 +573,7 @@
           <tr><td><b>admissionNo</b></td><td>209</td><td>✅ Yes</td><td>Unique admission number</td></tr>
           <tr><td><b>rollNo</b></td><td>31</td><td>✅ Yes</td><td>Class roll number (number only)</td></tr>
           <tr><td><b>class</b></td><td>VIII</td><td>✅ Yes</td><td>II, III, IV, V, VI, VII, or VIII</td></tr>
+          <tr><td><b>section</b></td><td>A</td><td>No</td><td>A or B — defaults to A if left blank</td></tr>
           <tr><td><b>dob</b></td><td>14/03/2013</td><td>No</td><td>Date of birth DD/MM/YYYY</td></tr>
           <tr><td><b>address</b></td><td>Vill. Machroli</td><td>No</td><td>Village / City</td></tr>
           <tr><td><b>session</b></td><td>2026-27</td><td>✅ Yes</td><td>Academic session</td></tr>
@@ -793,7 +828,7 @@
           <select id="p-class" style="width:160px;" onchange="loadReportStudents()">
             <option value="">-- Select Class --</option>
             <option>II</option><option>III</option><option>IV</option>
-            <option>V</option><option>VI</option><option>VII</option><option>VIII</option><option>IX</option><option>X</option>
+            <option>V</option><option>VI</option><option>VII</option><option>VIII</option>
           </select>
         </div>
         <div>
@@ -865,7 +900,7 @@
             <option value="">-- Select --</option>
             <option>II</option><option>III</option><option>IV</option>
             <option>V</option><option>VI</option><option>VII</option>
-            <option>VIII</option><option>IX</option><option>X</option>
+            <option>VIII</option>
           </select>
         </div>
         <div>
@@ -924,6 +959,12 @@ window.filterStudentTable = function() {
     String(s.rollNo).includes(q)
   ));
 };
+
+let _filterStudentDebounce;
+window.debouncedFilterStudentTable = function() {
+  clearTimeout(_filterStudentDebounce);
+  _filterStudentDebounce = setTimeout(window.filterStudentTable, 200);
+};
 </script>
 
 <script type="module">
@@ -951,13 +992,19 @@ window._fbReady = true;
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = 'index.html'; return; }
   const snap = await getDoc(doc(db, 'users', user.uid));
-  if (!snap.exists() || snap.data().role !== 'admin') { window.location.href = 'index.html'; }
+  if (!snap.exists() || snap.data().role !== 'admin') { window.location.href = 'index.html'; return; }
   loadDashboard();
   loadStudents();
   loadTeachers();
 });
 
 // showTab registered above before imports
+
+// ---- HTML ESCAPE (for interpolating user data into markup/attributes) ----
+function esc(v) {
+  if (v === undefined || v === null) return '';
+  return String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 
 // ---- LOGOUT ----
 window.logout = () => signOut(auth).then(() => window.location.href = 'index.html');
@@ -991,14 +1038,15 @@ window.loadDashboard = async function() {
       getDocs(collection(db,'marks'))
     ]);
 
-    const totalStudents = stuSnap.size;
+    const activeStudentDocs = stuSnap.docs.filter(d => !d.data().left && !d.data().passedOut);
+    const totalStudents = activeStudentDocs.length;
     const totalTeachers = teachSnap.size;
     const totalMarks    = marksSnap.size;
 
     // Count unique classes
     const classSet = new Set();
     const classCount = {};
-    stuSnap.forEach(d => {
+    activeStudentDocs.forEach(d => {
       const c = d.data().class;
       if (c) { classSet.add(c); classCount[c] = (classCount[c]||0) + 1; }
     });
@@ -1029,6 +1077,29 @@ window.loadDashboard = async function() {
 // ==================== STUDENTS ========================
 // ======================================================
 
+function isValidDob(value) {
+  if (!value) return true;
+  return /^\d{2}\/\d{2}\/\d{4}$/.test(value);
+}
+// Normalize legacy ISO (YYYY-MM-DD) values to DD/MM/YYYY for display.
+function dobToInput(stored) {
+  if (!stored) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(stored)) {
+    const [y,m,d] = stored.split('-');
+    return `${d}/${m}/${y}`;
+  }
+  return stored;
+}
+function autoFormatDob(e) {
+  let digits = e.target.value.replace(/\D/g,'').slice(0,8);
+  let out = digits;
+  if (digits.length > 4) out = `${digits.slice(0,2)}/${digits.slice(2,4)}/${digits.slice(4)}`;
+  else if (digits.length > 2) out = `${digits.slice(0,2)}/${digits.slice(2)}`;
+  e.target.value = out;
+}
+document.getElementById('s-dob').addEventListener('input', autoFormatDob);
+document.getElementById('edit-dob').addEventListener('input', autoFormatDob);
+
 window.addStudent = async function() {
   const name    = document.getElementById('s-name').value.trim();
   const father  = document.getElementById('s-father').value.trim();
@@ -1044,6 +1115,11 @@ window.addStudent = async function() {
   if (!name || !father || !admno || !roll || !cls || !session) {
     showMsg('student-msg', 'Please fill all required fields.', 'error'); return;
   }
+  if (!isValidDob(dob)) {
+    showMsg('student-msg', 'Date of Birth must be in DD/MM/YYYY format.', 'error'); return;
+  }
+  const addBtn = document.getElementById('add-student-btn');
+  addBtn.disabled = true;
   try {
     // Check for duplicate admission number
     const dupSnap = await getDocs(query(collection(db,'students'), where('admissionNo','==',admno)));
@@ -1053,7 +1129,7 @@ window.addStudent = async function() {
     }
     await addDoc(collection(db, 'students'), {
       name, fatherName:father, motherName:mother, admissionNo:admno,
-      rollNo:Number(roll), class:cls, section, dob, address, session
+      rollNo:Number(roll), class:cls, section, dob, address, session, left:false
     });
     showMsg('student-msg', `Student "${name}" added successfully!`, 'success');
     ['s-name','s-father','s-mother','s-admno','s-roll','s-dob','s-address'].forEach(id => document.getElementById(id).value = '');
@@ -1061,19 +1137,26 @@ window.addStudent = async function() {
     document.getElementById('s-section').value = '';
     loadStudents();
   } catch(e) { showMsg('student-msg', 'Error: '+e.message, 'error'); }
+  finally { addBtn.disabled = false; }
 };
 
 window.loadStudents = async function() {
   const cls = document.getElementById('filter-class').value;
+  const session = document.getElementById('filter-session').value;
+  const showLeft = document.getElementById('show-left-students').checked;
   const tbody = document.getElementById('students-tbody');
   tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;">Loading...</td></tr>';
   try {
-    let q = cls
-      ? query(collection(db,'students'), where('class','==',cls))
-      : collection(db,'students');
+    const clauses = [];
+    if (cls) clauses.push(where('class','==',cls));
+    if (session) clauses.push(where('session','==',session));
+    const q = clauses.length ? query(collection(db,'students'), ...clauses) : collection(db,'students');
     const snap = await getDocs(q);
     allStudents = [];
-    snap.forEach(d => allStudents.push({id:d.id,...d.data()}));
+    snap.forEach(d => {
+      const data = {id:d.id,...d.data()};
+      if (showLeft ? data.left : !data.left) allStudents.push(data);
+    });
     allStudents.sort((a,b) => a.rollNo - b.rollNo);
     window._renderStudentTable(allStudents);
   } catch(e) {
@@ -1081,9 +1164,27 @@ window.loadStudents = async function() {
   }
 };
 
+let _sortField = 'rollNo', _sortDir = 'asc';
+
+window.sortStudentTable = function(field) {
+  if (_sortField === field) { _sortDir = _sortDir === 'asc' ? 'desc' : 'asc'; }
+  else { _sortField = field; _sortDir = 'asc'; }
+  ['admissionNo','name','rollNo','address'].forEach(f => {
+    document.getElementById('sort-ind-'+f).textContent = f === _sortField ? (_sortDir === 'asc' ? ' ▲' : ' ▼') : '';
+  });
+  window.filterStudentTable();
+};
+
 window._renderStudentTable = function(students) {
   window._allStudents = allStudents;
   const tbody = document.getElementById('students-tbody');
+  students = [...students].sort((a, b) => {
+    let av = a[_sortField], bv = b[_sortField];
+    let cmp;
+    if (_sortField === 'rollNo') cmp = (av||0) - (bv||0);
+    else cmp = String(av||'').localeCompare(String(bv||''), undefined, {numeric:true, sensitivity:'base'});
+    return _sortDir === 'asc' ? cmp : -cmp;
+  });
   if (students.length === 0) {
     tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;">No students found.</td></tr>';
     return;
@@ -1091,17 +1192,23 @@ window._renderStudentTable = function(students) {
   tbody.innerHTML = students.map(s => `
     <tr>
       <td><b>${s.admissionNo||'-'}</b></td>
-      <td><b>${s.name}</b></td>
-      <td>${s.fatherName||'-'}</td>
-      <td>${s.motherName||'-'}</td>
+      <td><b>${esc(s.name)}</b>${s.left ? ' <span style="background:#e67e22;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;">LEFT</span>' : ''}${s.passedOut ? ' <span style="background:#8e44ad;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;">🎓 PASSED OUT</span>' : ''}</td>
+      <td>${esc(s.fatherName)||'-'}</td>
+      <td>${esc(s.motherName)||'-'}</td>
       <td>${s.rollNo||'-'}</td>
-      <td>Class ${s.class}</td>
-      <td>${s.section||'-'}</td>
-      <td>${s.dob||'-'}</td>
-      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${s.address||''}">${s.address||'-'}</td>
-      <td style="display:flex;gap:6px;flex-wrap:wrap;">
+      <td>Class ${esc(s.class)}</td>
+      <td>${esc(s.section)||'-'}</td>
+      <td>${esc(dobToInput(s.dob))||'-'}</td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(s.address)}">${esc(s.address)||'-'}</td>
+      <td style="display:flex;gap:6px;flex-wrap:nowrap;white-space:nowrap;">
         <button class="btn btn-info" style="padding:4px 10px;font-size:12px;" onclick="openEditModal('${s.id}')">✏️ Edit</button>
-        <button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteStudent('${s.id}','${s.name}')">🗑 Delete</button>
+        <button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteStudent('${s.id}')">🗑 Delete</button>
+        ${s.left
+          ? `<button class="btn" style="background:#27ae60;color:#fff;padding:4px 10px;font-size:12px;" onclick="reactivateStudent('${s.id}')">↩️ Reactivate</button>`
+          : `<button class="btn" style="background:#e67e22;color:#fff;padding:4px 10px;font-size:12px;" onclick="markStudentLeft('${s.id}')">🚪 Left</button>`}
+        ${s.passedOut
+          ? `<button class="btn" style="background:#8e44ad;color:#fff;padding:4px 10px;font-size:12px;" onclick="undoPassedOut('${s.id}')">↩️ Undo Pass Out</button>`
+          : ''}
       </td>
     </tr>`).join('');
 };
@@ -1125,7 +1232,7 @@ window.downloadStudentsExcel = async function() {
     rows.forEach(s => data.push([
       s.name||'', s.fatherName||'', s.motherName||'',
       s.admissionNo||'', s.rollNo||'', s.class||'',
-      s.section||'', s.dob||'', s.address||'', s.session||''
+      s.section||'', dobToInput(s.dob||''), s.address||'', s.session||''
     ]));
 
     const wb = XLSX.utils.book_new();
@@ -1145,19 +1252,78 @@ window.downloadStudentsExcel = async function() {
   }
 };
 
+function chunkArray(arr, size) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
 window.deleteAllStudents = function() {
-  showConfirm('Delete ALL Students?', 'This will permanently remove every student record. This cannot be undone.', async () => {
-    const snap = await getDocs(collection(db,'students'));
-    const batch = writeBatch(db);
-    snap.docs.forEach(d => batch.delete(d.ref));
-    await batch.commit();
+  const cls = document.getElementById('filter-class').value;
+  const session = document.getElementById('filter-session').value;
+  const scopeStudents = allStudents.slice();
+  if (!scopeStudents.length) { alert('No students in the current view to delete.'); return; }
+  const scopeDesc = [cls && `Class ${cls}`, session && `Session ${session}`].filter(Boolean).join(', ') || 'ALL classes & sessions';
+  showConfirm(
+    `Delete ${scopeStudents.length} student(s)?`,
+    `This deletes every student currently shown (${scopeDesc}) along with their marks and attendance records. This cannot be undone.`,
+    async () => {
+      const ids = scopeStudents.map(s => s.id);
+      for (const chunk of chunkArray(ids, 499)) {
+        const batch = writeBatch(db);
+        chunk.forEach(id => batch.delete(doc(db,'students',id)));
+        await batch.commit();
+      }
+      for (const chunk of chunkArray(ids, 10)) {
+        const [marksSnap, attSnap] = await Promise.all([
+          getDocs(query(collection(db,'marks'), where('studentId','in',chunk))),
+          getDocs(query(collection(db,'attendance'), where('studentId','in',chunk)))
+        ]);
+        const batch2 = writeBatch(db);
+        marksSnap.forEach(d => batch2.delete(d.ref));
+        attSnap.forEach(d => batch2.delete(d.ref));
+        await batch2.commit();
+      }
+      loadStudents();
+    }
+  );
+};
+
+function studentNameById(id) {
+  const s = (window._allStudents||allStudents).find(x => x.id === id);
+  return s ? s.name : 'this student';
+}
+
+window.deleteStudent = function(id) {
+  const name = studentNameById(id);
+  showConfirm(`Delete student "${name}"?`, 'This will permanently remove the student record.', async () => {
+    await deleteDoc(doc(db,'students',id));
     loadStudents();
   });
 };
 
-window.deleteStudent = function(id, name) {
-  showConfirm(`Delete student "${name}"?`, 'This will permanently remove the student record.', async () => {
-    await deleteDoc(doc(db,'students',id));
+window.markStudentLeft = function(id) {
+  const name = studentNameById(id);
+  showConfirm(`Mark "${name}" as Left?`, 'They will be removed from active class lists, attendance and marks entry — but their existing marks and report card will stay available under "Show Left Students".', async () => {
+    const today = new Date();
+    const leftDate = `${String(today.getDate()).padStart(2,'0')}/${String(today.getMonth()+1).padStart(2,'0')}/${today.getFullYear()}`;
+    await updateDoc(doc(db,'students',id), { left:true, leftDate });
+    loadStudents();
+  });
+};
+
+window.reactivateStudent = function(id) {
+  const name = studentNameById(id);
+  showConfirm(`Reactivate "${name}"?`, 'They will reappear in active class lists, attendance and marks entry.', async () => {
+    await updateDoc(doc(db,'students',id), { left:false, leftDate:null });
+    loadStudents();
+  });
+};
+
+window.undoPassedOut = function(id) {
+  const name = studentNameById(id);
+  showConfirm(`Undo Pass Out for "${name}"?`, 'They will be marked as active again. You may need to re-check their class/roll number afterward.', async () => {
+    await updateDoc(doc(db,'students',id), { passedOut:false, passedOutSession:null });
     loadStudents();
   });
 };
@@ -1175,7 +1341,7 @@ window.openEditModal = async function(docId) {
   document.getElementById('edit-roll').value    = s.rollNo || '';
   document.getElementById('edit-class').value   = s.class || '';
   document.getElementById('edit-section').value = s.section || '';
-  document.getElementById('edit-dob').value     = s.dob || '';
+  document.getElementById('edit-dob').value     = dobToInput(s.dob || '');
   document.getElementById('edit-address').value = s.address || '';
   document.getElementById('edit-session').value = s.session || '';
   document.getElementById('edit-msg').textContent = '';
@@ -1199,6 +1365,9 @@ window.saveEditStudent = async function() {
 
   if (!name || !father || !admno || !roll || !cls) {
     showMsg('edit-msg','Please fill all required fields.','error'); return;
+  }
+  if (!isValidDob(dob)) {
+    showMsg('edit-msg', 'Date of Birth must be in DD/MM/YYYY format.', 'error'); return;
   }
   try {
     await updateDoc(doc(db,'students',docId), {
@@ -1225,13 +1394,13 @@ window.downloadTemplate = function() {
   // Build sample Excel data
   const wb = XLSX.utils.book_new();
   const sampleData = [
-    ['name','fatherName','motherName','admissionNo','rollNo','class','dob','address','session'],
-    ['Shivansh Sharma','Mr. Raman Kumar','Mrs. Pooja','209','31','VIII','14/03/2013','Vill. Machroli','2026-27'],
-    ['Rahul Verma','Mr. Suresh Verma','Mrs. Kavita','211','32','VIII','15/01/2013','Gandhi Nagar, Gangoh','2026-27'],
-    ['Priya Singh','Mr. Rajesh Singh','Mrs. Sunita','212','33','VII','20/05/2014','Gangoh','2026-27'],
+    ['name','fatherName','motherName','admissionNo','rollNo','class','section','dob','address','session'],
+    ['Shivansh Sharma','Mr. Raman Kumar','Mrs. Pooja','209','31','VIII','A','14/03/2013','Vill. Machroli','2026-27'],
+    ['Rahul Verma','Mr. Suresh Verma','Mrs. Kavita','211','32','VIII','B','15/01/2013','Gandhi Nagar, Gangoh','2026-27'],
+    ['Priya Singh','Mr. Rajesh Singh','Mrs. Sunita','212','33','VII','A','20/05/2014','Gangoh','2026-27'],
   ];
   const ws = XLSX.utils.aoa_to_sheet(sampleData);
-  ws['!cols'] = [{wch:20},{wch:20},{wch:18},{wch:14},{wch:8},{wch:8},{wch:14},{wch:20},{wch:10}];
+  ws['!cols'] = [{wch:20},{wch:20},{wch:18},{wch:14},{wch:8},{wch:8},{wch:8},{wch:14},{wch:20},{wch:10}];
   XLSX.utils.book_append_sheet(wb, ws, 'Students');
   XLSX.writeFile(wb, 'Student_Upload_Template.xlsx');
 };
@@ -1446,7 +1615,7 @@ async function callAdminFn(action, params) {
   const idToken = await auth.currentUser.getIdToken(true);
   let res, data;
   try {
-    res  = await fetch('/.netlify/functions/admin-teacher', {
+    res  = await fetch('/api/admin-teacher', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, idToken, ...params })
@@ -1499,24 +1668,26 @@ window.loadTeachers = async function() {
     }
     let rows = [];
     snap.forEach(d => rows.push({id:d.id,...d.data()}));
+    window._allTeachers = rows;
     tbody.innerHTML = rows.map(t => `
       <tr>
-        <td><b>${t.name||'-'}</b></td>
-        <td>${t.email||'-'}</td>
-        <td>${t.subject||'-'}</td>
-        <td>${(t.assignedClasses||[]).join(', ')}</td>
-        <td><span class="badge badge-${t.role}">${t.role?.toUpperCase()}</span></td>
+        <td><b>${esc(t.name)||'-'}</b></td>
+        <td>${esc(t.email)||'-'}</td>
+        <td>${esc(t.subject)||'-'}</td>
+        <td>${esc((t.assignedClasses||[]).join(', '))}</td>
+        <td><span class="badge badge-${esc(t.role)}">${esc(t.role?.toUpperCase())}</span></td>
         <td style="display:flex;gap:6px;flex-wrap:wrap;">
           <button class="btn btn-info" style="padding:4px 10px;font-size:12px;"
             onclick="openEditTeacherModal('${t.id}')">✏️ Edit</button>
           <button class="btn btn-danger" style="padding:4px 12px;font-size:12px;"
-            onclick="deleteTeacher('${t.id}','${t.name}')">Delete</button>
+            onclick="deleteTeacher('${t.id}')">Delete</button>
         </td>
       </tr>`).join('');
   } catch(e) { tbody.innerHTML = `<tr><td colspan="6">Error: ${e.message}</td></tr>`; }
 };
 
-window.deleteTeacher = function(id, name) {
+window.deleteTeacher = function(id) {
+  const name = (window._allTeachers||[]).find(x => x.id === id)?.name || 'this teacher';
   showConfirm(`Delete teacher "${name}"?`, 'This will permanently remove their login account and all assigned data. The email can be reused.', async () => {
     try {
       await callAdminFn('deleteTeacher', { uid: id });
@@ -1569,10 +1740,10 @@ window.saveEditTeacher = async function() {
 
   showMsg('te-msg','Saving...','info');
   try {
-    // Update name, subject, classes via Netlify function
+    // Update name, subject, classes via Firebase function
     await callAdminFn('updateTeacher', { uid, name, subject, assignedClasses: classes });
 
-    // If new password entered, update via Netlify function (no current password needed)
+    // If new password entered, update via Firebase function (no current password needed)
     if (newPass) {
       await callAdminFn('updatePassword', { uid, newPassword: newPass });
       document.getElementById('te-new-pass').value = '';
@@ -1620,6 +1791,7 @@ window.loadMarksView = async function() {
     let students = [];
     stuSnap.forEach(d => {
       const student = {id:d.id,...d.data()};
+      if (student.left) return;
       if (!section || student.section === section) students.push(student);
     });
     students.sort((a,b) => a.rollNo - b.rollNo);
@@ -1761,7 +1933,7 @@ window.generateProgressReports = async function(singleStudentId = null) {
         students.push({
           ...base,
           fatherName: d.fatherName||'', motherName: d.motherName||'',
-          admissionNo: d.admissionNo||'', dob: d.dob||'', address: d.address||''
+          admissionNo: d.admissionNo||'', dob: dobToInput(d.dob||''), address: d.address||''
         });
       } else {
         // Student doc deleted — use whatever we have from marks
@@ -1902,6 +2074,11 @@ window.generateProgressReports = async function(singleStudentId = null) {
     const att = attLookup[s.id] || {};
     const attTerm1Pct  = att.term1AttendancePct != null ? att.term1AttendancePct+'%' : '';
     const attTerm2Pct  = att.term2AttendancePct != null ? att.term2AttendancePct+'%' : '';
+    const attCombinedPct = (att.term1AttendancePct != null && att.term2AttendancePct != null)
+      ? ((Number(att.term1AttendancePct)+Number(att.term2AttendancePct))/2).toFixed(1)+'%'
+      : att.term2AttendancePct != null ? att.term2AttendancePct+'%'
+      : att.term1AttendancePct != null ? att.term1AttendancePct+'%'
+      : '';
     // Pass/Fail decided by marks percentage only (>= 33% = Passed)
     const t1Result     = t1Max  > 0 ? (Number(t1Pct)   >= 33 ? 'Passed' : 'Failed') : '';
     const t2Result     = t2Max  > 0 ? (Number(t2Pct)   >= 33 ? 'Passed' : 'Failed') : '';
@@ -2004,7 +2181,7 @@ window.generateProgressReports = async function(singleStudentId = null) {
 
       <!-- ══ GRADING SCALE ══ -->
       <div style="font-size:8.5px;margin-bottom:4px;padding:2px 6px;border:1px solid #bbb;background:#f8faff;color:#333;">
-        <b style="color:#1a3c6e;">GRADING SCALE:</b> A1=91%-100%; A2=81%-90%; B1=71%-80%; B2=61%-70%; C1=51%-60%; C2=41%-50%; D=33%-40%; <b style="color:#cc0000;">E=20% AND BELOW</b>
+        <b style="color:#1a3c6e;">GRADING SCALE:</b> A1=91%-100%; A2=81%-90%; B1=71%-80%; B2=61%-70%; C1=51%-60%; C2=41%-50%; D=33%-40%; <b style="color:#cc0000;">E=BELOW 33%</b>
       </div>
 
       <!-- ══ STUDENT'S APPEARANCE ══ -->
@@ -2037,7 +2214,7 @@ window.generateProgressReports = async function(singleStudentId = null) {
             ${TD('1','text-align:center;')}${TD('ATTENDANCE (%)','font-weight:600;')}
             ${TD(attTerm1Pct,'text-align:center;')}
             ${TD(attTerm2Pct,'text-align:center;')}
-            ${TD(attTerm1Pct||attTerm2Pct ? (att.term2AttendancePct||att.term1AttendancePct||'')+'%' : '','text-align:center;font-weight:700;')}
+            ${TD(attCombinedPct,'text-align:center;font-weight:700;')}
           </tr>
           <tr>
             ${TD('2','text-align:center;')}${TD('MARKS (%)','font-weight:600;')}
@@ -2243,7 +2420,11 @@ window.loadEntryStudents = async function() {
     if (section) q = query(collection(db,'students'), where('class','==',cls), where('section','==',section), where('session','==',session));
     const snap = await getDocs(q);
     _entryStudents = [];
-    snap.forEach(d => _entryStudents.push({ id: d.id, ...d.data() }));
+    snap.forEach(d => {
+      const data = d.data();
+      if (data.left) return;
+      _entryStudents.push({ id: d.id, ...data });
+    });
     _entryStudents.sort((a,b) => (a.rollNo||0)-(b.rollNo||0));
     _entryStudents.forEach(s => {
       const opt = document.createElement('option');
@@ -2398,7 +2579,11 @@ window.previewPromotion = async function() {
 
   const snap = await getDocs(query(collection(db,'students'), where('session','==',fromSession)));
   _promoStudents = [];
-  snap.forEach(d => _promoStudents.push({ id:d.id, ...d.data() }));
+  snap.forEach(d => {
+    const data = d.data();
+    if (data.left) return;
+    _promoStudents.push({ id:d.id, ...data });
+  });
 
   if (!_promoStudents.length) { showPromoMsg('No students found in session '+fromSession,'error'); return; }
 

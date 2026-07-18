@@ -121,9 +121,25 @@
         <select id="sel-session">
           <option value="2024-25">2024-25</option>
           <option value="2025-26">2025-26</option>
-          <option value="2026-27" selected>2026-27</option>
+          <option value="2026-27">2026-27</option>
           <option value="2027-28">2027-28</option>
+          <option value="2028-29">2028-29</option>
+          <option value="2029-30">2029-30</option>
         </select>
+        <script>
+          (function(){
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = now.getMonth()+1; // 1-12
+            // Academic session: April (m>=4) of year Y → "Y-(Y+1)" else "(Y-1)-Y"
+            const startYear = m >= 4 ? y : y - 1;
+            const sess = startYear + '-' + String(startYear+1).slice(-2);
+            const sel = document.getElementById('sel-session');
+            let found = false;
+            for(let o of sel.options){ if(o.value===sess){ o.selected=true; found=true; break; } }
+            if(!found){ const o=document.createElement('option'); o.value=sess; o.textContent=sess; o.selected=true; sel.appendChild(o); }
+          })();
+        </script>
       </div>
       <div>
         <label>Class *</label>
@@ -227,7 +243,7 @@
 <script type="module">
 import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { collection, getDocs, doc, getDoc, query, where, setDoc, serverTimestamp }
+import { collection, getDocs, doc, getDoc, query, where, serverTimestamp, writeBatch }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const MAX_MARKS = { PA1:20, HalfYearly:80, PA2:20, Annual:80 };
@@ -305,6 +321,7 @@ window.loadStudents = async function() {
     currentStudents = [];
     stuSnap.forEach(d => {
       const data = d.data();
+      if (data.left) return;
       // Filter by section if selected
       if (!section || data.section === section) {
         currentStudents.push({id:d.id, ...data});
@@ -424,11 +441,12 @@ window.saveAllMarks = async function() {
   if (saves.length === 0) { showMsg('marks-msg','No marks entered yet.','error'); return; }
 
   try {
-    for (const item of saves) {
-      const safeSubject = subject.replace(/[^a-zA-Z0-9]/g,'_');
-      const safeSession = session.replace('-','_');
+    const batch = writeBatch(db);
+    const safeSubject = subject.replace(/[^a-zA-Z0-9]/g,'_');
+    const safeSession = session.replace('-','_');
+    saves.forEach(item => {
       const docId = `${item.student.id}_${exam}_${safeSubject}_${safeSession}`;
-      await setDoc(doc(db,'marks',docId), {
+      batch.set(doc(db,'marks',docId), {
         studentId: item.student.id,
         studentName: item.student.name,
         class: cls,
@@ -440,11 +458,14 @@ window.saveAllMarks = async function() {
         maxMarks: max,
         enteredBy: currentTeacher?.email || '',
         updatedAt: serverTimestamp()
-      });
+      }, { merge: true });
+    });
+    await batch.commit();
+    saves.forEach(item => {
       document.getElementById('status_'+item.student.id).innerHTML = '<span style="color:#27ae60;">✅ Saved</span>';
       document.getElementById('m_'+item.student.id).classList.add('saved');
       existingMarks[item.student.id] = { marks: item.marks };
-    }
+    });
     const savedCount = Object.keys(existingMarks).length;
     document.getElementById('marks-summary').innerHTML =
       `Class <b>${cls}${section?' - '+section:''}</b> | Exam: <b>${exam}</b> | Subject: <b>${subject}</b> | 

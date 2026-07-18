@@ -209,7 +209,7 @@
 <script type="module">
 import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { collection, getDocs, doc, getDoc, query, where, setDoc, serverTimestamp }
+import { collection, getDocs, doc, getDoc, query, where, serverTimestamp, writeBatch }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const OPTS = ['', 'VeryGood', 'Good', 'Average', 'Poor'];
@@ -255,6 +255,7 @@ window.loadStudents = async function() {
     currentStudents = [];
     stuSnap.forEach(d => {
       const data = d.data();
+      if (data.left) return;
       if (!section || data.section === section) currentStudents.push({ id: d.id, ...data });
     });
     currentStudents.sort((a,b) => (a.rollNo||0) - (b.rollNo||0));
@@ -321,46 +322,50 @@ window.saveAll = async function() {
 
   if (!cls) { showMsg('appear-msg', 'Please select a Class.', 'error'); return; }
 
-  let saved = 0;
+  const toSave = [];
+  currentStudents.forEach(s => {
+    const cleanliness        = document.getElementById('cl_'+s.id)?.value || '';
+    const discipline         = document.getElementById('di_'+s.id)?.value || '';
+    const punctuality        = document.getElementById('pu_'+s.id)?.value || '';
+    const parentsInteraction = document.getElementById('pi_'+s.id)?.value || '';
+    const t1aVal = document.getElementById('t1a_'+s.id)?.value;
+    const t2aVal = document.getElementById('t2a_'+s.id)?.value;
+    const term1AttendancePct = t1aVal !== '' && t1aVal !== undefined ? Number(t1aVal) : null;
+    const term2AttendancePct = t2aVal !== '' && t2aVal !== undefined ? Number(t2aVal) : null;
+
+    // Skip entirely empty rows
+    if (!cleanliness && !discipline && !punctuality && !parentsInteraction
+        && term1AttendancePct === null && term2AttendancePct === null) return;
+
+    toSave.push({ s, cleanliness, discipline, punctuality, parentsInteraction, term1AttendancePct, term2AttendancePct });
+  });
+
   try {
-    for (const s of currentStudents) {
-      const cleanliness        = document.getElementById('cl_'+s.id)?.value || '';
-      const discipline         = document.getElementById('di_'+s.id)?.value || '';
-      const punctuality        = document.getElementById('pu_'+s.id)?.value || '';
-      const parentsInteraction = document.getElementById('pi_'+s.id)?.value || '';
-      const t1aVal = document.getElementById('t1a_'+s.id)?.value;
-      const t2aVal = document.getElementById('t2a_'+s.id)?.value;
-      const term1AttendancePct = t1aVal !== '' && t1aVal !== undefined ? Number(t1aVal) : null;
-      const term2AttendancePct = t2aVal !== '' && t2aVal !== undefined ? Number(t2aVal) : null;
-
-      // Skip entirely empty rows
-      if (!cleanliness && !discipline && !punctuality && !parentsInteraction
-          && term1AttendancePct === null && term2AttendancePct === null) continue;
-
-      const safeSession = session.replace(/[^a-zA-Z0-9]/g,'_');
-      const docId = `${s.id}_${safeSession}`;
-      await setDoc(doc(db,'attendance',docId), {
-        studentId: s.id, studentName: s.name,
+    const batch = writeBatch(db);
+    const safeSession = session.replace(/[^a-zA-Z0-9]/g,'_');
+    toSave.forEach(item => {
+      const docId = `${item.s.id}_${safeSession}`;
+      batch.set(doc(db,'attendance',docId), {
+        studentId: item.s.id, studentName: item.s.name,
         class: cls, section: section||'', session,
-        cleanliness, discipline, punctuality, parentsInteraction,
-        term1AttendancePct,
-        term2AttendancePct,
+        cleanliness: item.cleanliness, discipline: item.discipline,
+        punctuality: item.punctuality, parentsInteraction: item.parentsInteraction,
+        term1AttendancePct: item.term1AttendancePct,
+        term2AttendancePct: item.term2AttendancePct,
         savedAt: serverTimestamp()
       });
+    });
+    await batch.commit();
 
-      document.getElementById('st_'+s.id).innerHTML =
+    toSave.forEach(item => {
+      document.getElementById('st_'+item.s.id).innerHTML =
         '<span style="color:#27ae60;font-size:12px;">✅ Saved</span>';
-      ['cl_','di_','pu_','pi_'].forEach(p => {
-        const el = document.getElementById(p+s.id);
+      ['cl_','di_','pu_','pi_','t1a_','t2a_'].forEach(p => {
+        const el = document.getElementById(p+item.s.id);
         if (el) el.classList.add('saved');
       });
-      ['t1a_','t2a_'].forEach(p => {
-        const el = document.getElementById(p+s.id);
-        if (el) el.classList.add('saved');
-      });
-      saved++;
-    }
-    showMsg('appear-msg', `✅ ${saved} records saved successfully!`, 'success');
+    });
+    showMsg('appear-msg', `✅ ${toSave.length} records saved successfully!`, 'success');
   } catch(e) {
     showMsg('appear-msg', 'Error saving: ' + e.message, 'error');
   }

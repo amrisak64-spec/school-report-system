@@ -82,23 +82,60 @@
     <div class="school-sub">Government Recognized · Gangoh, Saharanpur (U.P.)</div>
   </div>
   <h2>STAFF LOGIN</h2>
-  <label for="email">Email Address</label>
-  <input type="email" id="email" placeholder="Enter your email" />
-  <label for="password">Password</label>
-  <div style="position:relative;margin-bottom:18px;">
-    <input type="password" id="password" placeholder="Enter your password" style="margin-bottom:0;padding-right:42px;"/>
-    <button type="button" onclick="togglePwd()" id="pwd-eye"
-      style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:#888;padding:0;width:auto;">👁</button>
+
+  <div id="session-banner" style="display:none;text-align:center;">
+    <p style="font-size:14px;color:#333;margin-bottom:16px;">You're already logged in as <strong id="session-email"></strong>.</p>
+    <button onclick="continueSession()">CONTINUE</button>
+    <button onclick="switchAccount()" style="margin-top:10px;background:#c0392b;">NOT YOU? SWITCH ACCOUNT</button>
   </div>
-  <button onclick="doLogin()">LOGIN</button>
+
+  <div id="login-form">
+    <label for="email">Email Address</label>
+    <input type="email" id="email" placeholder="Enter your email" />
+    <label for="password">Password</label>
+    <div style="position:relative;margin-bottom:18px;">
+      <input type="password" id="password" placeholder="Enter your password" style="margin-bottom:0;padding-right:42px;"/>
+      <button type="button" onclick="togglePwd()" id="pwd-eye"
+        style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:#888;padding:0;width:auto;">👁</button>
+    </div>
+    <button onclick="doLogin()">LOGIN</button>
+  </div>
   <div id="error-msg"></div>
   <div class="loader" id="loader">Logging in, please wait...</div>
 </div>
 
 <script type="module">
   import { auth, db } from './firebase-config.js';
-  import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  let sessionTarget = null; // dashboard URL for the currently logged-in session, if any
+
+  // If already logged in, don't redirect instantly — ask first, so a different
+  // staff member can still log in with their own credentials on this device.
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      document.getElementById('session-banner').style.display = 'none';
+      document.getElementById('login-form').style.display = 'block';
+      return;
+    }
+    const snap = await getDoc(doc(db, 'users', user.uid));
+    if (!snap.exists()) return;
+    sessionTarget = snap.data().role === 'admin' ? 'admin.html' : 'teacher.html';
+    document.getElementById('session-email').textContent = user.email;
+    document.getElementById('session-banner').style.display = 'block';
+    document.getElementById('login-form').style.display = 'none';
+  });
+
+  window.continueSession = function() {
+    if (sessionTarget) window.location.href = sessionTarget;
+  };
+
+  window.switchAccount = async function() {
+    await signOut(auth);
+    document.getElementById('session-banner').style.display = 'none';
+    document.getElementById('login-form').style.display = 'block';
+  };
 
   window.doLogin = async function() {
     const email = document.getElementById('email').value.trim();
@@ -147,7 +184,10 @@
     else                         { inp.type = 'password'; btn.textContent = '👁'; }
   };
 
-  // Allow Enter key
+  // Allow Enter key from either field
+  document.getElementById('email').addEventListener('keydown', e => {
+    if (e.key === 'Enter') window.doLogin();
+  });
   document.getElementById('password').addEventListener('keydown', e => {
     if (e.key === 'Enter') window.doLogin();
   });

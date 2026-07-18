@@ -265,6 +265,7 @@ window.loadTabulation = async function() {
     let students = [];
     stuSnap.forEach(d => {
       const data = d.data();
+      if (data.left) return;
       if (!section || data.section === section) students.push({ id: d.id, ...data });
     });
     students.sort((a, b) => (a.rollNo || 0) - (b.rollNo || 0));
@@ -403,11 +404,7 @@ window.loadTabulation = async function() {
     }).join('');
 
     // Stats
-    const passThreshold = examFilter ? (EXAM_MAX[examFilter] * SUBJECTS.length * 0.33) : 0;
-    const passCount = tableData.filter(s => examFilter
-      ? s.grandTotal >= passThreshold
-      : s.percentage >= 33
-    ).length;
+    const passCount = tableData.filter(s => s.grandMax > 0 && s.percentage >= 33).length;
     const avgPct = tableData.length > 0
       ? (tableData.reduce((sum,s) => sum+s.percentage, 0) / tableData.length).toFixed(1) : 0;
     const topPct = tableData.length > 0
