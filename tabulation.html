@@ -116,6 +116,13 @@
       margin-bottom: 14px; flex-wrap: wrap; gap: 8px;
     }
 
+    .marks-input-sm {
+      width: 42px; padding: 4px 3px; text-align: center;
+      border: 1.5px solid #ccc; border-radius: 4px; font-size: 11px; font-weight: 700;
+    }
+    .marks-input-sm:focus { outline: none; border-color: #16a085; }
+    .marks-input-sm.error { border-color: #c0392b; background: #fff5f5; }
+
     @media print {
       .topbar, .filter-row, .summary-bar .btn, .stats-row { display: none; }
       .card { box-shadow: none; padding: 0; }
@@ -128,7 +135,7 @@
 
 <div class="topbar">
   <div class="topbar-info">
-    <h1><img src="logo.svg" alt="" style="width:32px;height:32px;border-radius:50%;vertical-align:middle;margin-right:8px;">📊 Marks Tabulation &amp; Position Sheet</h1>
+    <h1><img src="icons/icon-192.png" alt="" style="width:32px;height:32px;border-radius:50%;vertical-align:middle;margin-right:8px;">📊 Marks Tabulation &amp; Position Sheet</h1>
     <p id="user-info">Prabha Gyan Jyoti Public School</p>
   </div>
   <div class="topbar-right">
@@ -184,6 +191,9 @@
       <div style="padding-top:18px;">
         <button class="btn" style="background:#6c757d;color:#fff;" onclick="window.print()">🖨️ Print</button>
       </div>
+      <div style="padding-top:18px;">
+        <button class="btn" id="btn-entry-toggle" style="background:#16a085;color:#fff;display:none;" onclick="toggleEntryMode()">✏️ Enter Marks</button>
+      </div>
     </div>
 
     <div id="tab-msg"></div>
@@ -193,6 +203,7 @@
       <div class="stats-row" id="stats-row"></div>
       <div class="summary-bar">
         <div style="font-size:13px;color:#555;" id="tab-summary"></div>
+        <button class="btn btn-primary" id="btn-save-entry" style="display:none;background:#16a085;" onclick="saveEntryMarks()">💾 Save All Marks</button>
         <button class="btn btn-primary" onclick="exportCSV()">⬇ Export CSV</button>
         <button class="btn" style="background:#555;color:#fff;" onclick="goBack()">← Back</button>
       </div>
@@ -209,7 +220,7 @@
 <script type="module">
 import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { collection, getDocs, doc, getDoc, query, where }
+import { collection, getDocs, doc, getDoc, query, where, writeBatch, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const SUBJECTS = ['English','Hindi','Maths','Science','SST','GK','Computer','Sanskrit','Drawing'];
@@ -221,6 +232,13 @@ const GRAND_MAX = SUBJECTS.length * SUBJ_MAX; // 1800
 
 let currentUser = null;
 let tableData = [];
+
+// Admin bulk marks-entry state
+let entryMode = false;
+let lastExamFilter = '';
+let lastActiveExams = [];
+let lastRankMap = {};
+let lastSortedData = [];
 
 onAuthStateChanged(auth, async user => {
   if (!user) { window.location.href = 'index.html'; return; }
@@ -234,6 +252,10 @@ onAuthStateChanged(auth, async user => {
     const assigned = currentUser.assignedClasses || [];
     const sel = document.getElementById('sel-class');
     Array.from(sel.options).forEach(o => { if (o.value && !assigned.includes(o.value)) o.remove(); });
+  }
+
+  if (currentUser.role === 'admin') {
+    document.getElementById('btn-entry-toggle').style.display = 'inline-block';
   }
 });
 
@@ -362,46 +384,19 @@ window.loadTabulation = async function() {
       return ra !== rb ? ra - rb : (a.rollNo||0) - (b.rollNo||0);
     });
 
-    const tbody = document.getElementById('tab-tbody');
-    tbody.innerHTML = sortedData.map(s => {
-      const r = rankMap[s.id];
-      const pct = s.percentage.toFixed(1);
-      const grade = calcGrade(s.percentage);
-      const rankClass  = r===1?'rank-1':r===2?'rank-2':r===3?'rank-3':'';
-      const badgeClass = r===1?'r1':r===2?'r2':r===3?'r3':'rn';
+    lastExamFilter = examFilter;
+    lastActiveExams = activeExams;
+    lastRankMap = rankMap;
+    lastSortedData = sortedData;
 
-      let cols = '';
-      SUBJECTS.forEach(sub => {
-        const st = s.subjectTotals[sub];
-        if (examFilter) {
-          // Single column per subject
-          const val = st.examMarks[examFilter];
-          cols += val !== null
-            ? `<td style="font-weight:600;">${val}</td>`
-            : `<td style="color:#ccc;">-</td>`;
-        } else {
-          // All exams: PA1, HY, PA2, ANN + Total
-          activeExams.forEach(exam => {
-            const val = st.examMarks[exam];
-            cols += val !== null ? `<td>${val}</td>` : `<td style="color:#ccc;">-</td>`;
-          });
-          cols += st.total !== null
-            ? `<td style="font-weight:700;background:#f0fff4;">${st.total}</td>`
-            : `<td style="color:#ccc;">-</td>`;
-        }
-      });
+    // Turning up entry mode only makes sense for a single specific exam
+    if (entryMode && !examFilter) {
+      entryMode = false;
+      document.getElementById('btn-entry-toggle').textContent = '✏️ Enter Marks';
+      document.getElementById('btn-save-entry').style.display = 'none';
+    }
 
-      return `<tr class="${rankClass}">
-        <td><span class="rank-badge ${badgeClass}">${r}</span></td>
-        <td>${s.rollNo||'-'}</td>
-        <td class="left"><b>${escHtml(s.name||'-')}</b></td>
-        ${cols}
-        <td style="font-weight:700;">${s.grandMax>0?s.grandTotal:'-'}</td>
-        <td style="color:#888;">${s.grandMax||'-'}</td>
-        <td style="font-weight:700;">${s.grandMax>0?pct+'%':'-'}</td>
-        <td><span class="grade-badge ${gradeColor(grade)}">${grade}</span></td>
-      </tr>`;
-    }).join('');
+    renderTbody();
 
     // Stats
     const passCount = tableData.filter(s => s.grandMax > 0 && s.percentage >= 33).length;
@@ -427,6 +422,137 @@ window.loadTabulation = async function() {
   } catch(e) {
     document.getElementById('loading').style.display = 'none';
     showMsg('tab-msg', 'Error: ' + e.message, 'error');
+  }
+};
+
+function renderTbody() {
+  const examFilter = lastExamFilter;
+  const activeExams = lastActiveExams;
+  const rankMap = lastRankMap;
+
+  const tbody = document.getElementById('tab-tbody');
+  tbody.innerHTML = lastSortedData.map(s => {
+    const r = rankMap[s.id];
+    const pct = s.percentage.toFixed(1);
+    const grade = calcGrade(s.percentage);
+    const rankClass  = r===1?'rank-1':r===2?'rank-2':r===3?'rank-3':'';
+    const badgeClass = r===1?'r1':r===2?'r2':r===3?'r3':'rn';
+
+    let cols = '';
+    SUBJECTS.forEach(sub => {
+      const st = s.subjectTotals[sub];
+      if (examFilter) {
+        const val = st.examMarks[examFilter];
+        if (entryMode) {
+          const max = EXAM_MAX[examFilter];
+          cols += `<td><input type="number" class="marks-input-sm" data-student="${s.id}" data-subject="${sub}"
+            value="${val !== null ? val : ''}" min="0" max="${max}" placeholder="0-${max}"/></td>`;
+        } else {
+          cols += val !== null
+            ? `<td style="font-weight:600;">${val}</td>`
+            : `<td style="color:#ccc;">-</td>`;
+        }
+      } else {
+        // All exams: PA1, HY, PA2, ANN + Total
+        activeExams.forEach(exam => {
+          const val = st.examMarks[exam];
+          cols += val !== null ? `<td>${val}</td>` : `<td style="color:#ccc;">-</td>`;
+        });
+        cols += st.total !== null
+          ? `<td style="font-weight:700;background:#f0fff4;">${st.total}</td>`
+          : `<td style="color:#ccc;">-</td>`;
+      }
+    });
+
+    return `<tr class="${rankClass}">
+      <td><span class="rank-badge ${badgeClass}">${r}</span></td>
+      <td>${s.rollNo||'-'}</td>
+      <td class="left"><b>${escHtml(s.name||'-')}</b></td>
+      ${cols}
+      <td style="font-weight:700;">${s.grandMax>0?s.grandTotal:'-'}</td>
+      <td style="color:#888;">${s.grandMax||'-'}</td>
+      <td style="font-weight:700;">${s.grandMax>0?pct+'%':'-'}</td>
+      <td><span class="grade-badge ${gradeColor(grade)}">${grade}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+window.toggleEntryMode = function() {
+  if (!entryMode && !lastExamFilter) {
+    showMsg('tab-msg', 'Select a specific exam (not "All Exams Combined") before entering marks.', 'error');
+    return;
+  }
+  entryMode = !entryMode;
+  document.getElementById('btn-entry-toggle').textContent = entryMode ? '✖ Cancel Entry' : '✏️ Enter Marks';
+  document.getElementById('btn-save-entry').style.display = entryMode ? 'inline-block' : 'none';
+  renderTbody();
+};
+
+window.saveEntryMarks = async function() {
+  if (!entryMode || !lastExamFilter) return;
+
+  const exam    = lastExamFilter;
+  const session = document.getElementById('sel-session').value;
+  const cls     = document.getElementById('sel-class').value;
+  const section = document.getElementById('sel-section').value;
+  const max     = EXAM_MAX[exam];
+
+  const studentById = {};
+  lastSortedData.forEach(s => studentById[s.id] = s);
+
+  const inputs = document.querySelectorAll('#tab-tbody .marks-input-sm');
+  let errors = [], saves = [];
+  inputs.forEach(input => {
+    const raw = input.value.trim();
+    input.classList.remove('error');
+    if (raw === '') return;
+    const num = Number(raw);
+    if (isNaN(num) || num < 0 || num > max) {
+      input.classList.add('error');
+      const stu = studentById[input.dataset.student];
+      errors.push(`${input.dataset.subject} (Roll ${stu?.rollNo ?? '?'} ${stu?.name ?? ''}): invalid`);
+      return;
+    }
+    saves.push({ studentId: input.dataset.student, subject: input.dataset.subject, marks: num });
+  });
+
+  if (errors.length > 0) {
+    showMsg('tab-msg', `Fix ${errors.length} invalid value(s) highlighted in red before saving.`, 'error');
+    return;
+  }
+  if (saves.length === 0) {
+    showMsg('tab-msg', 'No marks entered.', 'error');
+    return;
+  }
+
+  try {
+    const safeSession = session.replace('-', '_');
+    for (let i = 0; i < saves.length; i += 450) {
+      const chunk = saves.slice(i, i + 450);
+      const batch = writeBatch(db);
+      chunk.forEach(item => {
+        const safeSubject = item.subject.replace(/[^a-zA-Z0-9]/g, '_');
+        const docId = `${item.studentId}_${exam}_${safeSubject}_${safeSession}`;
+        batch.set(doc(db, 'marks', docId), {
+          studentId: item.studentId,
+          studentName: studentById[item.studentId]?.name || '',
+          class: cls,
+          section: section || '',
+          subject: item.subject,
+          exam,
+          session,
+          marksObtained: item.marks,
+          maxMarks: max,
+          enteredBy: currentUser?.email || '',
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      });
+      await batch.commit();
+    }
+    showMsg('tab-msg', `✅ ${saves.length} mark(s) saved successfully!`, 'success');
+    await loadTabulation(); // refetches and re-renders; entryMode stays on since the exam filter is unchanged
+  } catch (e) {
+    showMsg('tab-msg', 'Error saving marks: ' + e.message, 'error');
   }
 };
 

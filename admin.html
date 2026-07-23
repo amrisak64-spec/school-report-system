@@ -10,9 +10,10 @@
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="icons/icon-192.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png"/>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin/>
+  <link rel="preconnect" href="https://prabhagyanjyoti.firebaseapp.com" crossorigin/>
   <title>Admin – Prabha Gyan Jyoti</title>
-  <!-- SheetJS for Excel reading -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- SheetJS for Excel reading — loaded on demand, see loadXLSX() below, to avoid ~200KB parse/eval cost on every admin page load -->
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; background: #f0f4f8; }
@@ -314,7 +315,7 @@
 </div>
 
 <div class="topbar">
-  <h1><img src="logo.svg" alt="" style="width:36px;height:36px;border-radius:50%;vertical-align:middle;margin-right:10px;">🏫 Prabha Gyan Jyoti — Admin Dashboard</h1>
+  <h1><img src="icons/icon-192.png" alt="" style="width:36px;height:36px;border-radius:50%;vertical-align:middle;margin-right:10px;">🏫 Prabha Gyan Jyoti — Admin Dashboard</h1>
   <button onclick="logout()">Logout</button>
 </div>
 
@@ -987,6 +988,22 @@ let allStudents = [];
 // Store parsed Excel data
 let parsedExcelData = [];
 
+// ---- SheetJS (XLSX), loaded on first use instead of on every page load ----
+let xlsxLoadPromise = null;
+function loadXLSX() {
+  if (window.XLSX) return Promise.resolve();
+  if (!xlsxLoadPromise) {
+    xlsxLoadPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = resolve;
+      s.onerror = () => { xlsxLoadPromise = null; reject(new Error('Failed to load Excel library')); };
+      document.head.appendChild(s);
+    });
+  }
+  return xlsxLoadPromise;
+}
+
 // ---- AUTH GUARD ----
 window._fbReady = true;
 onAuthStateChanged(auth, async (user) => {
@@ -1218,6 +1235,7 @@ window._renderStudentTable = function(students) {
 window.downloadStudentsExcel = async function() {
   const filterCls = document.getElementById('filter-class').value;
   try {
+    await loadXLSX();
     let snap;
     if (filterCls) {
       snap = await getDocs(query(collection(db,'students'), where('class','==',filterCls)));
@@ -1390,7 +1408,8 @@ document.getElementById('edit-modal').addEventListener('click', function(e) {
 // =================== EXCEL UPLOAD =====================
 // ======================================================
 
-window.downloadTemplate = function() {
+window.downloadTemplate = async function() {
+  await loadXLSX();
   // Build sample Excel data
   const wb = XLSX.utils.book_new();
   const sampleData = [
@@ -1405,10 +1424,11 @@ window.downloadTemplate = function() {
   XLSX.writeFile(wb, 'Student_Upload_Template.xlsx');
 };
 
-window.handleExcelUpload = function(event) {
+window.handleExcelUpload = async function(event) {
   const file = event.target.files[0];
   if (!file) return;
 
+  await loadXLSX();
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
@@ -1964,7 +1984,7 @@ window.generateProgressReports = async function(singleStudentId = null) {
   // Fetch logo as base64 so it always renders in the popup (avoids cross-origin/timing issues)
   let logoDataUrl = '';
   try {
-    const logoRes = await fetch(new URL('logo.svg', window.location.href).href);
+    const logoRes = await fetch(new URL('icons/icon-192.png', window.location.href).href);
     const blob = await logoRes.blob();
     logoDataUrl = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
   } catch(e) { logoDataUrl = ''; }
