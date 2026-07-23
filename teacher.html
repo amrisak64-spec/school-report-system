@@ -327,7 +327,7 @@ window.loadStudents = async function() {
         currentStudents.push({id:d.id, ...data});
       }
     });
-    currentStudents.sort((a,b) => (a.rollNo||0) - (b.rollNo||0));
+    currentStudents.sort((a,b) => (a.name||'').localeCompare(b.name||''));
 
     if (currentStudents.length === 0) {
       document.getElementById('loading').style.display = 'none';
