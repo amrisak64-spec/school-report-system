@@ -80,9 +80,12 @@
       color: #fff; padding: 8px 5px; text-align: center;
       white-space: nowrap; border: 1px solid rgba(255,255,255,0.2);
     }
-    th.left { text-align: left; padding-left: 8px; }
+    th.left { text-align: left; padding-left: 8px; max-width: 130px; }
     td { padding: 6px 5px; border-bottom: 1px solid #eee; text-align: center; vertical-align: middle; }
-    td.left { text-align: left; padding-left: 8px; }
+    td.left {
+      text-align: left; padding-left: 8px; max-width: 130px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
     tr:hover td { background: #f5f8ff; }
 
     .rank-1  { background: #fff9c4 !important; }
@@ -185,6 +188,14 @@
           <option value="Annual">Annual (Max: 80)</option>
         </select>
       </div>
+      <div>
+        <label>Sort By</label>
+        <select id="sel-sortby" onchange="changeSortBy()">
+          <option value="rank">Rank</option>
+          <option value="name">Student Name (A-Z)</option>
+          <option value="roll">Roll No</option>
+        </select>
+      </div>
       <div style="padding-top:18px;">
         <button class="btn btn-load" onclick="loadTabulation()">🔍 Generate Tabulation</button>
       </div>
@@ -239,6 +250,25 @@ let lastExamFilter = '';
 let lastActiveExams = [];
 let lastRankMap = {};
 let lastSortedData = [];
+let lastTableData = [];
+let sortBy = 'rank';
+
+function sortTableData(data, rankMap, by) {
+  const arr = [...data];
+  if (by === 'name') {
+    arr.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  } else if (by === 'roll') {
+    arr.sort((a, b) => (a.rollNo || 0) - (b.rollNo || 0));
+  } else {
+    arr.sort((a, b) => {
+      const ra = rankMap[a.id], rb = rankMap[b.id];
+      return ra !== rb ? ra - rb : (a.rollNo || 0) - (b.rollNo || 0);
+    });
+  }
+  return arr;
+}
+
+const SORT_LABELS = { rank: 'rank', name: 'student name (A-Z)', roll: 'roll no' };
 
 onAuthStateChanged(auth, async user => {
   if (!user) { window.location.href = 'index.html'; return; }
@@ -348,7 +378,7 @@ window.loadTabulation = async function() {
     let hRow1 = `<tr>
       <th class="th-rank" rowspan="2" style="width:45px;">Rank</th>
       <th class="th-info" rowspan="2">Roll</th>
-      <th class="th-info left" rowspan="2" style="min-width:120px;">Student Name</th>`;
+      <th class="th-info left" rowspan="2" style="width:130px;">Student Name</th>`;
 
     if (examFilter) {
       // Single exam: one column per subject, no sub-header row needed (use rowspan=2)
@@ -379,14 +409,13 @@ window.loadTabulation = async function() {
     thead.innerHTML = hRow1 + hRow2;
 
     // ---- Build table body ----
-    const sortedData = [...tableData].sort((a, b) => {
-      const ra = rankMap[a.id], rb = rankMap[b.id];
-      return ra !== rb ? ra - rb : (a.rollNo||0) - (b.rollNo||0);
-    });
+    sortBy = document.getElementById('sel-sortby').value;
+    const sortedData = sortTableData(tableData, rankMap, sortBy);
 
     lastExamFilter = examFilter;
     lastActiveExams = activeExams;
     lastRankMap = rankMap;
+    lastTableData = tableData;
     lastSortedData = sortedData;
 
     // Turning up entry mode only makes sense for a single specific exam
@@ -414,7 +443,7 @@ window.loadTabulation = async function() {
       <div class="stat-box"><div class="stat-num" style="color:#8e44ad;">${topPct}%</div><div class="stat-label">Highest Score</div></div>`;
 
     document.getElementById('tab-summary').innerHTML =
-      `Class <b>${cls}${section?' - '+section:''}</b> | Session: <b>${session}</b> | Exam: <b>${examLabel}</b> | Sorted by rank`;
+      `Class <b>${cls}${section?' - '+section:''}</b> | Session: <b>${session}</b> | Exam: <b>${examLabel}</b> | Sorted by ${SORT_LABELS[sortBy]}`;
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('tab-section').style.display = 'block';
@@ -467,7 +496,7 @@ function renderTbody() {
     return `<tr class="${rankClass}">
       <td><span class="rank-badge ${badgeClass}">${r}</span></td>
       <td>${s.rollNo||'-'}</td>
-      <td class="left"><b>${escHtml(s.name||'-')}</b></td>
+      <td class="left" title="${escHtml(s.name||'-')}"><b>${escHtml(s.name||'-')}</b></td>
       ${cols}
       <td style="font-weight:700;">${s.grandMax>0?s.grandTotal:'-'}</td>
       <td style="color:#888;">${s.grandMax||'-'}</td>
@@ -476,6 +505,20 @@ function renderTbody() {
     </tr>`;
   }).join('');
 }
+
+window.changeSortBy = function() {
+  if (!lastTableData.length) return;
+  sortBy = document.getElementById('sel-sortby').value;
+  lastSortedData = sortTableData(lastTableData, lastRankMap, sortBy);
+  renderTbody();
+
+  const cls = document.getElementById('sel-class').value;
+  const section = document.getElementById('sel-section').value;
+  const session = document.getElementById('sel-session').value;
+  const examLabel = lastExamFilter ? EXAM_LABELS[lastExamFilter] : 'All Exams';
+  document.getElementById('tab-summary').innerHTML =
+    `Class <b>${cls}${section?' - '+section:''}</b> | Session: <b>${session}</b> | Exam: <b>${examLabel}</b> | Sorted by ${SORT_LABELS[sortBy]}`;
+};
 
 window.toggleEntryMode = function() {
   if (!entryMode && !lastExamFilter) {
@@ -575,16 +618,8 @@ window.exportCSV = function() {
   });
   headers.push('Grand Total','Max Marks','Percentage','Grade');
 
-  const sorted = [...tableData].sort((a,b) => b.percentage - a.percentage);
-  const rankMap = {};
-  let rank = 1;
-  for (let i = 0; i < sorted.length; i++) {
-    if (i > 0 && sorted[i].percentage < sorted[i-1].percentage) rank = i + 1;
-    rankMap[sorted[i].id] = rank;
-  }
-
-  const rows = sorted.map(s => {
-    const row = [rankMap[s.id], s.rollNo||'', s.name||''];
+  const rows = lastSortedData.map(s => {
+    const row = [lastRankMap[s.id], s.rollNo||'', s.name||''];
     SUBJECTS.forEach(sub => {
       const st = s.subjectTotals[sub];
       if (examFilter) {
