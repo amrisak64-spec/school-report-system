@@ -67,6 +67,8 @@
     .marks-input:focus { border-color: #1a6e3c; outline: none; }
     .marks-input.saved { border-color: #27ae60; background: #f0fff4; }
     .marks-input.error { border-color: #c0392b; background: #fff5f5; }
+    .marks-input:disabled { background: #f0f0f0; color: #999; border-color: #ddd; }
+    .absent-check { width: 16px; height: 16px; cursor: pointer; }
 
     .msg { padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 14px; }
     .msg-success { background: #d5f5e3; color: #1e8449; }
@@ -205,6 +207,7 @@
               <th>Father's Name</th>
               <th>Address</th>
               <th id="col-subject">Marks</th>
+              <th>Absent</th>
               <th>Max</th>
               <th>Status</th>
             </tr>
@@ -347,6 +350,7 @@ window.loadStudents = async function() {
       existingMarks[m.studentId] = {
         docId: d.id,
         marks: m.marksObtained,
+        absent: !!m.absent,
         notebookMarks: m.notebookMarks,
         remarks: m.remarks || ''
       };
@@ -358,7 +362,8 @@ window.loadStudents = async function() {
     const tbody = document.getElementById('marks-tbody');
     tbody.innerHTML = currentStudents.map((s, idx) => {
       const existing = existingMarks[s.id];
-      const val = existing ? existing.marks : '';
+      const isAbsent = !!(existing && existing.absent);
+      const val = existing && !isAbsent ? existing.marks : '';
       const isSaved = existing !== undefined;
       return `
         <tr>
@@ -368,10 +373,14 @@ window.loadStudents = async function() {
           <td style="color:#555;">${escapeHtml(s.fatherName || '-')}</td>
           <td style="color:#777;font-size:12px;">${escapeHtml(s.address || '-')}</td>
           <td>
-            <input type="number" class="marks-input ${isSaved?'saved':''}" id="m_${s.id}"
-              value="${val}" min="0" max="${max}"
+            <input type="number" class="marks-input ${isSaved && !isAbsent?'saved':''}" id="m_${s.id}"
+              value="${val}" min="0" max="${max}" ${isAbsent?'disabled':''}
               onchange="validateInput(this, ${max})"
               placeholder="0-${max}"/>
+          </td>
+          <td style="text-align:center;">
+            <input type="checkbox" class="absent-check" id="abs_${s.id}" ${isAbsent?'checked':''}
+              onchange="toggleAbsent('${s.id}', ${max})" title="Mark absent"/>
           </td>
           <td style="text-align:center;">${max}</td>
           <td id="status_${s.id}">
@@ -407,6 +416,19 @@ window.validateInput = function(input, max) {
   }
 };
 
+window.toggleAbsent = function(studentId, max) {
+  const checkbox = document.getElementById('abs_'+studentId);
+  const input = document.getElementById('m_'+studentId);
+  if (checkbox.checked) {
+    input.value = '';
+    input.disabled = true;
+    input.classList.remove('error','saved');
+  } else {
+    input.disabled = false;
+    validateInput(input, max);
+  }
+};
+
 window.saveAllMarks = async function() {
   const cls     = document.getElementById('sel-class').value;
   const section = document.getElementById('sel-section').value;
@@ -428,12 +450,18 @@ window.saveAllMarks = async function() {
   let errors = [], saves = [];
   currentStudents.forEach(s => {
     const input = document.getElementById('m_'+s.id);
-    if (!input || input.value === '') return;
+    const absCheckbox = document.getElementById('abs_'+s.id);
+    if (!input) return;
+    if (absCheckbox && absCheckbox.checked) {
+      saves.push({ student: s, marks: null, absent: true });
+      return;
+    }
+    if (input.value === '') return;
     const val = Number(input.value);
     if (isNaN(val) || val < 0 || val > max) {
       errors.push(`${s.name}: invalid (${input.value})`);
     } else {
-      saves.push({ student: s, marks: val });
+      saves.push({ student: s, marks: val, absent: false });
     }
   });
 
@@ -455,6 +483,7 @@ window.saveAllMarks = async function() {
         exam,
         session,
         marksObtained: item.marks,
+        absent: !!item.absent,
         maxMarks: max,
         enteredBy: currentTeacher?.email || '',
         updatedAt: serverTimestamp()
@@ -463,8 +492,8 @@ window.saveAllMarks = async function() {
     await batch.commit();
     saves.forEach(item => {
       document.getElementById('status_'+item.student.id).innerHTML = '<span style="color:#27ae60;">✅ Saved</span>';
-      document.getElementById('m_'+item.student.id).classList.add('saved');
-      existingMarks[item.student.id] = { marks: item.marks };
+      if (!item.absent) document.getElementById('m_'+item.student.id).classList.add('saved');
+      existingMarks[item.student.id] = { marks: item.marks, absent: !!item.absent };
     });
     const savedCount = Object.keys(existingMarks).length;
     document.getElementById('marks-summary').innerHTML =

@@ -337,7 +337,7 @@ window.loadTabulation = async function() {
     marksSnap.forEach(d => {
       const m = d.data();
       const sub = SUBJECT_ALIASES[m.subject] || m.subject;
-      marksLookup[`${m.studentId}_${m.exam}_${sub}`] = m.marksObtained;
+      marksLookup[`${m.studentId}_${m.exam}_${sub}`] = { val: m.marksObtained, absent: !!m.absent };
     });
 
     // Exams to show
@@ -352,9 +352,9 @@ window.loadTabulation = async function() {
         let subTotal = 0, subMax = 0;
         const examMarks = {};
         activeExams.forEach(exam => {
-          const val = marksLookup[`${s.id}_${exam}_${sub}`];
-          examMarks[exam] = val !== undefined ? val : null;
-          if (val !== undefined) { subTotal += Number(val); subMax += EXAM_MAX[exam]; }
+          const entry = marksLookup[`${s.id}_${exam}_${sub}`];
+          examMarks[exam] = entry ? { val: entry.absent ? null : entry.val, absent: entry.absent } : null;
+          if (entry) { subTotal += entry.absent ? 0 : Number(entry.val); subMax += EXAM_MAX[exam]; }
         });
         subjectTotals[sub] = { examMarks, total: subMax ? subTotal : null, max: subMax };
         if (subMax > 0) { grandTotal += subTotal; grandMax += subMax; }
@@ -471,21 +471,24 @@ function renderTbody() {
     SUBJECTS.forEach(sub => {
       const st = s.subjectTotals[sub];
       if (examFilter) {
-        const val = st.examMarks[examFilter];
+        const entry = st.examMarks[examFilter];
         if (entryMode) {
           const max = EXAM_MAX[examFilter];
           cols += `<td><input type="number" class="marks-input-sm" data-student="${s.id}" data-subject="${sub}"
-            value="${val !== null ? val : ''}" min="0" max="${max}" placeholder="0-${max}"/></td>`;
+            value="${entry && entry.val !== null ? entry.val : ''}" min="0" max="${max}" placeholder="0-${max}"/></td>`;
+        } else if (entry && entry.absent) {
+          cols += `<td style="color:#c0392b;font-weight:600;">AB</td>`;
         } else {
-          cols += val !== null
-            ? `<td style="font-weight:600;">${val}</td>`
+          cols += entry && entry.val !== null
+            ? `<td style="font-weight:600;">${entry.val}</td>`
             : `<td style="color:#ccc;">-</td>`;
         }
       } else {
         // All exams: PA1, HY, PA2, ANN + Total
         activeExams.forEach(exam => {
-          const val = st.examMarks[exam];
-          cols += val !== null ? `<td>${val}</td>` : `<td style="color:#ccc;">-</td>`;
+          const entry = st.examMarks[exam];
+          if (entry && entry.absent) cols += `<td style="color:#c0392b;font-weight:600;">AB</td>`;
+          else cols += entry && entry.val !== null ? `<td>${entry.val}</td>` : `<td style="color:#ccc;">-</td>`;
         });
         cols += st.total !== null
           ? `<td style="font-weight:700;background:#f0fff4;">${st.total}</td>`
@@ -585,6 +588,7 @@ window.saveEntryMarks = async function() {
           exam,
           session,
           marksObtained: item.marks,
+          absent: false,
           maxMarks: max,
           enteredBy: currentUser?.email || '',
           updatedAt: serverTimestamp()
@@ -622,10 +626,11 @@ window.exportCSV = function() {
     const row = [lastRankMap[s.id], s.rollNo||'', s.name||''];
     SUBJECTS.forEach(sub => {
       const st = s.subjectTotals[sub];
+      const cell = entry => !entry ? '' : entry.absent ? 'AB' : (entry.val !== null ? entry.val : '');
       if (examFilter) {
-        row.push(st.examMarks[examFilter] !== null ? st.examMarks[examFilter] : '');
+        row.push(cell(st.examMarks[examFilter]));
       } else {
-        activeExams.forEach(exam => row.push(st.examMarks[exam] !== null ? st.examMarks[exam] : ''));
+        activeExams.forEach(exam => row.push(cell(st.examMarks[exam])));
         row.push(st.total !== null ? st.total : '');
       }
     });

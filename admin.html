@@ -1824,7 +1824,7 @@ window.loadMarksView = async function() {
     marksSnap.forEach(d => {
       const m = d.data();
       const subject = SUBJECT_ALIASES[m.subject] || m.subject;
-      lookup[`${m.studentId}_${m.exam}_${subject}`] = m.marksObtained;
+      lookup[`${m.studentId}_${m.exam}_${subject}`] = { val: m.marksObtained, absent: !!m.absent };
     });
 
     const exams = exam ? [exam] : ['PA1','HalfYearly','PA2','Annual'];
@@ -1839,11 +1839,13 @@ window.loadMarksView = async function() {
       let row = `<td>${s.rollNo}</td><td><b>${s.name}</b></td>`;
       exams.forEach(ex => {
         SUBJECTS.forEach(sub => {
-          const val = lookup[`${s.id}_${ex}_${sub}`];
-          if (val !== undefined) enteredCount++;
-          row += val !== undefined
-            ? `<td style="text-align:center;">${val}</td>`
-            : `<td class="pending" style="text-align:center;">Missing</td>`;
+          const entry = lookup[`${s.id}_${ex}_${sub}`];
+          if (entry !== undefined) enteredCount++;
+          row += entry === undefined
+            ? `<td class="pending" style="text-align:center;">Missing</td>`
+            : entry.absent
+              ? `<td style="text-align:center;color:#c0392b;font-weight:600;">AB</td>`
+              : `<td style="text-align:center;">${entry.val}</td>`;
         });
       });
       return `<tr>${row}</tr>`;
@@ -1974,7 +1976,7 @@ window.generateProgressReports = async function(singleStudentId = null) {
   marksSnap.forEach(d => {
     const m = d.data();
     const sub = SUBJECT_ALIASES[m.subject] || m.subject;
-    marksLookup[`${m.studentId}_${m.exam}_${sub}`] = m.marksObtained;
+    marksLookup[`${m.studentId}_${m.exam}_${sub}`] = { val: m.marksObtained, absent: !!m.absent };
     if (m.remarks?.trim()) {
       const rk = `${m.studentId}_${sub}`;
       if (!remarksLookup[rk]) remarksLookup[rk] = m.remarks.trim();
@@ -2048,33 +2050,36 @@ window.generateProgressReports = async function(singleStudentId = null) {
     const resultColor = r => r==='Passed'?'#006600':r==='Failed'?'#cc0000':'#333';
 
     const marksRows = SUBJECTS.map(sub => {
-      const pa1 = marksLookup[`${s.id}_PA1_${sub}`];
-      const hy  = marksLookup[`${s.id}_HalfYearly_${sub}`];
-      const pa2 = marksLookup[`${s.id}_PA2_${sub}`];
-      const ann = marksLookup[`${s.id}_Annual_${sub}`];
+      const pa1e = marksLookup[`${s.id}_PA1_${sub}`];
+      const hye  = marksLookup[`${s.id}_HalfYearly_${sub}`];
+      const pa2e = marksLookup[`${s.id}_PA2_${sub}`];
+      const anne = marksLookup[`${s.id}_Annual_${sub}`];
       const subRemark = remarksLookup[`${s.id}_${sub}`] || '';
 
-      if (pa1!==undefined){t1PA1s+=Number(pa1);t1PA1m+=20;}
-      if (hy !==undefined){t1HYs +=Number(hy); t1HYm +=80;}
-      if (pa2!==undefined){t2PA2s+=Number(pa2);t2PA2m+=20;}
-      if (ann!==undefined){t2ANNs+=Number(ann);t2ANNm+=80;}
+      const numVal = e => e === undefined ? undefined : (e.absent ? 0 : Number(e.val));
+      const pa1 = numVal(pa1e), hy = numVal(hye), pa2 = numVal(pa2e), ann = numVal(anne);
 
-      const t1 = pa1!==undefined&&hy !==undefined ? Number(pa1)+Number(hy)
-               : pa1!==undefined ? Number(pa1) : hy !==undefined ? Number(hy)  : null;
-      const t2 = pa2!==undefined&&ann!==undefined ? Number(pa2)+Number(ann)
-               : pa2!==undefined ? Number(pa2) : ann!==undefined ? Number(ann) : null;
+      if (pa1!==undefined){t1PA1s+=pa1;t1PA1m+=20;}
+      if (hy !==undefined){t1HYs +=hy; t1HYm +=80;}
+      if (pa2!==undefined){t2PA2s+=pa2;t2PA2m+=20;}
+      if (ann!==undefined){t2ANNs+=ann;t2ANNm+=80;}
+
+      const t1 = pa1!==undefined&&hy !==undefined ? pa1+hy
+               : pa1!==undefined ? pa1 : hy !==undefined ? hy  : null;
+      const t2 = pa2!==undefined&&ann!==undefined ? pa2+ann
+               : pa2!==undefined ? pa2 : ann!==undefined ? ann : null;
       const gt    = t1!==null&&t2!==null ? t1+t2 : t1!==null ? t1 : t2!==null ? t2 : null;
       const gtMax = (pa1!==undefined?20:0)+(hy!==undefined?80:0)+(pa2!==undefined?20:0)+(ann!==undefined?80:0);
       const subGrade = gt!==null&&gtMax>0 ? GRADE(gt/gtMax*100) : '-';
       const displayRemark = subRemark || GRADE_REMARK(subGrade);
-      const C = v => `<td style="border:${BORDER};padding:7px 3px;text-align:center;background:#fff;color:#000;font-size:10px;">${v!==undefined?v:'—'}</td>`;
+      const C = e => `<td style="border:${BORDER};padding:7px 3px;text-align:center;background:#fff;color:${e&&e.absent?'#c0392b':'#000'};font-size:10px;${e&&e.absent?'font-weight:700;':''}">${e===undefined?'—':e.absent?'AB':e.val}</td>`;
       const subLabel = sub==='Science'?'SCIENCE / E.V.S.':sub==='SST'?'S.S.T.':sub==='GK'?'G.K.':sub.toUpperCase();
 
       return `<tr>
         <td style="border:${BORDER};padding:7px 7px;font-weight:700;text-align:left;background:#fff;color:#000;font-size:10px;white-space:nowrap;">${subLabel}</td>
-        ${C(pa1)}${C(hy)}
+        ${C(pa1e)}${C(hye)}
         <td style="border:${BORDER};padding:7px 3px;text-align:center;font-weight:700;background:#e8e8e8;color:#000;font-size:10px;">${t1!==null?t1:'—'}</td>
-        ${C(pa2)}${C(ann)}
+        ${C(pa2e)}${C(anne)}
         <td style="border:${BORDER};padding:7px 3px;text-align:center;font-weight:700;background:#e8e8e8;color:#000;font-size:10px;">${t2!==null?t2:'—'}</td>
         <td style="border:${BORDER};padding:7px 3px;text-align:center;font-weight:700;background:#bbb;color:#000;font-size:10px;">${gt!==null?gt:'—'}</td>
         <td style="border:${BORDER};padding:7px 3px;text-align:center;font-weight:700;background:#fff;color:#000;font-size:10px;">${subGrade}</td>
@@ -2492,7 +2497,7 @@ window.loadEntryMarks = async function() {
       const subLabel = sub==='Science'?'Science / E.V.S.':sub==='SST'?'S.S.T.':sub==='GK'?'G.K.':sub;
       const inputs = EN_EXAMS.map(ex => {
         const key = `${ex}_${sub}`;
-        const val = existing[key] !== undefined ? existing[key].val : '';
+        const val = existing[key] !== undefined && existing[key].val !== null ? existing[key].val : '';
         const max = EN_MAX[ex];
         return `<td style="text-align:center;padding:6px 4px;">
           <input type="number" id="en_${ex}_${sub}"
@@ -3054,12 +3059,12 @@ window.generateMarksSlips = async function() {
   // Fetch marks for this exam
   const marksSnap = await getDocs(query(collection(db,'marks'),
     where('class','==',cls), where('session','==',session), where('exam','==',exam)));
-  const marksMap = {}; // studentId -> { subject: marks }
+  const marksMap = {}; // studentId -> { subject: {val, absent} }
   marksSnap.forEach(d => {
     const m = d.data();
     const sub = SUBJECT_ALIASES[m.subject] || m.subject;
     if (!marksMap[m.studentId]) marksMap[m.studentId] = {};
-    marksMap[m.studentId][sub] = Number(m.marksObtained);
+    marksMap[m.studentId][sub] = { val: m.absent ? 0 : Number(m.marksObtained), absent: !!m.absent };
   });
 
   // Calculate totals & rank
@@ -3067,7 +3072,7 @@ window.generateMarksSlips = async function() {
     const sm = marksMap[s.id] || {};
     let total = 0, maxTotal = 0;
     SUBJECTS.forEach(sub => {
-      if (sm[sub] !== undefined) { total += sm[sub]; maxTotal += maxPerSub; }
+      if (sm[sub] !== undefined) { total += sm[sub].val; maxTotal += maxPerSub; }
     });
     return { id:s.id, total, maxTotal, pct: maxTotal>0 ? (total/maxTotal*100) : 0 };
   });
@@ -3085,11 +3090,12 @@ window.generateMarksSlips = async function() {
     const rank = rankMap[s.id] || '—';
     const grade = tot.maxTotal > 0 ? GRADE(pct) : '—';
     const subRows = SUBJECTS.map(sub => {
-      const v = sm[sub];
+      const entry = sm[sub];
       const subLabel = sub==='Science'?'Sci/EVS':sub==='SST'?'SST':sub==='GK'?'G.K.':sub;
+      const displayVal = entry === undefined ? '—' : entry.absent ? 'AB' : entry.val;
       return `<tr>
         <td style="padding:2px 5px;border:1px solid #ccc;font-size:9.5px;">${subLabel}</td>
-        <td style="padding:2px 5px;border:1px solid #ccc;text-align:center;font-size:9.5px;">${v!==undefined?v:'—'}</td>
+        <td style="padding:2px 5px;border:1px solid #ccc;text-align:center;font-size:9.5px;${entry&&entry.absent?'color:#c0392b;font-weight:700;':''}">${displayVal}</td>
         <td style="padding:2px 5px;border:1px solid #ccc;text-align:center;font-size:9.5px;">${maxPerSub}</td>
       </tr>`;
     }).join('');
