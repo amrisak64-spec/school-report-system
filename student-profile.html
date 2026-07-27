@@ -181,29 +181,6 @@
     <div id="all-students-empty" class="empty-note" style="display:none;">No students found.</div>
   </div>
 
-  <div class="card">
-    <h2>📋 All Students <span id="all-students-count" style="font-size:12px;font-weight:400;color:#888;"></span></h2>
-    <p class="hint">Search by name, admission no, class, section, father's name, or address. Click a row to view that student's full profile.</p>
-    <div class="search-wrap" style="max-width:100%;margin-bottom:14px;">
-      <input type="text" id="table-search-box" placeholder="Search all students by name, admission no, class, section, father's name, or address..." autocomplete="off"/>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th class="left">Name</th>
-            <th>Admission No</th>
-            <th>Class</th>
-            <th>Section</th>
-            <th class="left">Father Name</th>
-            <th class="left">Address</th>
-          </tr>
-        </thead>
-        <tbody id="all-students-tbody"></tbody>
-      </table>
-    </div>
-  </div>
-
   <div id="empty-state">
     <div class="icon">🔎</div>
     <div>Search for a student above to view their performance profile.</div>
@@ -429,58 +406,7 @@ function renderAllStudentsTable(list) {
   });
 }
 
-// ---- All Students table ----
-function renderAllStudentsTable(list) {
-  const tbody = document.getElementById('all-students-tbody');
-  document.getElementById('all-students-count').textContent = `| ${list.length} student${list.length === 1 ? '' : 's'}`;
-
-  if (!list.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:#999;">No students found.</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = list.map(s => `
-    <tr class="clickable-row" data-id="${esc(s.id)}">
-      <td class="left">${esc(s.name) || '—'}${s.left ? ' <span class="badge badge-left">LEFT</span>' : ''}${s.passedOut ? ' <span class="badge badge-pass">PASSED OUT</span>' : ''}</td>
-      <td>${esc(s.admissionNo) || '—'}</td>
-      <td>${esc(s.class) || '—'}</td>
-      <td>${esc(s.section) || '—'}</td>
-      <td class="left">${esc(s.fatherName) || '—'}</td>
-      <td class="left">${esc(s.address) || '—'}</td>
-    </tr>`).join('');
-
-  tbody.querySelectorAll('tr.clickable-row').forEach(tr => {
-    tr.addEventListener('click', () => {
-      const s = allStudents.find(st => st.id === tr.dataset.id);
-      if (s) selectStudent(s);
-    });
-  });
-}
-
-const tableSearchBox = document.getElementById('table-search-box');
-let tableSearchDebounce;
-tableSearchBox.addEventListener('input', () => {
-  clearTimeout(tableSearchDebounce);
-  tableSearchDebounce = setTimeout(runTableSearch, 150);
-});
-
-function runTableSearch() {
-  const q = tableSearchBox.value.trim().toLowerCase();
-  if (!q) { renderAllStudentsTable(allStudents); return; }
-  const filtered = allStudents.filter(s =>
-    String(s.name || '').toLowerCase().includes(q) ||
-    String(s.admissionNo || '').toLowerCase().includes(q) ||
-    String(s.class || '').toLowerCase().includes(q) ||
-    String(s.section || '').toLowerCase().includes(q) ||
-    String(s.fatherName || '').toLowerCase().includes(q) ||
-    String(s.address || '').toLowerCase().includes(q)
-  );
-  renderAllStudentsTable(filtered);
-}
-
 function selectStudent(s) {
-  searchBox.value = s.name || '';
-  searchResults.classList.remove('show');
   const url = new URL(window.location.href);
   url.searchParams.set('id', s.id);
   window.history.replaceState({}, '', url);
