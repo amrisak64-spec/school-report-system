@@ -771,6 +771,18 @@
       <div id="perf-msg" style="font-size:13px;color:#888;margin-bottom:8px;"></div>
     </div>
 
+    <!-- SECTION 1: Subject-wise Class Ranking -->
+    <div class="card" id="perf-subj-card" style="display:none;">
+      <h2>🏆 Subject-wise Class Ranking <span id="perf-subj-session" style="font-size:13px;font-weight:400;color:#888;"></span></h2>
+      <p style="font-size:12px;color:#666;margin-bottom:14px;">Average marks per class for each subject — ranked best to lowest.</p>
+      <div style="overflow-x:auto;">
+        <table style="font-size:12px;border-collapse:collapse;width:100%;">
+          <thead id="perf-subj-thead"></thead>
+          <tbody id="perf-subj-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- SECTION 4: Year-over-Year Class Comparison -->
     <div class="card" id="perf-yoy-card" style="display:none;">
       <h2>📅 Year-over-Year Class Performance <span id="perf-yoy-session" style="font-size:13px;font-weight:400;color:#888;"></span></h2>
@@ -783,14 +795,14 @@
       </div>
     </div>
 
-    <!-- SECTION 1: Subject-wise Class Ranking -->
-    <div class="card" id="perf-subj-card" style="display:none;">
-      <h2>🏆 Subject-wise Class Ranking <span id="perf-subj-session" style="font-size:13px;font-weight:400;color:#888;"></span></h2>
-      <p style="font-size:12px;color:#666;margin-bottom:14px;">Average marks per class for each subject — ranked best to lowest.</p>
+    <!-- SECTION 1B: Poor Performing Subjects by Class — All Classes -->
+    <div class="card" id="perf-poor-card" style="display:none;">
+      <h2>⚠️ Poor Performing Subjects — All Classes <span id="perf-poor-session" style="font-size:13px;font-weight:400;color:#888;"></span></h2>
+      <p style="font-size:12px;color:#666;margin-bottom:14px;">Class-subject combinations averaging below the passing mark (33%) across all classes, ranked worst first — use this to target intervention.</p>
       <div style="overflow-x:auto;">
         <table style="font-size:12px;border-collapse:collapse;width:100%;">
-          <thead id="perf-subj-thead"></thead>
-          <tbody id="perf-subj-tbody"></tbody>
+          <thead id="perf-poor-thead"></thead>
+          <tbody id="perf-poor-tbody"></tbody>
         </table>
       </div>
     </div>
@@ -2730,7 +2742,7 @@ window.loadPerformance = async function() {
   const session = document.getElementById('perf-session').value;
   const msgEl   = document.getElementById('perf-msg');
   msgEl.textContent = '⏳ Loading data, please wait...';
-  ['perf-subj-card','perf-improve-card','perf-top-card','perf-yoy-card'].forEach(id => document.getElementById(id).style.display = 'none');
+  ['perf-subj-card','perf-poor-card','perf-improve-card','perf-top-card','perf-yoy-card'].forEach(id => document.getElementById(id).style.display = 'none');
 
   try {
     // ── Load all students ──
@@ -2842,6 +2854,38 @@ window.loadPerformance = async function() {
     document.getElementById('perf-subj-tbody').innerHTML  = subjRows || '<tr><td colspan="20" style="text-align:center;padding:20px;color:#aaa;">No data</td></tr>';
     document.getElementById('perf-subj-session').textContent = `| Session: ${session}`;
     document.getElementById('perf-subj-card').style.display = '';
+
+    // ════ SECTION 1B: Poor Performing Subjects — All Classes ════
+    const POOR_THRESHOLD = 33; // school's passing mark
+
+    const poorHead = `<tr>${TH('Rank')}${TH('Class')}${TH('Subject')}${TH('Students')}${TH('Average %','#c0392b')}${TH('Status','#444')}</tr>`;
+
+    const poorData = [];
+    CLASSES.forEach(cls => {
+      if (!classStudCount[cls]) return;
+      SUBJECTS.forEach(sub => {
+        const p = classSubjAvg[cls][sub];
+        if (p !== null && p < POOR_THRESHOLD) poorData.push({ cls, sub, avg: p, count: classStudCount[cls] });
+      });
+    });
+    poorData.sort((a,b) => a.avg - b.avg);
+
+    const poorRows = poorData.map((item,i) => {
+      const status = item.avg < 20 ? '🔴 Critical' : item.avg < 27 ? '🟠 Very Poor' : '🟡 Poor';
+      return `<tr>
+        ${TD('#'+(i+1),'text-align:center;')}
+        ${TD('<b>Class '+item.cls+'</b>')}
+        ${TD(escapeHtml(item.sub))}
+        ${TD(item.count,'text-align:center;')}
+        ${TD(item.avg.toFixed(1)+'%','text-align:center;font-weight:700;color:#c0392b;')}
+        ${TD(status,'text-align:center;font-weight:600;')}
+      </tr>`;
+    }).join('');
+
+    document.getElementById('perf-poor-thead').innerHTML = poorHead;
+    document.getElementById('perf-poor-tbody').innerHTML  = poorRows || '<tr><td colspan="6" style="text-align:center;padding:20px;color:#1e8449;">🎉 No class-subject averages below the passing mark.</td></tr>';
+    document.getElementById('perf-poor-session').textContent = `| Session: ${session}`;
+    document.getElementById('perf-poor-card').style.display = '';
 
     // ════ SECTION 2: Improvement HY → Annual ════
     const impHead = `<tr>
