@@ -159,13 +159,25 @@
 <div class="content">
 
   <div class="card">
-    <h2>🔍 Find a Student</h2>
-    <p class="hint">Search by name, roll no, or admission no — across all classes and sessions.</p>
-    <div class="search-wrap">
-      <input type="text" id="search-box" placeholder="Start typing a student's name..." autocomplete="off"/>
-      <div class="search-results" id="search-results"></div>
+    <h2>📋 All Students</h2>
+    <p class="hint">Search by name, admission no, class, section, father's name, or address.</p>
+    <input type="text" id="all-students-search" placeholder="Search students..." autocomplete="off" style="margin-bottom:14px;"/>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="left">Name</th>
+            <th>Admission No</th>
+            <th>Class</th>
+            <th>Section</th>
+            <th class="left">Father Name</th>
+            <th class="left">Address</th>
+          </tr>
+        </thead>
+        <tbody id="all-students-tbody"></tbody>
+      </table>
     </div>
-    <div id="search-msg"></div>
+    <div id="all-students-empty" class="empty-note" style="display:none;">No students found.</div>
   </div>
 
   <div id="empty-state">
@@ -324,6 +336,7 @@ onAuthStateChanged(auth, async user => {
   document.getElementById('user-info').textContent = `${currentUser.name || user.email} | ADMIN`;
 
   await loadAllStudents();
+  renderAllStudentsTable(allStudents);
 
   const params = new URLSearchParams(window.location.search);
   const presetId = params.get('id');
@@ -337,56 +350,59 @@ window.goBack = () => window.location.href = 'admin.html';
 window.logout = () => signOut(auth).then(() => window.location.href = 'index.html');
 
 async function loadAllStudents() {
-  const msg = document.getElementById('search-msg');
   try {
     const snap = await getDocs(collection(db, 'students'));
     allStudents = [];
     snap.forEach(d => allStudents.push({ id: d.id, ...d.data() }));
     allStudents.sort((a, b) => String(a.name||'').localeCompare(String(b.name||'')));
   } catch (e) {
-    msg.innerHTML = `<div class="msg msg-error">Failed to load students: ${esc(e.message)}</div>`;
+    document.getElementById('all-students-empty').textContent = `Failed to load students: ${e.message}`;
+    document.getElementById('all-students-empty').style.display = 'block';
   }
 }
 
-// ---- Search ----
-const searchBox = document.getElementById('search-box');
-const searchResults = document.getElementById('search-results');
-let searchDebounce;
-
-searchBox.addEventListener('input', () => {
-  clearTimeout(searchDebounce);
-  searchDebounce = setTimeout(runSearch, 150);
-});
-searchBox.addEventListener('focus', runSearch);
-document.addEventListener('click', e => {
-  if (!e.target.closest('.search-wrap')) searchResults.classList.remove('show');
-});
-
-function runSearch() {
-  const q = searchBox.value.trim().toLowerCase();
-  if (!q) { searchResults.classList.remove('show'); return; }
-  const matches = allStudents.filter(s =>
+// ---- All Students table ----
+const allStudentsSearch = document.getElementById('all-students-search');
+allStudentsSearch.addEventListener('input', () => {
+  const q = allStudentsSearch.value.trim().toLowerCase();
+  const filtered = !q ? allStudents : allStudents.filter(s =>
     String(s.name||'').toLowerCase().includes(q) ||
     String(s.admissionNo||'').toLowerCase().includes(q) ||
-    String(s.rollNo||'').includes(q)
-  ).slice(0, 20);
+    String(s.class||'').toLowerCase().includes(q) ||
+    String(s.section||'').toLowerCase().includes(q) ||
+    String(s.fatherName||'').toLowerCase().includes(q) ||
+    String(s.address||'').toLowerCase().includes(q)
+  );
+  renderAllStudentsTable(filtered);
+});
 
-  if (!matches.length) {
-    searchResults.innerHTML = `<div class="search-empty">No students found.</div>`;
-  } else {
-    searchResults.innerHTML = matches.map(s => `
-      <div class="search-item" data-id="${esc(s.id)}">
-        <b>${esc(s.name)}</b>${s.left ? ' <span class="badge badge-left">LEFT</span>' : ''}${s.passedOut ? ' <span class="badge badge-pass">PASSED OUT</span>' : ''}
-        <div class="meta">Class ${esc(s.class)}${s.section ? '-'+esc(s.section) : ''} | Father: ${esc(s.fatherName)||'—'} | ${esc(s.address)||'—'}</div>
-      </div>`).join('');
-    searchResults.querySelectorAll('.search-item').forEach(el => {
-      el.addEventListener('click', () => {
-        const s = allStudents.find(st => st.id === el.dataset.id);
-        if (s) selectStudent(s);
-      });
-    });
+function renderAllStudentsTable(list) {
+  const tbody = document.getElementById('all-students-tbody');
+  const emptyEl = document.getElementById('all-students-empty');
+  if (!list.length) {
+    tbody.innerHTML = '';
+    emptyEl.style.display = 'block';
+    return;
   }
-  searchResults.classList.add('show');
+  emptyEl.style.display = 'none';
+  tbody.innerHTML = list.map(s => `
+    <tr class="all-students-row" data-id="${esc(s.id)}" style="cursor:pointer;">
+      <td class="left">${esc(s.name)}${s.left ? ' <span class="badge badge-left">LEFT</span>' : ''}${s.passedOut ? ' <span class="badge badge-pass">PASSED OUT</span>' : ''}</td>
+      <td>${esc(s.admissionNo)||'—'}</td>
+      <td>${esc(s.class)||'—'}</td>
+      <td>${esc(s.section)||'—'}</td>
+      <td class="left">${esc(s.fatherName)||'—'}</td>
+      <td class="left">${esc(s.address)||'—'}</td>
+    </tr>`).join('');
+  tbody.querySelectorAll('.all-students-row').forEach(el => {
+    el.addEventListener('click', () => {
+      const s = allStudents.find(st => st.id === el.dataset.id);
+      if (s) {
+        selectStudent(s);
+        document.getElementById('profile-sections').scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+  });
 }
 
 function selectStudent(s) {
