@@ -1,5 +1,18 @@
 {
   "projects": {
     "default": "prabhagyanjyoti"
-  }
+  },
+  "targets": {
+    "prabhagyanjyoti": {
+      "hosting": {
+        "pgj-report": [
+          "pgj-report"
+        ],
+        "pgjps-report": [
+          "pgjps-report"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

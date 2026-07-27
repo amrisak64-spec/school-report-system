@@ -321,6 +321,7 @@
 
 <div class="tabs">
   <div class="tab active" onclick="showTab('dashboard', this)">🏠 Dashboard</div>
+  <div class="tab" onclick="window.location.href='student-profile.html'">🧑‍🎓 Student Profile</div>
   <div class="tab" onclick="showTab('students', this)">👨‍🎓 Students</div>
   <div class="tab" onclick="showTab('upload', this)">📤 Upload Excel</div>
   <div class="tab" onclick="showTab('teachers', this)">👩‍🏫 Teachers</div>
@@ -1218,6 +1219,7 @@ window._renderStudentTable = function(students) {
       <td>${esc(dobToInput(s.dob))||'-'}</td>
       <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(s.address)}">${esc(s.address)||'-'}</td>
       <td style="display:flex;gap:6px;flex-wrap:nowrap;white-space:nowrap;">
+        <button class="btn" style="background:#2e6da4;color:#fff;padding:4px 10px;font-size:12px;" onclick="window.location.href='student-profile.html?id=${s.id}'">📈 Profile</button>
         <button class="btn btn-info" style="padding:4px 10px;font-size:12px;" onclick="openEditModal('${s.id}')">✏️ Edit</button>
         <button class="btn btn-danger" style="padding:4px 10px;font-size:12px;" onclick="deleteStudent('${s.id}')">🗑 Delete</button>
         ${s.left

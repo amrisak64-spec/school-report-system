@@ -499,7 +499,7 @@ function renderTbody() {
     return `<tr class="${rankClass}">
       <td><span class="rank-badge ${badgeClass}">${r}</span></td>
       <td>${s.rollNo||'-'}</td>
-      <td class="left" title="${escHtml(s.name||'-')}"><b>${escHtml(s.name||'-')}</b></td>
+      <td class="left" title="${escHtml(s.name||'-')}"><a href="student-profile.html?id=${s.id}" style="color:#1a3c6e;text-decoration:none;"><b>${escHtml(s.name||'-')}</b></a></td>
       ${cols}
       <td style="font-weight:700;">${s.grandMax>0?s.grandTotal:'-'}</td>
       <td style="color:#888;">${s.grandMax||'-'}</td>

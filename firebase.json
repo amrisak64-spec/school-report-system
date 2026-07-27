@@ -1,19 +1,38 @@
 {
-  "hosting": {
-    "public": ".",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**",
-      "functions/**",
-      "*.xlsx",
-      "PROJECT_DOCUMENTATION.docx",
-      "~$*"
-    ],
-    "rewrites": [
-      { "source": "/api/admin-teacher", "function": "adminTeacher" }
-    ]
-  },
+  "hosting": [
+    {
+      "target": "pgj-report",
+      "public": ".",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**",
+        "functions/**",
+        "*.xlsx",
+        "PROJECT_DOCUMENTATION.docx",
+        "~$*"
+      ],
+      "rewrites": [
+        { "source": "/api/admin-teacher", "function": "adminTeacher" }
+      ]
+    },
+    {
+      "target": "pgjps-report",
+      "public": ".",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**",
+        "functions/**",
+        "*.xlsx",
+        "PROJECT_DOCUMENTATION.docx",
+        "~$*"
+      ],
+      "rewrites": [
+        { "source": "/api/admin-teacher", "function": "adminTeacher" }
+      ]
+    }
+  ],
   "functions": {
     "source": "functions"
   }

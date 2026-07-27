@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#FF6B00"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="PGJPS"/>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icons/icon-192.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png"/>
+  <title>Student Profile – Prabha Gyan Jyoti</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f4f8; }
+
+    .topbar {
+      background: #1a3c6e; color: #fff;
+      padding: 12px 24px; display: flex;
+      justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    }
+    .topbar-info h1 { font-size: 15px; }
+    .topbar-info p { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+    .topbar-right { display: flex; gap: 8px; align-items: center; }
+    .topbar-right button {
+      border: none; padding: 7px 16px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 600;
+    }
+    .btn-logout { background: #c0392b; color: #fff; }
+    .btn-back   { background: #27ae60; color: #fff; }
+
+    .content { padding: 24px; max-width: 1100px; margin: 0 auto; }
+    .card {
+      background: #fff; border-radius: 10px;
+      padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 24px;
+    }
+    .card h2 { font-size: 16px; color: #1a3c6e; margin-bottom: 14px; border-bottom: 1px solid #e0e0e0; padding-bottom: 10px; }
+    .card p.hint { font-size: 12px; color: #666; margin-bottom: 14px; }
+
+    label { font-size: 12px; font-weight: 600; color: #555; display: block; margin-bottom: 4px; }
+    input[type="text"] {
+      width: 100%; padding: 10px 14px;
+      border: 1.5px solid #ccc; border-radius: 6px; font-size: 14px;
+    }
+    input:focus { outline: none; border-color: #1a3c6e; }
+
+    .search-wrap { position: relative; max-width: 480px; }
+    .search-results {
+      position: absolute; top: 100%; left: 0; right: 0; z-index: 20;
+      background: #fff; border: 1.5px solid #1a3c6e; border-top: none;
+      border-radius: 0 0 8px 8px; max-height: 320px; overflow-y: auto;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.12); display: none;
+    }
+    .search-results.show { display: block; }
+    .search-item { padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
+    .search-item:hover { background: #f0f4f8; }
+    .search-item b { color: #1a3c6e; }
+    .search-item .meta { font-size: 11px; color: #888; margin-top: 2px; }
+    .search-empty { padding: 12px 14px; color: #999; font-size: 13px; }
+
+    .msg { padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 14px; }
+    .msg-success { background: #d5f5e3; color: #1e8449; }
+    .msg-error { background: #fadbd8; color: #c0392b; }
+    .msg-info { background: #d6eaf8; color: #1a5276; }
+
+    .profile-head { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+    .profile-head .avatar {
+      width: 64px; height: 64px; border-radius: 50%; background: #1a3c6e; color: #fff;
+      display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; flex-shrink: 0;
+    }
+    .profile-head h2 { border: none; padding: 0; margin: 0 0 4px 0; font-size: 20px; color: #1a3c6e; }
+    .profile-meta { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: #555; margin-top: 6px; }
+    .profile-meta span b { color: #1a3c6e; }
+    .badge { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 4px; color: #fff; font-weight: 700; margin-left: 6px; }
+    .badge-left { background: #e67e22; }
+    .badge-pass { background: #8e44ad; }
+
+    .stats-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 4px; }
+    .stat-box { background: #f0f4f8; border-radius: 8px; padding: 12px 18px; text-align: center; flex: 1; min-width: 110px; }
+    .stat-box .stat-num { font-size: 20px; font-weight: 700; color: #1a3c6e; }
+    .stat-box .stat-label { font-size: 11px; color: #888; margin-top: 2px; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { background: #1a3c6e; color: #fff; padding: 7px 6px; text-align: center; white-space: nowrap; }
+    th.left { text-align: left; padding-left: 8px; }
+    td { padding: 6px; border-bottom: 1px solid #eee; text-align: center; }
+    td.left { text-align: left; padding-left: 8px; font-weight: 600; }
+    tr:hover td { background: #f5f8ff; }
+
+    .grade-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-weight: 700; font-size: 11px; }
+    .gA1 { background: #d5f5e3; color: #1e8449; } .gA2 { background: #a9dfbf; color: #1a7a42; }
+    .gB1 { background: #d6eaf8; color: #1a5276; } .gB2 { background: #aed6f1; color: #1f618d; }
+    .gC1 { background: #fdebd0; color: #b7770d; } .gC2 { background: #fadbd8; color: #a93226; }
+    .gD  { background: #f5cba7; color: #935116; } .gE  { background: #f2d7d5; color: #c0392b; }
+
+    .cmp-row { margin-bottom: 14px; }
+    .cmp-row .cmp-label { font-size: 12px; font-weight: 700; color: #1a3c6e; margin-bottom: 4px; display: flex; justify-content: space-between; }
+    .cmp-bar-wrap { background: #eee; border-radius: 6px; height: 16px; position: relative; overflow: hidden; }
+    .cmp-bar-class { position: absolute; top: 0; left: 0; height: 100%; background: #bdc3c7; }
+    .cmp-bar-student { position: absolute; top: 0; left: 0; height: 100%; background: #27ae60; opacity: 0.85; }
+    .cmp-legend { font-size: 11px; color: #888; margin-top: 4px; }
+    .cmp-legend span { margin-right: 14px; }
+    .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; }
+
+    .exam-block { margin-bottom: 22px; }
+    .exam-block:last-child { margin-bottom: 0; }
+    .exam-block-head { font-size: 13px; font-weight: 700; color: #1a3c6e; margin-bottom: 10px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+    .exam-block-head .rank-tag { background: #1a3c6e; color: #fff; padding: 2px 10px; border-radius: 10px; font-size: 11px; }
+
+    .strengths-cols { display: flex; gap: 24px; flex-wrap: wrap; }
+    .strengths-cols > div { flex: 1; min-width: 260px; }
+    .strengths-heading { font-size: 13px; font-weight: 700; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1.5px solid #eee; }
+    .strengths-heading.strong { color: #1e8449; }
+    .strengths-heading.weak { color: #c0392b; }
+    .subject-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 6px; margin-bottom: 6px; background: #f7f9fb; }
+    .subject-item .subj-name { font-weight: 700; font-size: 13px; color: #333; }
+    .subject-item .subj-pct { font-weight: 700; font-size: 13px; }
+    .subject-item .subj-delta { font-size: 10px; margin-top: 1px; }
+    .subject-item.is-strong .subj-pct { color: #1e8449; }
+    .subject-item.is-weak .subj-pct { color: #c0392b; }
+    .empty-note { font-size: 12px; color: #999; padding: 8px 0; }
+
+    .yoy-up   { color: #1e8449; font-weight: 700; }
+    .yoy-down { color: #c0392b; font-weight: 700; }
+    .yoy-flat { color: #888; }
+
+    .rc-table th { background: #222; }
+    .rc-table th.rc-group-term { background: #1a3c6e; }
+    .rc-table th.rc-group-final { background: #e67e22; }
+    .rc-table td.rc-total { background: #eef1f5; font-weight: 700; }
+    .rc-table th.rc-total { background: #0f2a55; }
+    .rc-table td.rc-gtotal { background: #dde3ea; font-weight: 700; }
+    .rc-table th.rc-gtotal-h { background: #444; }
+    .rc-table td.rc-absent { color: #c0392b; font-weight: 700; }
+    .rc-table td.rc-remark { font-size: 11px; color: #555; text-align: left; }
+    .rc-table tr.rc-grandtotal td { background: #e0e0e0; font-weight: 700; }
+    .rc-scale { font-size: 11px; margin-top: 10px; padding: 6px 10px; border: 1px solid #ddd; background: #f8faff; color: #444; }
+    .rc-result-pass { color: #1e8449; }
+    .rc-result-fail { color: #c0392b; }
+
+    #empty-state { text-align: center; padding: 40px 20px; color: #999; }
+    #empty-state div.icon { font-size: 40px; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-info">
+    <h1><img src="icons/icon-192.png" alt="" style="width:32px;height:32px;border-radius:50%;vertical-align:middle;margin-right:8px;">🧑‍🎓 Student Profile</h1>
+    <p id="user-info">Prabha Gyan Jyoti Public School</p>
+  </div>
+  <div class="topbar-right">
+    <button class="btn-back" onclick="goBack()">← Back</button>
+    <button class="btn-logout" onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<div class="content">
+
+  <div class="card">
+    <h2>🔍 Find a Student</h2>
+    <p class="hint">Search by name, roll no, or admission no — across all classes and sessions.</p>
+    <div class="search-wrap">
+      <input type="text" id="search-box" placeholder="Start typing a student's name..." autocomplete="off"/>
+      <div class="search-results" id="search-results"></div>
+    </div>
+    <div id="search-msg"></div>
+  </div>
+
+  <div id="empty-state">
+    <div class="icon">🔎</div>
+    <div>Search for a student above to view their performance profile.</div>
+  </div>
+
+  <div id="profile-sections" style="display:none;">
+
+    <div class="card">
+      <div class="profile-head">
+        <div class="avatar" id="p-avatar">?</div>
+        <div>
+          <h2 id="p-name">—</h2>
+          <div class="profile-meta">
+            <span>Admission No: <b id="p-admno">—</b></span>
+            <span>Roll No: <b id="p-roll">—</b></span>
+            <span>Class: <b id="p-class">—</b></span>
+            <span>Session: <b id="p-session">—</b></span>
+            <span>Father: <b id="p-father">—</b></span>
+            <span>Mother: <b id="p-mother">—</b></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="reportcard-card" style="display:none;">
+      <h2>🧾 Report Card <span id="reportcard-session" style="font-size:12px;font-weight:400;color:#888;"></span></h2>
+      <div class="table-wrap">
+        <table class="rc-table">
+          <thead>
+            <tr>
+              <th class="left" rowspan="2" style="min-width:100px;">SCHOLASTIC AREA</th>
+              <th class="rc-group-term" colspan="3">TERM - 1</th>
+              <th class="rc-group-term" colspan="3">TERM - 2</th>
+              <th class="rc-group-final" colspan="3">FINAL RESULT</th>
+            </tr>
+            <tr>
+              <th>P.A. 1<br>(20)</th><th>Half Y.<br>Exam (80)</th><th class="rc-total">Total<br>(100)</th>
+              <th>P.A. 2<br>(20)</th><th>Annual<br>Exam (80)</th><th class="rc-total">Total<br>(100)</th>
+              <th class="rc-gtotal-h">G.Total<br>(200)</th><th class="rc-gtotal-h">Grade</th><th class="rc-gtotal-h left">Remarks</th>
+            </tr>
+          </thead>
+          <tbody id="reportcard-tbody"></tbody>
+        </table>
+      </div>
+      <div class="rc-scale">
+        <b>GRADING SCALE:</b> A1=91%-100%; A2=81%-90%; B1=71%-80%; B2=61%-70%; C1=51%-60%; C2=41%-50%; D=33%-40%; <b style="color:#c0392b;">E=Below 33%</b>
+      </div>
+      <div class="stats-row" style="margin-top:16px;">
+        <div class="stat-box"><div class="stat-num" id="rc-pct">—</div><div class="stat-label">Overall %</div></div>
+        <div class="stat-box"><div class="stat-num" id="rc-grade">—</div><div class="stat-label">Grade</div></div>
+        <div class="stat-box"><div class="stat-num" id="rc-result">—</div><div class="stat-label">Result</div></div>
+        <div class="stat-box"><div class="stat-num" id="rc-rank">—</div><div class="stat-label">Rank in Class</div></div>
+      </div>
+      <div id="rc-remark" style="margin-top:16px;font-size:13px;color:#333;line-height:1.6;"></div>
+    </div>
+
+    <div class="card" id="strengths-card" style="display:none;">
+      <h2>💪 Strong &amp; Weak Subjects <span id="strengths-session" style="font-size:12px;font-weight:400;color:#888;"></span></h2>
+      <p class="hint">Ranked by this session's average percentage per subject, compared to the class average for that subject.</p>
+      <div class="strengths-cols">
+        <div>
+          <div class="strengths-heading strong">✅ Strong Subjects</div>
+          <div id="strong-list"></div>
+        </div>
+        <div>
+          <div class="strengths-heading weak">⚠️ Weak Subjects</div>
+          <div id="weak-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="examwise-card" style="display:none;">
+      <h2>📊 Exam-wise Subject Comparison <span id="examwise-session" style="font-size:12px;font-weight:400;color:#888;"></span></h2>
+      <p class="hint">For each exam this session, how the student did in every subject compared to the class average.</p>
+      <div id="examwise-body"></div>
+    </div>
+
+    <div class="card" id="yearwise-card" style="display:none;">
+      <h2>📅 Year-wise Performance</h2>
+      <p class="hint">The student's overall percentage each session, and how it changed from the previous year.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th class="left">Session</th><th>Overall %</th><th>Grade</th><th>Change vs Previous Year</th></tr></thead>
+          <tbody id="yearwise-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" id="subject-card" style="display:none;">
+      <h2>📚 Subject-wise Marks History</h2>
+      <div class="table-wrap">
+        <table>
+          <thead id="subject-thead"></thead>
+          <tbody id="subject-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" id="attendance-card" style="display:none;">
+      <h2>🗓️ Attendance History</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Session</th><th>Term 1 %</th><th>Term 2 %</th><th>Combined %</th></tr></thead>
+          <tbody id="attendance-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script type="module">
+import { auth, db } from './firebase-config.js';
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { collection, getDocs, doc, getDoc, query, where }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const SUBJECTS = ['English','Hindi','Maths','Science','SST','GK','Computer','Sanskrit','Drawing'];
+const SUBJECT_ALIASES = { 'Science/E.V.S.':'Science', 'S.S.T.':'SST', 'G.K.':'GK' };
+const EXAMS = ['PA1','HalfYearly','PA2','Annual'];
+const EXAM_LABELS = { PA1:'PA 1', HalfYearly:'Half Yearly', PA2:'PA 2', Annual:'Annual' };
+const EXAM_MAX = { PA1:20, HalfYearly:80, PA2:20, Annual:80 };
+
+const GRADE = pct => {
+  if (pct >= 91) return 'A1'; if (pct >= 81) return 'A2';
+  if (pct >= 71) return 'B1'; if (pct >= 61) return 'B2';
+  if (pct >= 51) return 'C1'; if (pct >= 41) return 'C2';
+  if (pct >= 33) return 'D'; return 'E';
+};
+
+const GRADE_REMARK = {
+  A1: 'Outstanding performance — keep up the excellent work.',
+  A2: 'Excellent performance. Well done!',
+  B1: 'Very good. Keep up the great work.',
+  B2: 'Good effort — aim even higher.',
+  C1: 'Satisfactory. More practice recommended.',
+  C2: 'Average performance. Consistent effort is needed.',
+  D:  'Below average. Needs to focus and work harder.',
+  E:  'Needs significant improvement. Please seek extra help.'
+};
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+let currentUser = null;
+let allStudents = [];
+
+onAuthStateChanged(auth, async user => {
+  if (!user) { window.location.href = 'index.html'; return; }
+  const snap = await getDoc(doc(db, 'users', user.uid));
+  if (!snap.exists() || snap.data().role !== 'admin') { window.location.href = 'index.html'; return; }
+  currentUser = snap.data();
+  document.getElementById('user-info').textContent = `${currentUser.name || user.email} | ADMIN`;
+
+  await loadAllStudents();
+
+  const params = new URLSearchParams(window.location.search);
+  const presetId = params.get('id');
+  if (presetId) {
+    const s = allStudents.find(st => st.id === presetId);
+    if (s) selectStudent(s);
+  }
+});
+
+window.goBack = () => window.location.href = 'admin.html';
+window.logout = () => signOut(auth).then(() => window.location.href = 'index.html');
+
+async function loadAllStudents() {
+  const msg = document.getElementById('search-msg');
+  try {
+    const snap = await getDocs(collection(db, 'students'));
+    allStudents = [];
+    snap.forEach(d => allStudents.push({ id: d.id, ...d.data() }));
+    allStudents.sort((a, b) => String(a.name||'').localeCompare(String(b.name||'')));
+  } catch (e) {
+    msg.innerHTML = `<div class="msg msg-error">Failed to load students: ${esc(e.message)}</div>`;
+  }
+}
+
+// ---- Search ----
+const searchBox = document.getElementById('search-box');
+const searchResults = document.getElementById('search-results');
+let searchDebounce;
+
+searchBox.addEventListener('input', () => {
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(runSearch, 150);
+});
+searchBox.addEventListener('focus', runSearch);
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrap')) searchResults.classList.remove('show');
+});
+
+function runSearch() {
+  const q = searchBox.value.trim().toLowerCase();
+  if (!q) { searchResults.classList.remove('show'); return; }
+  const matches = allStudents.filter(s =>
+    String(s.name||'').toLowerCase().includes(q) ||
+    String(s.admissionNo||'').toLowerCase().includes(q) ||
+    String(s.rollNo||'').includes(q)
+  ).slice(0, 20);
+
+  if (!matches.length) {
+    searchResults.innerHTML = `<div class="search-empty">No students found.</div>`;
+  } else {
+    searchResults.innerHTML = matches.map(s => `
+      <div class="search-item" data-id="${esc(s.id)}">
+        <b>${esc(s.name)}</b>${s.left ? ' <span class="badge badge-left">LEFT</span>' : ''}${s.passedOut ? ' <span class="badge badge-pass">PASSED OUT</span>' : ''}
+        <div class="meta">Class ${esc(s.class)}${s.section ? '-'+esc(s.section) : ''} | Father: ${esc(s.fatherName)||'—'} | ${esc(s.address)||'—'}</div>
+      </div>`).join('');
+    searchResults.querySelectorAll('.search-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const s = allStudents.find(st => st.id === el.dataset.id);
+        if (s) selectStudent(s);
+      });
+    });
+  }
+  searchResults.classList.add('show');
+}
+
+function selectStudent(s) {
+  searchBox.value = s.name || '';
+  searchResults.classList.remove('show');
+  const url = new URL(window.location.href);
+  url.searchParams.set('id', s.id);
+  window.history.replaceState({}, '', url);
+  loadProfile(s);
+}
+
+// ---- Profile ----
+async function loadProfile(student) {
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('profile-sections').style.display = 'block';
+
+  document.getElementById('p-avatar').textContent = (student.name||'?').trim().charAt(0).toUpperCase();
+  document.getElementById('p-name').innerHTML = esc(student.name) +
+    (student.left ? ' <span class="badge badge-left">LEFT</span>' : '') +
+    (student.passedOut ? ' <span class="badge badge-pass">PASSED OUT</span>' : '');
+  document.getElementById('p-admno').textContent = student.admissionNo || '—';
+  document.getElementById('p-roll').textContent = student.rollNo || '—';
+  document.getElementById('p-class').textContent = student.class ? `${student.class}${student.section ? '-'+student.section : ''}` : '—';
+  document.getElementById('p-session').textContent = student.session || '—';
+  document.getElementById('p-father').textContent = student.fatherName || '—';
+  document.getElementById('p-mother').textContent = student.motherName || '—';
+
+  ['examwise-card','yearwise-card','strengths-card','reportcard-card','subject-card','attendance-card'].forEach(id => document.getElementById(id).style.display = 'none');
+
+  const [marksSnap, attSnap] = await Promise.all([
+    getDocs(query(collection(db,'marks'), where('studentId','==', student.id))),
+    getDocs(query(collection(db,'attendance'), where('studentId','==', student.id)))
+  ]);
+
+  // studentMarks[session][exam][subject] = { val, absent, remarks }
+  const studentMarks = {};
+  marksSnap.forEach(d => {
+    const m = d.data();
+    const sub = SUBJECT_ALIASES[m.subject] || m.subject;
+    studentMarks[m.session] ??= {};
+    studentMarks[m.session][m.exam] ??= {};
+    studentMarks[m.session][m.exam][sub] = { val: m.marksObtained, absent: !!m.absent, remarks: (m.remarks||'').trim() };
+  });
+
+  const sessions = Object.keys(studentMarks).sort();
+
+  renderReportCard(student, studentMarks);
+  renderSubjectHistory(studentMarks, sessions);
+  renderYearWise(studentMarks, sessions);
+  renderAttendance(attSnap);
+  await loadCurrentSessionAnalysis(student);
+}
+
+function renderReportCard(student, studentMarks) {
+  const card = document.getElementById('reportcard-card');
+  const session = student.session;
+  const bySubject = studentMarks[session];
+  if (!session || !bySubject) { card.style.display = 'none'; return; }
+
+  let t1Sum = 0, t1Max = 0, t2Sum = 0, t2Max = 0;
+
+  const rows = SUBJECTS.map(sub => {
+    const pa1e = bySubject.PA1?.[sub];
+    const hye  = bySubject.HalfYearly?.[sub];
+    const pa2e = bySubject.PA2?.[sub];
+    const anne = bySubject.Annual?.[sub];
+    const numVal = e => e === undefined ? undefined : (e.absent ? 0 : Number(e.val));
+    const pa1 = numVal(pa1e), hy = numVal(hye), pa2 = numVal(pa2e), ann = numVal(anne);
+
+    if (pa1 !== undefined) { t1Sum += pa1; t1Max += EXAM_MAX.PA1; }
+    if (hy  !== undefined) { t1Sum += hy;  t1Max += EXAM_MAX.HalfYearly; }
+    if (pa2 !== undefined) { t2Sum += pa2; t2Max += EXAM_MAX.PA2; }
+    if (ann !== undefined) { t2Sum += ann; t2Max += EXAM_MAX.Annual; }
+
+    const term1 = pa1 !== undefined && hy !== undefined ? pa1 + hy : pa1 !== undefined ? pa1 : hy !== undefined ? hy : null;
+    const term2 = pa2 !== undefined && ann !== undefined ? pa2 + ann : pa2 !== undefined ? pa2 : ann !== undefined ? ann : null;
+    const gt = term1 !== null && term2 !== null ? term1 + term2 : term1 !== null ? term1 : term2 !== null ? term2 : null;
+    const gtMax = (pa1!==undefined?EXAM_MAX.PA1:0) + (hy!==undefined?EXAM_MAX.HalfYearly:0) + (pa2!==undefined?EXAM_MAX.PA2:0) + (ann!==undefined?EXAM_MAX.Annual:0);
+    const grade = gt !== null && gtMax > 0 ? GRADE(gt / gtMax * 100) : '-';
+    const remark = pa1e?.remarks || hye?.remarks || pa2e?.remarks || anne?.remarks || (grade !== '-' ? GRADE_REMARK[grade] : '');
+
+    return { sub, pa1e, hye, pa2e, anne, term1, term2, gt, gtMax, grade, remark };
+  });
+
+  const cell = e => e === undefined
+    ? '<td>—</td>'
+    : e.absent ? '<td class="rc-absent">AB</td>' : `<td>${e.val}</td>`;
+
+  document.getElementById('reportcard-session').textContent = `| ${esc(student.name)} — Class ${esc(student.class)}${student.section?'-'+esc(student.section):''} — Session ${esc(session)}`;
+
+  document.getElementById('reportcard-tbody').innerHTML = rows.map(r => {
+    const subLabel = r.sub === 'Science' ? 'Science / E.V.S.' : r.sub === 'SST' ? 'S.S.T.' : r.sub === 'GK' ? 'G.K.' : r.sub;
+    return `<tr>
+      <td class="left" style="font-weight:700;">${esc(subLabel)}</td>
+      ${cell(r.pa1e)}${cell(r.hye)}
+      <td class="rc-total">${r.term1 !== null ? r.term1 : '—'}</td>
+      ${cell(r.pa2e)}${cell(r.anne)}
+      <td class="rc-total">${r.term2 !== null ? r.term2 : '—'}</td>
+      <td class="rc-gtotal">${r.gt !== null ? r.gt : '—'}</td>
+      <td class="rc-gtotal">${r.grade}</td>
+      <td class="rc-remark">${esc(r.remark)}</td>
+    </tr>`;
+  }).join('') + `<tr class="rc-grandtotal">
+    <td class="left">GRAND TOTAL</td>
+    <td colspan="2"></td>
+    <td class="rc-total">${t1Max > 0 ? t1Sum : '—'}</td>
+    <td colspan="2"></td>
+    <td class="rc-total">${t2Max > 0 ? t2Sum : '—'}</td>
+    <td class="rc-gtotal">${(t1Max+t2Max) > 0 ? t1Sum+t2Sum : '—'}</td>
+    <td class="rc-gtotal">${(t1Max+t2Max) > 0 ? GRADE((t1Sum+t2Sum)/(t1Max+t2Max)*100) : '-'}</td>
+    <td></td>
+  </tr>`;
+
+  const gtSum = t1Sum + t2Sum, gtMaxAll = t1Max + t2Max;
+  const pct = gtMaxAll > 0 ? gtSum / gtMaxAll * 100 : null;
+  const grade = pct !== null ? GRADE(pct) : '-';
+  const result = pct !== null ? (pct >= 33 ? 'Passed' : 'Failed') : '—';
+
+  document.getElementById('rc-pct').textContent = pct !== null ? pct.toFixed(1) + '%' : '—';
+  document.getElementById('rc-grade').textContent = grade;
+  document.getElementById('rc-result').innerHTML = pct !== null
+    ? `<span class="${result === 'Passed' ? 'rc-result-pass' : 'rc-result-fail'}">${result}</span>` : '—';
+  document.getElementById('rc-rank').textContent = '—';
+
+  if (pct !== null) {
+    document.getElementById('rc-remark').textContent = GRADE_REMARK[grade];
+  } else {
+    document.getElementById('rc-remark').textContent = '';
+  }
+
+  card.style.display = 'block';
+}
+
+// Aggregate a session's marks into an overall percentage, using every exam recorded that session.
+function sessionOverallPct(studentMarks, session) {
+  let total = 0, max = 0;
+  EXAMS.forEach(exam => {
+    const bySubject = studentMarks[session]?.[exam];
+    if (!bySubject) return;
+    SUBJECTS.forEach(sub => {
+      if (bySubject[sub]) {
+        max += EXAM_MAX[exam];
+        if (!bySubject[sub].absent) total += Number(bySubject[sub].val) || 0;
+      }
+    });
+  });
+  return max > 0 ? total / max * 100 : null;
+}
+
+function renderYearWise(studentMarks, sessions) {
+  const rows = sessions
+    .map(session => ({ session, pct: sessionOverallPct(studentMarks, session) }))
+    .filter(r => r.pct !== null);
+
+  if (!rows.length) {
+    document.getElementById('yearwise-card').style.display = 'none';
+    return;
+  }
+  document.getElementById('yearwise-card').style.display = 'block';
+
+  document.getElementById('yearwise-tbody').innerHTML = rows.map((r, i) => {
+    const grade = GRADE(r.pct);
+    let change = '<span class="yoy-flat">—</span>';
+    if (i > 0) {
+      const delta = r.pct - rows[i-1].pct;
+      if (Math.abs(delta) < 0.05) change = '<span class="yoy-flat">No change</span>';
+      else if (delta > 0) change = `<span class="yoy-up">▲ +${delta.toFixed(1)}%</span>`;
+      else change = `<span class="yoy-down">▼ ${delta.toFixed(1)}%</span>`;
+    }
+    return `<tr>
+      <td class="left">${esc(r.session)}</td>
+      <td style="font-weight:700;">${r.pct.toFixed(1)}%</td>
+      <td><span class="grade-badge g${grade}">${grade}</span></td>
+      <td>${change}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderSubjectHistory(studentMarks, sessions) {
+  const rows = [];
+  sessions.forEach(session => {
+    EXAMS.forEach(exam => {
+      const bySubject = studentMarks[session]?.[exam];
+      if (!bySubject) return;
+      let total = 0, max = 0;
+      SUBJECTS.forEach(sub => {
+        if (bySubject[sub]) {
+          max += EXAM_MAX[exam];
+          if (!bySubject[sub].absent) total += Number(bySubject[sub].val) || 0;
+        }
+      });
+      if (max === 0) return;
+      const pct = total / max * 100;
+      rows.push({ session, exam, bySubject, total, max, pct });
+    });
+  });
+
+  if (!rows.length) {
+    document.getElementById('subject-card').style.display = 'none';
+    return;
+  }
+  document.getElementById('subject-card').style.display = 'block';
+
+  const thead = document.getElementById('subject-thead');
+  thead.innerHTML = `<tr>
+    <th class="left">Session</th><th>Exam</th>
+    ${SUBJECTS.map(s => `<th>${s}</th>`).join('')}
+    <th>Total</th><th>%</th><th>Grade</th>
+  </tr>`;
+
+  const tbody = document.getElementById('subject-tbody');
+  tbody.innerHTML = rows.map(r => {
+    const cells = SUBJECTS.map(sub => {
+      const e = r.bySubject[sub];
+      if (!e) return `<td style="color:#ccc;">-</td>`;
+      if (e.absent) return `<td style="color:#c0392b;font-weight:700;">AB</td>`;
+      return `<td>${e.val}</td>`;
+    }).join('');
+    const grade = GRADE(r.pct);
+    return `<tr>
+      <td class="left">${esc(r.session)}</td>
+      <td>${EXAM_LABELS[r.exam]||r.exam}</td>
+      ${cells}
+      <td style="font-weight:700;">${r.total}/${r.max}</td>
+      <td style="font-weight:700;">${r.pct.toFixed(1)}%</td>
+      <td><span class="grade-badge g${grade}">${grade}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderAttendance(attSnap) {
+  const rows = [];
+  attSnap.forEach(d => rows.push(d.data()));
+  if (!rows.length) {
+    document.getElementById('attendance-card').style.display = 'none';
+    return;
+  }
+  rows.sort((a,b) => String(a.session||'').localeCompare(String(b.session||'')));
+  document.getElementById('attendance-card').style.display = 'block';
+  document.getElementById('attendance-tbody').innerHTML = rows.map(a => {
+    const t1 = a.term1AttendancePct, t2 = a.term2AttendancePct;
+    const combined = (t1 != null && t2 != null) ? ((Number(t1)+Number(t2))/2).toFixed(1) : (t2 != null ? t2 : t1);
+    return `<tr>
+      <td class="left">${esc(a.session)}</td>
+      <td>${t1 != null ? t1+'%' : '—'}</td>
+      <td>${t2 != null ? t2+'%' : '—'}</td>
+      <td style="font-weight:700;">${combined != null ? combined+'%' : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// Fetches the student's current class+session data once, then feeds both the
+// exam-wise subject comparison card and the strong/weak subjects card from it.
+async function loadCurrentSessionAnalysis(student) {
+  const examCard = document.getElementById('examwise-card');
+  const strengthsCard = document.getElementById('strengths-card');
+  const cls = student.class, session = student.session;
+  if (!cls || !session) { examCard.style.display = 'none'; strengthsCard.style.display = 'none'; return; }
+
+  const [stuSnap, marksSnap] = await Promise.all([
+    getDocs(query(collection(db,'students'), where('class','==',cls), where('session','==',session))),
+    getDocs(query(collection(db,'marks'), where('class','==',cls), where('session','==',session)))
+  ]);
+
+  const classmates = [];
+  stuSnap.forEach(d => { const data = d.data(); if (!data.left) classmates.push({ id: d.id, ...data }); });
+  if (!classmates.length) { examCard.style.display = 'none'; strengthsCard.style.display = 'none'; return; }
+
+  const marksLookup = {}; // studentId_exam_subject -> {val, absent}
+  marksSnap.forEach(d => {
+    const m = d.data();
+    const sub = SUBJECT_ALIASES[m.subject] || m.subject;
+    marksLookup[`${m.studentId}_${m.exam}_${sub}`] = { val: m.marksObtained, absent: !!m.absent };
+  });
+
+  renderOverallRank(student, classmates, marksLookup);
+
+  // examData[exam] = { rank, totalStudents, subjects: { [subject]: {studentVal, classAvgPct, max} } }
+  const examData = {};
+  EXAMS.forEach(exam => {
+    const subjects = {};
+    SUBJECTS.forEach(sub => {
+      const vals = classmates.map(c => marksLookup[`${c.id}_${exam}_${sub}`]).filter(Boolean);
+      if (!vals.length) return;
+      const myEntry = marksLookup[`${student.id}_${exam}_${sub}`];
+      if (!myEntry) return;
+      const classAvgVal = vals.reduce((s,e) => s + (e.absent ? 0 : Number(e.val)||0), 0) / vals.length;
+      subjects[sub] = {
+        studentVal: myEntry.absent ? null : Number(myEntry.val)||0,
+        studentAbsent: myEntry.absent,
+        classAvgVal,
+        max: EXAM_MAX[exam]
+      };
+    });
+    if (!Object.keys(subjects).length) return;
+
+    const results = classmates.map(c => {
+      let total = 0, max = 0;
+      SUBJECTS.forEach(sub => {
+        const e = marksLookup[`${c.id}_${exam}_${sub}`];
+        if (e) { max += EXAM_MAX[exam]; if (!e.absent) total += Number(e.val) || 0; }
+      });
+      return { id: c.id, pct: max > 0 ? total / max * 100 : null };
+    }).filter(r => r.pct !== null);
+    const me = results.find(r => r.id === student.id);
+    if (!me) return;
+    const sorted = [...results].sort((a,b) => b.pct - a.pct);
+    let rank = 1;
+    for (let i = 0; i < sorted.length; i++) {
+      if (i > 0 && sorted[i].pct < sorted[i-1].pct) rank = i + 1;
+      if (sorted[i].id === student.id) break;
+    }
+
+    examData[exam] = { rank, totalStudents: results.length, overallPct: me.pct, subjects };
+  });
+
+  renderExamWiseComparison(cls, session, examData);
+  renderStrengths(session, examData);
+}
+
+// Ranks the student against classmates using the same grand-total % the report card shows
+// (sum of every recorded exam's marks across all subjects, out of the marks actually recorded).
+function renderOverallRank(student, classmates, marksLookup) {
+  const rankEl = document.getElementById('rc-rank');
+  if (!rankEl) return;
+
+  const overallPct = studentId => {
+    let total = 0, max = 0;
+    EXAMS.forEach(exam => {
+      SUBJECTS.forEach(sub => {
+        const e = marksLookup[`${studentId}_${exam}_${sub}`];
+        if (e) { max += EXAM_MAX[exam]; if (!e.absent) total += Number(e.val) || 0; }
+      });
+    });
+    return max > 0 ? total / max * 100 : null;
+  };
+
+  const results = classmates
+    .map(c => ({ id: c.id, pct: overallPct(c.id) }))
+    .filter(r => r.pct !== null);
+  const me = results.find(r => r.id === student.id);
+  if (!me) { rankEl.textContent = '—'; return; }
+
+  const sorted = [...results].sort((a,b) => b.pct - a.pct);
+  let rank = 1;
+  for (let i = 0; i < sorted.length; i++) {
+    if (i > 0 && sorted[i].pct < sorted[i-1].pct) rank = i + 1;
+    if (sorted[i].id === student.id) break;
+  }
+  rankEl.textContent = `${rank} of ${sorted.length}`;
+}
+
+function renderExamWiseComparison(cls, session, examData) {
+  const card = document.getElementById('examwise-card');
+  const exams = EXAMS.filter(ex => examData[ex]);
+  if (!exams.length) { card.style.display = 'none'; return; }
+
+  document.getElementById('examwise-session').textContent = `| Class ${cls} — Session ${session}`;
+
+  const html = exams.map(exam => {
+    const d = examData[exam];
+    const bars = SUBJECTS.filter(sub => d.subjects[sub]).map(sub => {
+      const s = d.subjects[sub];
+      const studentPct = s.studentAbsent ? 0 : (s.studentVal / s.max * 100);
+      const classAvgPct = s.classAvgVal / s.max * 100;
+      const valLabel = s.studentAbsent ? 'AB' : `${s.studentVal}/${s.max}`;
+      return `<div class="cmp-row">
+        <div class="cmp-label">
+          <span>${esc(sub)}</span>
+          <span>${valLabel} &nbsp;(class avg ${s.classAvgVal.toFixed(1)}/${s.max})</span>
+        </div>
+        <div class="cmp-bar-wrap">
+          <div class="cmp-bar-class" style="width:${classAvgPct.toFixed(1)}%;"></div>
+          <div class="cmp-bar-student" style="width:${studentPct.toFixed(1)}%;"></div>
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<div class="exam-block">
+      <div class="exam-block-head">
+        <span>${EXAM_LABELS[exam]||exam} (Max ${EXAM_MAX[exam]} per subject)</span>
+        <span class="rank-tag">Rank ${d.rank} of ${d.totalStudents} &mdash; ${d.overallPct.toFixed(1)}% overall</span>
+      </div>
+      ${bars}
+    </div>`;
+  }).join('');
+
+  document.getElementById('examwise-body').innerHTML = html + `<div class="cmp-legend">
+    <span><span class="dot" style="background:#27ae60;"></span>This student</span>
+    <span><span class="dot" style="background:#bdc3c7;"></span>Class average</span>
+  </div>`;
+  card.style.display = 'block';
+}
+
+function renderStrengths(session, examData) {
+  const card = document.getElementById('strengths-card');
+  const exams = EXAMS.filter(ex => examData[ex]);
+  if (!exams.length) { card.style.display = 'none'; return; }
+
+  // Average this session's student % and class-avg % per subject, across all exams recorded.
+  const subjectTotals = {}; // subject -> { studentSum, classSum, count }
+  exams.forEach(exam => {
+    const d = examData[exam];
+    SUBJECTS.forEach(sub => {
+      const s = d.subjects[sub];
+      if (!s || s.studentAbsent) return;
+      subjectTotals[sub] ??= { studentSum: 0, classSum: 0, count: 0 };
+      subjectTotals[sub].studentSum += (s.studentVal / s.max) * 100;
+      subjectTotals[sub].classSum += (s.classAvgVal / s.max) * 100;
+      subjectTotals[sub].count++;
+    });
+  });
+
+  const sorted = Object.entries(subjectTotals)
+    .map(([subject, t]) => ({
+      subject,
+      studentPct: t.studentSum / t.count,
+      classAvgPct: t.classSum / t.count
+    }))
+    .sort((a,b) => b.studentPct - a.studentPct);
+
+  if (!sorted.length) { card.style.display = 'none'; return; }
+  document.getElementById('strengths-session').textContent = `| Session ${session}`;
+
+  const n = sorted.length;
+  const strongCount = Math.min(3, Math.max(1, Math.ceil(n/2)));
+  const weakCount = Math.min(3, Math.max(0, n - strongCount));
+  const strong = sorted.slice(0, strongCount);
+  const weak = weakCount > 0 ? sorted.slice(n - weakCount).reverse() : [];
+
+  const item = (r, isStrong) => {
+    const delta = r.studentPct - r.classAvgPct;
+    const deltaLabel = Math.abs(delta) < 0.05 ? 'in line with class average'
+      : delta > 0 ? `${delta.toFixed(1)}% above class average` : `${Math.abs(delta).toFixed(1)}% below class average`;
+    return `<div class="subject-item ${isStrong ? 'is-strong' : 'is-weak'}">
+      <div>
+        <div class="subj-name">${esc(r.subject)}</div>
+        <div class="subj-delta" style="color:${delta >= 0 ? '#1e8449' : '#c0392b'};">${deltaLabel}</div>
+      </div>
+      <div class="subj-pct">${r.studentPct.toFixed(1)}%</div>
+    </div>`;
+  };
+
+  document.getElementById('strong-list').innerHTML = strong.length
+    ? strong.map(r => item(r, true)).join('')
+    : `<div class="empty-note">Not enough data yet.</div>`;
+  document.getElementById('weak-list').innerHTML = weak.length
+    ? weak.map(r => item(r, false)).join('')
+    : `<div class="empty-note">Not enough data yet.</div>`;
+
+  card.style.display = 'block';
+}
+</script>
+</body>
+</html>
