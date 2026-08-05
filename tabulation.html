@@ -611,6 +611,9 @@ window.exportCSV = function() {
   const examFilter = document.getElementById('sel-exam').value;
   const activeExams = examFilter ? [examFilter] : EXAMS;
 
+  const examLabel = examFilter ? (EXAM_LABELS[examFilter]||examFilter) : 'All Exams';
+  const title = `Prabha Gyan Jyoti Public School - ${examLabel} Tabulation Sheet - Session ${session} - Class ${cls}${section ? ' '+section : ''}`;
+
   const headers = ['Rank','Roll No','Student Name'];
   SUBJECTS.forEach(sub => {
     if (examFilter) {
@@ -642,8 +645,13 @@ window.exportCSV = function() {
   });
 
   const examSuffix = examFilter ? `_${examFilter}` : '_AllExams';
-  const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
-  const blob = new Blob([csv], { type:'text/csv' });
+  const csv = [
+    [title],
+    [],
+    headers,
+    ...rows
+  ].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['﻿' + csv], { type:'text/csv;charset=utf-8;' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `Tabulation_Class${cls}${section?'_'+section:''}${examSuffix}_${session}.csv`;
