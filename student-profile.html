@@ -488,7 +488,7 @@ function renderReportCard(student, studentMarks) {
 
   const cell = e => e === undefined
     ? '<td>—</td>'
-    : e.absent ? '<td class="rc-absent">AB</td>' : `<td>${e.val}</td>`;
+    : (e.absent || e.val === null) ? '<td class="rc-absent">A</td>' : `<td>${e.val}</td>`;
 
   document.getElementById('reportcard-session').textContent = `| ${esc(student.name)} — Class ${esc(student.class)}${student.section?'-'+esc(student.section):''} — Session ${esc(session)}`;
 
@@ -617,7 +617,7 @@ function renderSubjectHistory(studentMarks, sessions) {
     const cells = SUBJECTS.map(sub => {
       const e = r.bySubject[sub];
       if (!e) return `<td style="color:#ccc;">-</td>`;
-      if (e.absent) return `<td style="color:#c0392b;font-weight:700;">AB</td>`;
+      if (e.absent || e.val === null) return `<td style="color:#c0392b;font-weight:700;">A</td>`;
       return `<td>${e.val}</td>`;
     }).join('');
     const grade = GRADE(r.pct);

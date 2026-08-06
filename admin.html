@@ -1857,8 +1857,8 @@ window.loadMarksView = async function() {
           if (entry !== undefined) enteredCount++;
           row += entry === undefined
             ? `<td class="pending" style="text-align:center;">Missing</td>`
-            : entry.absent
-              ? `<td style="text-align:center;color:#c0392b;font-weight:600;">AB</td>`
+            : (entry.absent || entry.val === null)
+              ? `<td style="text-align:center;color:#c0392b;font-weight:600;">A</td>`
               : `<td style="text-align:center;">${entry.val}</td>`;
         });
       });
@@ -2086,7 +2086,7 @@ window.generateProgressReports = async function(singleStudentId = null) {
       const gtMax = (pa1!==undefined?20:0)+(hy!==undefined?80:0)+(pa2!==undefined?20:0)+(ann!==undefined?80:0);
       const subGrade = gt!==null&&gtMax>0 ? GRADE(gt/gtMax*100) : '-';
       const displayRemark = subRemark || GRADE_REMARK(subGrade);
-      const C = e => `<td style="border:${BORDER};padding:7px 3px;text-align:center;background:#fff;color:${e&&e.absent?'#c0392b':'#000'};font-size:10px;${e&&e.absent?'font-weight:700;':''}">${e===undefined?'—':e.absent?'AB':e.val}</td>`;
+      const C = e => { const isAbs = !!e && (e.absent || e.val === null); return `<td style="border:${BORDER};padding:7px 3px;text-align:center;background:#fff;color:${isAbs?'#c0392b':'#000'};font-size:10px;${isAbs?'font-weight:700;':''}">${e===undefined?'—':isAbs?'A':e.val}</td>`; };
       const subLabel = sub==='Science'?'SCIENCE / E.V.S.':sub==='SST'?'S.S.T.':sub==='GK'?'G.K.':sub.toUpperCase();
 
       return `<tr>
@@ -3110,7 +3110,7 @@ window.generateMarksSlips = async function() {
     const m = d.data();
     const sub = SUBJECT_ALIASES[m.subject] || m.subject;
     if (!marksMap[m.studentId]) marksMap[m.studentId] = {};
-    marksMap[m.studentId][sub] = { val: m.absent ? 0 : Number(m.marksObtained), absent: !!m.absent };
+    marksMap[m.studentId][sub] = { val: (m.absent || m.marksObtained === null) ? 0 : Number(m.marksObtained), absent: !!m.absent || m.marksObtained === null };
   });
 
   // Calculate totals & rank
@@ -3138,7 +3138,7 @@ window.generateMarksSlips = async function() {
     const subRows = SUBJECTS.map(sub => {
       const entry = sm[sub];
       const subLabel = sub==='Science'?'Sci/EVS':sub==='SST'?'SST':sub==='GK'?'G.K.':sub;
-      const displayVal = entry === undefined ? '—' : entry.absent ? 'AB' : entry.val;
+      const displayVal = entry === undefined ? '—' : entry.absent ? 'A' : entry.val;
       return `<tr>
         <td style="padding:2px 5px;border:1px solid #ccc;font-size:9.5px;">${subLabel}</td>
         <td style="padding:2px 5px;border:1px solid #ccc;text-align:center;font-size:9.5px;${entry&&entry.absent?'color:#c0392b;font-weight:700;':''}">${displayVal}</td>

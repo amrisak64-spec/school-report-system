@@ -476,8 +476,8 @@ function renderTbody() {
           const max = EXAM_MAX[examFilter];
           cols += `<td><input type="number" class="marks-input-sm" data-student="${s.id}" data-subject="${sub}"
             value="${entry && entry.val !== null ? entry.val : ''}" min="0" max="${max}" placeholder="0-${max}"/></td>`;
-        } else if (entry && entry.absent) {
-          cols += `<td style="color:#c0392b;font-weight:600;">AB</td>`;
+        } else if (entry && entry.val === null) {
+          cols += `<td style="color:#c0392b;font-weight:600;">A</td>`;
         } else {
           cols += entry && entry.val !== null
             ? `<td style="font-weight:600;">${entry.val}</td>`
@@ -487,7 +487,7 @@ function renderTbody() {
         // All exams: PA1, HY, PA2, ANN + Total
         activeExams.forEach(exam => {
           const entry = st.examMarks[exam];
-          if (entry && entry.absent) cols += `<td style="color:#c0392b;font-weight:600;">AB</td>`;
+          if (entry && entry.val === null) cols += `<td style="color:#c0392b;font-weight:600;">A</td>`;
           else cols += entry && entry.val !== null ? `<td>${entry.val}</td>` : `<td style="color:#ccc;">-</td>`;
         });
         cols += st.total !== null
@@ -629,7 +629,7 @@ window.exportCSV = function() {
     const row = [lastRankMap[s.id], s.rollNo||'', s.name||''];
     SUBJECTS.forEach(sub => {
       const st = s.subjectTotals[sub];
-      const cell = entry => !entry ? '' : entry.absent ? 'AB' : (entry.val !== null ? entry.val : '');
+      const cell = entry => !entry ? '' : (entry.val === null ? 'A' : entry.val);
       if (examFilter) {
         row.push(cell(st.examMarks[examFilter]));
       } else {

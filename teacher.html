@@ -362,7 +362,7 @@ window.loadStudents = async function() {
     const tbody = document.getElementById('marks-tbody');
     tbody.innerHTML = currentStudents.map((s, idx) => {
       const existing = existingMarks[s.id];
-      const isAbsent = !!(existing && existing.absent);
+      const isAbsent = !!(existing && (existing.absent || existing.marks === null));
       const val = existing && !isAbsent ? existing.marks : '';
       const isSaved = existing !== undefined;
       return `
