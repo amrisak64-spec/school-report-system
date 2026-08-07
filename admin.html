@@ -471,12 +471,20 @@
 
     <div class="dash-chart-grid">
       <div class="card" style="margin-bottom:0;">
-        <h2>📚 Students per Class</h2>
-        <div style="position:relative;height:280px;"><canvas id="dash-chart-bar"></canvas></div>
+        <h2>📚 Classwise Performance <span id="dash-perf-session" style="font-size:12px;font-weight:400;color:#888;"></span></h2>
+        <div style="position:relative;height:280px;"><canvas id="dash-chart-class"></canvas></div>
       </div>
       <div class="card" style="margin-bottom:0;">
-        <h2>🥧 Class-wise Distribution</h2>
-        <div style="position:relative;height:280px;"><canvas id="dash-chart-donut"></canvas></div>
+        <h2>📖 Subject-wise Performance</h2>
+        <div style="position:relative;height:280px;"><canvas id="dash-chart-subject"></canvas></div>
+      </div>
+      <div class="card" style="margin-bottom:0;">
+        <h2>📝 Exam-wise Performance</h2>
+        <div style="position:relative;height:280px;"><canvas id="dash-chart-exam"></canvas></div>
+      </div>
+      <div class="card" style="margin-bottom:0;">
+        <h2>📈 Year-wise Performance</h2>
+        <div style="position:relative;height:280px;"><canvas id="dash-chart-year"></canvas></div>
       </div>
     </div>
   </div>
@@ -1126,6 +1134,7 @@ const SUBJECT_ALIASES = { 'Science/E.V.S.':'Science', 'S.S.T.':'SST', 'G.K.':'GK
 const EXAM_LABELS = { PA1:'P.A.1', HalfYearly:'Half Yearly', PA2:'P.A.2', Annual:'Annual' };
 const MAX_MARKS = { PA1:20, HalfYearly:80, PA2:20, Annual:80 };
 const VALID_CLASSES = ['II','III','IV','V','VI','VII','VIII'];
+const CURRENT_SESSION = '2026-27';
 
 // Store all loaded students for client-side search
 let allStudents = [];
@@ -1217,10 +1226,7 @@ window.loadDashboard = async function() {
     document.getElementById('dash-total-classes').textContent  = classSet.size;
     document.getElementById('dash-total-marks').textContent    = totalMarks;
 
-    const ORDER = ['II','III','IV','V','VI','VII','VIII','IX','X'];
-    const classes = ORDER.filter(c => classCount[c]);
-    const counts  = classes.map(c => classCount[c]);
-    renderDashboardCharts(classes, counts);
+    renderPerformanceCharts(marksSnap.docs);
 
     document.getElementById('dash-msg').textContent = `Last refreshed: ${new Date().toLocaleTimeString('en-IN')}`;
   } catch(e) {
@@ -1228,35 +1234,95 @@ window.loadDashboard = async function() {
   }
 };
 
-let _dashBarChart = null, _dashDonutChart = null;
+let _dashClassChart = null, _dashSubjChart = null, _dashExamChart = null, _dashYearChart = null;
 const DASH_CHART_COLORS = ['#1a3c6e','#2e6da4','#27ae60','#e67e22','#9b59b6','#c0392b','#16a085','#f1c40f','#34495e'];
-function renderDashboardCharts(classes, counts) {
+const DASH_EXAM_ORDER = ['PA1','HalfYearly','PA2','Annual'];
+
+function renderPerformanceCharts(marksDocs) {
   if (typeof Chart === 'undefined') return; // Chart.js failed to load (e.g. offline)
-  const labels = classes.map(c => 'Class ' + c);
-  const colors = classes.map((_, i) => DASH_CHART_COLORS[i % DASH_CHART_COLORS.length]);
 
-  const barCtx = document.getElementById('dash-chart-bar');
-  if (_dashBarChart) _dashBarChart.destroy();
-  _dashBarChart = new Chart(barCtx, {
+  // classwise / subjectwise / examwise use the current session only;
+  // yearwise aggregates every session found in the marks collection.
+  document.getElementById('dash-perf-session').textContent = `| Session: ${CURRENT_SESSION}`;
+  const curDocs = marksDocs.filter(d => d.data().session === CURRENT_SESSION);
+
+  const classAgg = {}, subjAgg = {}, examAgg = {}, yearAgg = {};
+  const bump = (agg, key, sum, max) => {
+    if (!agg[key]) agg[key] = { sum: 0, max: 0 };
+    agg[key].sum += sum; agg[key].max += max;
+  };
+
+  marksDocs.forEach(d => {
+    const m = d.data();
+    const max = MAX_MARKS[m.exam];
+    const val = Number(m.marksObtained);
+    if (!max || isNaN(val) || !m.session) return;
+    bump(yearAgg, m.session, val, max);
+  });
+  curDocs.forEach(d => {
+    const m = d.data();
+    const max = MAX_MARKS[m.exam];
+    const val = Number(m.marksObtained);
+    if (!max || isNaN(val)) return;
+    if (m.class)   bump(classAgg, m.class, val, max);
+    if (m.subject) bump(subjAgg, m.subject, val, max);
+    if (m.exam)    bump(examAgg, m.exam, val, max);
+  });
+
+  const toPct = agg => agg.max > 0 ? +(agg.sum / agg.max * 100).toFixed(1) : 0;
+
+  const classLabels = VALID_CLASSES.filter(c => classAgg[c]);
+  const classData   = classLabels.map(c => toPct(classAgg[c]));
+
+  const subjLabels = SUBJECTS.filter(s => subjAgg[s]);
+  const subjData   = subjLabels.map(s => toPct(subjAgg[s]));
+
+  const examKeys   = DASH_EXAM_ORDER.filter(e => examAgg[e]);
+  const examLabels = examKeys.map(e => EXAM_LABELS[e] || e);
+  const examData   = examKeys.map(e => toPct(examAgg[e]));
+
+  const yearLabels = Object.keys(yearAgg).sort();
+  const yearData   = yearLabels.map(y => toPct(yearAgg[y]));
+
+  const pctScale = { beginAtZero: true, suggestedMax: 100, ticks: { callback: v => v + '%' } };
+  const pctTooltip = { callbacks: { label: ctx => ctx.formattedValue + '%' } };
+
+  _dashClassChart = destroyAndBuild(_dashClassChart, 'dash-chart-class', {
     type: 'bar',
-    data: { labels, datasets: [{ label: 'Students', data: counts, backgroundColor: '#2e6da4', borderRadius: 6, maxBarThickness: 44 }] },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
-    }
+    data: { labels: classLabels.map(c => 'Class ' + c), datasets: [{ label: 'Avg %', data: classData,
+      backgroundColor: classLabels.map((_,i) => DASH_CHART_COLORS[i % DASH_CHART_COLORS.length]), borderRadius: 6, maxBarThickness: 44 }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: pctTooltip }, scales: { y: pctScale } }
   });
 
-  const donutCtx = document.getElementById('dash-chart-donut');
-  if (_dashDonutChart) _dashDonutChart.destroy();
-  _dashDonutChart = new Chart(donutCtx, {
-    type: 'doughnut',
-    data: { labels, datasets: [{ data: counts, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } }
-    }
+  _dashSubjChart = destroyAndBuild(_dashSubjChart, 'dash-chart-subject', {
+    type: 'bar',
+    data: { labels: subjLabels, datasets: [{ label: 'Avg %', data: subjData,
+      backgroundColor: subjLabels.map((_,i) => DASH_CHART_COLORS[i % DASH_CHART_COLORS.length]), borderRadius: 6, maxBarThickness: 30 }] },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: pctTooltip }, scales: { x: pctScale } }
   });
+
+  _dashExamChart = destroyAndBuild(_dashExamChart, 'dash-chart-exam', {
+    type: 'bar',
+    data: { labels: examLabels, datasets: [{ label: 'Avg %', data: examData,
+      backgroundColor: examLabels.map((_,i) => DASH_CHART_COLORS[i % DASH_CHART_COLORS.length]), borderRadius: 6, maxBarThickness: 44 }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: pctTooltip }, scales: { y: pctScale } }
+  });
+
+  _dashYearChart = destroyAndBuild(_dashYearChart, 'dash-chart-year', {
+    type: 'line',
+    data: { labels: yearLabels, datasets: [{ label: 'Avg %', data: yearData,
+      borderColor: '#1a3c6e', backgroundColor: 'rgba(26,60,110,0.12)', fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: '#1a3c6e' }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: pctTooltip }, scales: { y: pctScale } }
+  });
+}
+
+function destroyAndBuild(prevChart, canvasId, config) {
+  if (prevChart) prevChart.destroy();
+  return new Chart(document.getElementById(canvasId), config);
 }
 
 // ======================================================
