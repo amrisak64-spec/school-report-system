@@ -14,47 +14,124 @@
   <link rel="preconnect" href="https://prabhagyanjyoti.firebaseapp.com" crossorigin/>
   <title>Admin – Prabha Gyan Jyoti</title>
   <!-- SheetJS for Excel reading — loaded on demand, see loadXLSX() below, to avoid ~200KB parse/eval cost on every admin page load -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; background: #f0f4f8; }
 
-    .topbar {
-      background: #1a3c6e;
+    .app-shell { display: flex; min-height: 100vh; }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      width: 250px;
+      flex-shrink: 0;
+      background: linear-gradient(180deg, #1a3c6e, #0e2038);
       color: #fff;
-      padding: 12px 24px;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex-direction: column;
+      z-index: 200;
+      transition: transform 0.25s ease;
     }
-    .topbar h1 { font-size: 16px; }
-    .topbar button {
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 18px 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+    .sidebar-brand img { width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; }
+    .brand-title { font-size: 14px; font-weight: 700; line-height: 1.3; }
+    .brand-sub { font-size: 11px; opacity: 0.7; }
+
+    .sidebar-nav { flex: 1; overflow-y: auto; padding: 10px 0; }
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 20px;
+      cursor: pointer;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.75);
+      border-left: 3px solid transparent;
+      white-space: nowrap;
+    }
+    .tab:hover { background: rgba(255,255,255,0.06); color: #fff; }
+    .tab.active { background: rgba(255,255,255,0.1); border-left: 3px solid #FF6B00; color: #fff; }
+
+    .sidebar-footer { padding: 14px 18px; border-top: 1px solid rgba(255,255,255,0.12); }
+    .sidebar-logout {
+      width: 100%;
       background: #c0392b;
       color: #fff;
       border: none;
-      padding: 7px 18px;
-      border-radius: 5px;
+      padding: 9px 14px;
+      border-radius: 6px;
       cursor: pointer;
       font-size: 13px;
-    }
-
-    .tabs {
-      display: flex;
-      background: #fff;
-      border-bottom: 2px solid #1a3c6e;
-      overflow-x: auto;
-    }
-    .tab {
-      padding: 12px 22px;
-      cursor: pointer;
-      font-size: 14px;
       font-weight: 600;
-      color: #555;
-      white-space: nowrap;
-      border-bottom: 3px solid transparent;
     }
-    .tab.active { color: #1a3c6e; border-bottom: 3px solid #1a3c6e; }
+    .sidebar-logout:hover { opacity: 0.9; }
 
-    .content { padding: 24px; max-width: 1100px; margin: 0 auto; }
+    .sidebar-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 199;
+    }
+
+    /* ===== MAIN / TOPHEADER ===== */
+    .main { flex: 1; margin-left: 250px; min-width: 0; }
+    .topheader {
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .topheader h1 { font-size: 16px; color: #1a3c6e; flex: 1; }
+    .topheader-clock { font-size: 12px; color: #888; }
+    .hamburger {
+      display: none;
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #1a3c6e;
+      padding: 2px 6px;
+    }
+
+    .content { padding: 24px; max-width: 1300px; margin: 0 auto; }
+
+    /* ===== DASHBOARD STAT CARDS & CHARTS ===== */
+    .dash-stat-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 16px; margin-bottom: 20px; }
+    .dash-stat-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 18px 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .dash-stat-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+    .dash-stat-num { font-size: 26px; font-weight: 700; color: #222; line-height: 1.2; }
+    .dash-stat-label { font-size: 12.5px; color: #777; margin-top: 2px; }
+    .dash-chart-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(320px,1fr)); gap: 20px; }
+
+    @media (max-width: 900px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay.open { display: block; }
+      .main { margin-left: 0; }
+      .hamburger { display: inline-block; }
+    }
     .section { display: none; }
     .section.active { display: block; }
 
@@ -200,7 +277,7 @@
 
     @media(max-width:600px) {
       .form-grid { grid-template-columns: 1fr; }
-      .topbar h1 { font-size: 13px; }
+      .topheader h1 { font-size: 13px; }
     }
   </style>
 </head>
@@ -314,57 +391,93 @@
   </div>
 </div>
 
-<div class="topbar">
-  <h1><img src="icons/icon-192.png" alt="" style="width:36px;height:36px;border-radius:50%;vertical-align:middle;margin-right:10px;">🏫 Prabha Gyan Jyoti — Admin Dashboard</h1>
-  <button onclick="logout()">Logout</button>
-</div>
+<div class="app-shell">
 
-<div class="tabs">
-  <div class="tab active" onclick="showTab('dashboard', this)">🏠 Dashboard</div>
-  <div class="tab" onclick="window.location.href='student-profile.html'">🧑‍🎓 Student Profile</div>
-  <div class="tab" onclick="showTab('students', this)">👨‍🎓 Students</div>
-  <div class="tab" onclick="showTab('upload', this)">📤 Upload Excel</div>
-  <div class="tab" onclick="showTab('teachers', this)">👩‍🏫 Teachers</div>
-  <div class="tab" onclick="showTab('marks', this)">📊 View Marks</div>
-  <div class="tab" onclick="showTab('entry', this)">✏️ Enter Marks</div>
-  <div class="tab" onclick="showTab('promote', this)">🎓 Promote</div>
-  <div class="tab" onclick="showTab('performance', this)">📈 Performance</div>
-  <div class="tab" onclick="showTab('report', this)">🖨️ Print Report Card</div>
-  <div class="tab" onclick="showTab('markslip', this)">📋 Marks Slip</div>
-  <div class="tab" onclick="window.location.href='appearance.html'">📋 Appearance</div>
-  <div class="tab" onclick="window.location.href='tabulation.html'">📊 Tabulation</div>
-</div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <img src="icons/icon-192.png" alt=""/>
+    <div>
+      <div class="brand-title">Prabha Gyan Jyoti</div>
+      <div class="brand-sub">Admin Panel</div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="tab active" data-title="Dashboard" onclick="showTab('dashboard', this)">🏠 <span>Dashboard</span></div>
+    <div class="tab" onclick="window.location.href='student-profile.html'">🧑‍🎓 <span>Student Profile</span></div>
+    <div class="tab" data-title="Students" onclick="showTab('students', this)">👨‍🎓 <span>Students</span></div>
+    <div class="tab" data-title="Upload Excel" onclick="showTab('upload', this)">📤 <span>Upload Excel</span></div>
+    <div class="tab" data-title="Teachers" onclick="showTab('teachers', this)">👩‍🏫 <span>Teachers</span></div>
+    <div class="tab" data-title="View Marks" onclick="showTab('marks', this)">📊 <span>View Marks</span></div>
+    <div class="tab" data-title="Enter Marks" onclick="showTab('entry', this)">✏️ <span>Enter Marks</span></div>
+    <div class="tab" data-title="Promote" onclick="showTab('promote', this)">🎓 <span>Promote</span></div>
+    <div class="tab" data-title="Performance" onclick="showTab('performance', this)">📈 <span>Performance</span></div>
+    <div class="tab" data-title="Print Report Card" onclick="showTab('report', this)">🖨️ <span>Print Report Card</span></div>
+    <div class="tab" data-title="Marks Slip" onclick="showTab('markslip', this)">📋 <span>Marks Slip</span></div>
+    <div class="tab" onclick="window.location.href='appearance.html'">📋 <span>Appearance</span></div>
+    <div class="tab" onclick="window.location.href='tabulation.html'">📊 <span>Tabulation</span></div>
+  </nav>
+  <div class="sidebar-footer">
+    <button class="sidebar-logout" onclick="logout()">🚪 Logout</button>
+  </div>
+</aside>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar(false)"></div>
+
+<div class="main">
+  <header class="topheader">
+    <button class="hamburger" id="hamburger" onclick="toggleSidebar()">☰</button>
+    <h1 id="page-title">Dashboard</h1>
+    <span class="topheader-clock" id="topheader-clock"></span>
+  </header>
 
 <div class="content">
 
   <!-- ===== DASHBOARD ===== -->
   <div class="section active" id="sec-dashboard">
-    <div class="card">
-      <h2>📊 School Overview</h2>
-      <div id="dash-msg" style="color:#888;font-size:13px;margin-bottom:12px;">Loading stats...</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:20px;">
-        <div style="background:linear-gradient(135deg,#1a3c6e,#2e6da4);color:#fff;border-radius:10px;padding:20px;text-align:center;">
-          <div style="font-size:36px;font-weight:700;" id="dash-total-students">—</div>
-          <div style="font-size:13px;margin-top:4px;opacity:0.85;">Total Students</div>
-        </div>
-        <div style="background:linear-gradient(135deg,#1a7a4a,#27ae60);color:#fff;border-radius:10px;padding:20px;text-align:center;">
-          <div style="font-size:36px;font-weight:700;" id="dash-total-teachers">—</div>
-          <div style="font-size:13px;margin-top:4px;opacity:0.85;">Total Teachers</div>
-        </div>
-        <div style="background:linear-gradient(135deg,#7d3c98,#9b59b6);color:#fff;border-radius:10px;padding:20px;text-align:center;">
-          <div style="font-size:36px;font-weight:700;" id="dash-total-classes">—</div>
-          <div style="font-size:13px;margin-top:4px;opacity:0.85;">Active Classes</div>
-        </div>
-        <div style="background:linear-gradient(135deg,#b7770d,#e67e22);color:#fff;border-radius:10px;padding:20px;text-align:center;">
-          <div style="font-size:36px;font-weight:700;" id="dash-total-marks">—</div>
-          <div style="font-size:13px;margin-top:4px;opacity:0.85;">Marks Entered</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+      <div id="dash-msg" style="color:#888;font-size:13px;">Loading stats...</div>
+      <button class="btn btn-info" onclick="loadDashboard()">🔄 Refresh Stats</button>
+    </div>
+
+    <div class="dash-stat-grid">
+      <div class="dash-stat-card">
+        <div class="dash-stat-icon" style="background:#eaf0ff;color:#1a3c6e;">🎓</div>
+        <div>
+          <div class="dash-stat-num" id="dash-total-students">—</div>
+          <div class="dash-stat-label">Total Students</div>
         </div>
       </div>
+      <div class="dash-stat-card">
+        <div class="dash-stat-icon" style="background:#e7f9ee;color:#1e8449;">👩‍🏫</div>
+        <div>
+          <div class="dash-stat-num" id="dash-total-teachers">—</div>
+          <div class="dash-stat-label">Total Teachers</div>
+        </div>
+      </div>
+      <div class="dash-stat-card">
+        <div class="dash-stat-icon" style="background:#f4ecfb;color:#7d3c98;">🏫</div>
+        <div>
+          <div class="dash-stat-num" id="dash-total-classes">—</div>
+          <div class="dash-stat-label">Active Classes</div>
+        </div>
+      </div>
+      <div class="dash-stat-card">
+        <div class="dash-stat-icon" style="background:#fdf1e2;color:#b7770d;">📊</div>
+        <div>
+          <div class="dash-stat-num" id="dash-total-marks">—</div>
+          <div class="dash-stat-label">Marks Entered</div>
+        </div>
+      </div>
+    </div>
 
-      <h3 style="margin-bottom:12px;color:#1a3c6e;">📚 Students per Class</h3>
-      <div id="dash-class-breakdown" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;"></div>
-
-      <button class="btn btn-info" style="margin-top:4px;" onclick="loadDashboard()">🔄 Refresh Stats</button>
+    <div class="dash-chart-grid">
+      <div class="card" style="margin-bottom:0;">
+        <h2>📚 Students per Class</h2>
+        <div style="position:relative;height:280px;"><canvas id="dash-chart-bar"></canvas></div>
+      </div>
+      <div class="card" style="margin-bottom:0;">
+        <h2>🥧 Class-wise Distribution</h2>
+        <div style="position:relative;height:280px;"><canvas id="dash-chart-donut"></canvas></div>
+      </div>
     </div>
   </div>
 
@@ -943,6 +1056,8 @@
   </div>
 
 </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app-shell -->
 
 <script>
 // ---- UI functions (plain script — runs immediately, no module hoisting) ----
@@ -952,12 +1067,28 @@ window.showTab = function(tab, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('sec-'+tab).classList.add('active');
   el.classList.add('active');
+  document.getElementById('page-title').textContent = el.dataset.title || tab;
+  toggleSidebar(false);
   if (tab === 'marks'     && window._fbReady) loadMarksView();
   if (tab === 'dashboard' && window._fbReady) loadDashboard();
   if (tab === 'entry'       && window._fbReady) loadEntryStudents();
   if (tab === 'promote'     && window._fbReady) {} // no auto-load needed
   if (tab === 'performance' && window._fbReady) loadPerformance();
 };
+
+window.toggleSidebar = function(force) {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebar-overlay');
+  const open = typeof force === 'boolean' ? force : !sb.classList.contains('open');
+  sb.classList.toggle('open', open);
+  ov.classList.toggle('open', open);
+};
+
+(function tickClock() {
+  const el = document.getElementById('topheader-clock');
+  if (el) el.textContent = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+  setTimeout(tickClock, 30000);
+})();
 
 window.closeEditModal = function() {
   document.getElementById('edit-modal').classList.remove('open');
@@ -1086,22 +1217,47 @@ window.loadDashboard = async function() {
     document.getElementById('dash-total-classes').textContent  = classSet.size;
     document.getElementById('dash-total-marks').textContent    = totalMarks;
 
-    // Class breakdown chips
     const ORDER = ['II','III','IV','V','VI','VII','VIII','IX','X'];
-    const breakdown = document.getElementById('dash-class-breakdown');
-    breakdown.innerHTML = ORDER.filter(c => classCount[c]).map(c =>
-      `<div style="background:#eef4ff;border:1px solid #c0d4f0;border-radius:8px;padding:10px 18px;text-align:center;min-width:90px;">
-        <div style="font-size:22px;font-weight:700;color:#1a3c6e;">${classCount[c]}</div>
-        <div style="font-size:11px;color:#555;margin-top:2px;">Class ${c}</div>
-      </div>`
-    ).join('');
-
+    const classes = ORDER.filter(c => classCount[c]);
+    const counts  = classes.map(c => classCount[c]);
+    renderDashboardCharts(classes, counts);
 
     document.getElementById('dash-msg').textContent = `Last refreshed: ${new Date().toLocaleTimeString('en-IN')}`;
   } catch(e) {
     document.getElementById('dash-msg').textContent = 'Error loading stats: ' + e.message;
   }
 };
+
+let _dashBarChart = null, _dashDonutChart = null;
+const DASH_CHART_COLORS = ['#1a3c6e','#2e6da4','#27ae60','#e67e22','#9b59b6','#c0392b','#16a085','#f1c40f','#34495e'];
+function renderDashboardCharts(classes, counts) {
+  if (typeof Chart === 'undefined') return; // Chart.js failed to load (e.g. offline)
+  const labels = classes.map(c => 'Class ' + c);
+  const colors = classes.map((_, i) => DASH_CHART_COLORS[i % DASH_CHART_COLORS.length]);
+
+  const barCtx = document.getElementById('dash-chart-bar');
+  if (_dashBarChart) _dashBarChart.destroy();
+  _dashBarChart = new Chart(barCtx, {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Students', data: counts, backgroundColor: '#2e6da4', borderRadius: 6, maxBarThickness: 44 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+    }
+  });
+
+  const donutCtx = document.getElementById('dash-chart-donut');
+  if (_dashDonutChart) _dashDonutChart.destroy();
+  _dashDonutChart = new Chart(donutCtx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: counts, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } }
+    }
+  });
+}
 
 // ======================================================
 // ==================== STUDENTS ========================
