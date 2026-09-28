@@ -2230,7 +2230,7 @@ window.generateProgressReports = async function(singleStudentId = null) {
   // Fetch logo as base64 so it always renders in the popup (avoids cross-origin/timing issues)
   let logoDataUrl = '';
   try {
-    const logoRes = await fetch(new URL('icons/icon-192.png', window.location.href).href);
+    const logoRes = await fetch(new URL('icons/school-logo.png', window.location.href).href);
     const blob = await logoRes.blob();
     logoDataUrl = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
   } catch(e) { logoDataUrl = ''; }
