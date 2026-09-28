@@ -1133,7 +1133,14 @@ const SUBJECTS = ['Hindi','English','Maths','Science','SST','Sanskrit','Computer
 const SUBJECT_ALIASES = { 'Science/E.V.S.':'Science', 'S.S.T.':'SST', 'G.K.':'GK' };
 const EXAM_LABELS = { PA1:'P.A.1', HalfYearly:'Half Yearly', PA2:'P.A.2', Annual:'Annual' };
 const MAX_MARKS = { PA1:20, HalfYearly:80, PA2:20, Annual:80 };
+// Drawing Half Yearly / Annual are out of 30
+const DRAWING_MAX = { PA1:20, HalfYearly:30, PA2:20, Annual:30 };
+const maxMarksFor = (exam, subject) => (subject === 'Drawing' ? DRAWING_MAX : MAX_MARKS)[exam];
 const VALID_CLASSES = ['II','III','IV','V','VI','VII','VIII'];
+// Classes II–V do not study SST or Sanskrit
+const JUNIOR_CLASSES = ['II','III','IV','V'];
+const subjectsForClass = cls => JUNIOR_CLASSES.includes(cls)
+  ? SUBJECTS.filter(s => s !== 'SST' && s !== 'Sanskrit') : SUBJECTS;
 const CURRENT_SESSION = '2026-27';
 
 // Store all loaded students for client-side search
@@ -1254,14 +1261,14 @@ function renderPerformanceCharts(marksDocs) {
 
   marksDocs.forEach(d => {
     const m = d.data();
-    const max = MAX_MARKS[m.exam];
+    const max = maxMarksFor(m.exam, SUBJECT_ALIASES[m.subject] || m.subject);
     const val = Number(m.marksObtained);
     if (!max || isNaN(val) || !m.session) return;
     bump(yearAgg, m.session, val, max);
   });
   curDocs.forEach(d => {
     const m = d.data();
-    const max = MAX_MARKS[m.exam];
+    const max = maxMarksFor(m.exam, SUBJECT_ALIASES[m.subject] || m.subject);
     const val = Number(m.marksObtained);
     if (!max || isNaN(val)) return;
     if (m.class)   bump(classAgg, m.class, val, max);
@@ -2064,8 +2071,9 @@ window.loadMarksView = async function() {
     });
 
     const exams = exam ? [exam] : ['PA1','HalfYearly','PA2','Annual'];
+    const subjects = subjectsForClass(cls);
     let hCols = '<th>Roll</th><th>Name</th>';
-    exams.forEach(ex => SUBJECTS.forEach(sub =>
+    exams.forEach(ex => subjects.forEach(sub =>
       hCols += `<th style="white-space:nowrap;">${sub}<br><small>${EXAM_LABELS[ex]}</small></th>`
     ));
     thead.innerHTML = hCols;
@@ -2074,7 +2082,7 @@ window.loadMarksView = async function() {
     tbody.innerHTML = students.map(s => {
       let row = `<td>${s.rollNo}</td><td><b>${s.name}</b></td>`;
       exams.forEach(ex => {
-        SUBJECTS.forEach(sub => {
+        subjects.forEach(sub => {
           const entry = lookup[`${s.id}_${ex}_${sub}`];
           if (entry !== undefined) enteredCount++;
           row += entry === undefined
@@ -2087,13 +2095,13 @@ window.loadMarksView = async function() {
       return `<tr>${row}</tr>`;
     }).join('') || '<tr><td colspan="50" style="text-align:center;color:#999;">No students found.</td></tr>';
 
-    const expectedCount = students.length * exams.length * SUBJECTS.length;
+    const expectedCount = students.length * exams.length * subjects.length;
     const missingCount = expectedCount - enteredCount;
     const pct = expectedCount > 0 ? Math.round(enteredCount / expectedCount * 100) : 0;
     const barColor = pct === 100 ? '#27ae60' : pct >= 50 ? '#e67e22' : '#c0392b';
 
     // Per-subject progress
-    const subjectProgress = SUBJECTS.map(sub => {
+    const subjectProgress = subjects.map(sub => {
       let entered = 0, expected = students.length * exams.length;
       exams.forEach(ex => students.forEach(s => {
         if (lookup[`${s.id}_${ex}_${sub}`] !== undefined) entered++;
@@ -2285,7 +2293,7 @@ window.generateProgressReports = async function(singleStudentId = null) {
     const TD  = (v,x='') => `<td style="border:${BORDER};padding:7px 7px;background:#fff;color:#000;font-size:10px;${x}">${v}</td>`;
     const resultColor = r => r==='Passed'?'#006600':r==='Failed'?'#cc0000':'#333';
 
-    const marksRows = SUBJECTS.map(sub => {
+    const marksRows = subjectsForClass(s.class || cls).map(sub => {
       const pa1e = marksLookup[`${s.id}_PA1_${sub}`];
       const hye  = marksLookup[`${s.id}_HalfYearly_${sub}`];
       const pa2e = marksLookup[`${s.id}_PA2_${sub}`];
@@ -2295,17 +2303,17 @@ window.generateProgressReports = async function(singleStudentId = null) {
       const numVal = e => e === undefined ? undefined : (e.absent ? 0 : Number(e.val));
       const pa1 = numVal(pa1e), hy = numVal(hye), pa2 = numVal(pa2e), ann = numVal(anne);
 
-      if (pa1!==undefined){t1PA1s+=pa1;t1PA1m+=20;}
-      if (hy !==undefined){t1HYs +=hy; t1HYm +=80;}
-      if (pa2!==undefined){t2PA2s+=pa2;t2PA2m+=20;}
-      if (ann!==undefined){t2ANNs+=ann;t2ANNm+=80;}
+      if (pa1!==undefined){t1PA1s+=pa1;t1PA1m+=maxMarksFor('PA1',sub);}
+      if (hy !==undefined){t1HYs +=hy; t1HYm +=maxMarksFor('HalfYearly',sub);}
+      if (pa2!==undefined){t2PA2s+=pa2;t2PA2m+=maxMarksFor('PA2',sub);}
+      if (ann!==undefined){t2ANNs+=ann;t2ANNm+=maxMarksFor('Annual',sub);}
 
       const t1 = pa1!==undefined&&hy !==undefined ? pa1+hy
                : pa1!==undefined ? pa1 : hy !==undefined ? hy  : null;
       const t2 = pa2!==undefined&&ann!==undefined ? pa2+ann
                : pa2!==undefined ? pa2 : ann!==undefined ? ann : null;
       const gt    = t1!==null&&t2!==null ? t1+t2 : t1!==null ? t1 : t2!==null ? t2 : null;
-      const gtMax = (pa1!==undefined?20:0)+(hy!==undefined?80:0)+(pa2!==undefined?20:0)+(ann!==undefined?80:0);
+      const gtMax = (pa1!==undefined?maxMarksFor('PA1',sub):0)+(hy!==undefined?maxMarksFor('HalfYearly',sub):0)+(pa2!==undefined?maxMarksFor('PA2',sub):0)+(ann!==undefined?maxMarksFor('Annual',sub):0);
       const subGrade = gt!==null&&gtMax>0 ? GRADE(gt/gtMax*100) : '-';
       const displayRemark = subRemark || GRADE_REMARK(subGrade);
       const C = e => { const isAbs = !!e && (e.absent || e.val === null); return `<td style="border:${BORDER};padding:7px 3px;text-align:center;background:#fff;color:${isAbs?'#c0392b':'#000'};font-size:10px;${isAbs?'font-weight:700;':''}">${e===undefined?'—':isAbs?'A':e.val}</td>`; };
@@ -2442,7 +2450,7 @@ window.generateProgressReports = async function(singleStudentId = null) {
 
       <!-- ══ GRADING SCALE ══ -->
       <div style="font-size:8.5px;margin-bottom:4px;padding:2px 6px;border:1px solid #bbb;background:#f8faff;color:#333;">
-        <b style="color:#1a3c6e;">GRADING SCALE:</b> A1=91%-100%; A2=81%-90%; B1=71%-80%; B2=61%-70%; C1=51%-60%; C2=41%-50%; D=33%-40%; <b style="color:#cc0000;">E=BELOW 33%</b>
+        <b style="color:#1a3c6e;">GRADING SCALE:</b> A1=91%-100%; A2=81%-90%; B1=71%-80%; B2=61%-70%; C1=51%-60%; C2=41%-50%; D=33%-40%; <b style="color:#cc0000;">E=BELOW 33%</b> &nbsp;|&nbsp; <b>DRAWING:</b> Half Yearly &amp; Annual out of 30
       </div>
 
       <!-- ══ STUDENT'S APPEARANCE ══ -->
@@ -2662,7 +2670,6 @@ function escapeHtml(value) {
 }
 
 // ── ADMIN MARKS ENTRY ──────────────────────────────────────────────────────
-const EN_MAX = { PA1:20, HalfYearly:80, PA2:20, Annual:80 };
 const EN_EXAMS = ['PA1','HalfYearly','PA2','Annual'];
 let _entryStudents = [];
 
@@ -2729,12 +2736,13 @@ window.loadEntryMarks = async function() {
       if (pct>=33) return 'D'; return 'E';
     };
 
-    tbody.innerHTML = SUBJECTS.map(sub => {
+    const subjects = subjectsForClass(student.class);
+    tbody.innerHTML = subjects.map(sub => {
       const subLabel = sub==='Science'?'Science / E.V.S.':sub==='SST'?'S.S.T.':sub==='GK'?'G.K.':sub;
       const inputs = EN_EXAMS.map(ex => {
         const key = `${ex}_${sub}`;
         const val = existing[key] !== undefined && existing[key].val !== null ? existing[key].val : '';
-        const max = EN_MAX[ex];
+        const max = maxMarksFor(ex, sub);
         return `<td style="text-align:center;padding:6px 4px;">
           <input type="number" id="en_${ex}_${sub}"
             min="0" max="${max}" step="1" value="${val}"
@@ -2755,7 +2763,7 @@ window.loadEntryMarks = async function() {
     }).join('');
 
     // Calculate totals for already-filled rows
-    SUBJECTS.forEach(sub => updateEntryRow(sub));
+    subjects.forEach(sub => updateEntryRow(sub));
 
     document.getElementById('en-msg').textContent = '';
     wrap.style.display = '';
@@ -2768,7 +2776,7 @@ window.updateEntryRow = function(sub) {
   const t1 = pa1!==null&&hy!==null ? pa1+hy : pa1!==null ? pa1 : hy!==null ? hy : null;
   const t2 = pa2!==null&&ann!==null ? pa2+ann : pa2!==null ? pa2 : ann!==null ? ann : null;
   const gt = t1!==null&&t2!==null ? t1+t2 : t1!==null ? t1 : t2!==null ? t2 : null;
-  const gtMax = (pa1!==null?20:0)+(hy!==null?80:0)+(pa2!==null?20:0)+(ann!==null?80:0);
+  const gtMax = (pa1!==null?maxMarksFor('PA1',sub):0)+(hy!==null?maxMarksFor('HalfYearly',sub):0)+(pa2!==null?maxMarksFor('PA2',sub):0)+(ann!==null?maxMarksFor('Annual',sub):0);
   const GRADE = pct => {
     if (pct>=91) return 'A1'; if (pct>=81) return 'A2';
     if (pct>=71) return 'B1'; if (pct>=61) return 'B2';
@@ -2793,13 +2801,13 @@ window.saveEntryMarks = async function() {
   try {
     const batch = writeBatch(db);
     let count = 0;
-    for (const sub of SUBJECTS) {
+    for (const sub of subjectsForClass(student.class)) {
       for (const ex of EN_EXAMS) {
         const el = document.getElementById(`en_${ex}_${sub}`);
         if (!el || el.value === '') continue;
         const val = Number(el.value);
-        if (isNaN(val) || val < 0 || val > EN_MAX[ex]) {
-          showEntryMsg(`Invalid value for ${sub} - ${ex}. Max is ${EN_MAX[ex]}.`, 'error');
+        if (isNaN(val) || val < 0 || val > maxMarksFor(ex, sub)) {
+          showEntryMsg(`Invalid value for ${sub} - ${ex}. Max is ${maxMarksFor(ex, sub)}.`, 'error');
           return;
         }
         const docId = `${studentId}_${ex}_${sub}_${session}`;
@@ -2988,7 +2996,6 @@ window.loadPerformance = async function() {
 
     const CLASSES = VALID_CLASSES;
     const EXAMS   = ['PA1','HalfYearly','PA2','Annual'];
-    const MAX_MAP = { PA1:20, HalfYearly:80, PA2:20, Annual:80 };
 
     // ── Build per-student totals ──
     // studentStats[id] = { class, name, rollNo, totalObtained, totalMax, pct, subjAvg:{sub:pct} }
@@ -3000,7 +3007,7 @@ window.loadPerformance = async function() {
         let so = 0, sm = 0;
         EXAMS.forEach(ex => {
           const v = marks[s.id]?.[ex]?.[sub];
-          if (v !== undefined) { so += v; sm += MAX_MAP[ex]; }
+          if (v !== undefined) { so += v; sm += maxMarksFor(ex, sub); }
         });
         if (sm > 0) { tot += so; mx += sm; subjPct[sub] = so/sm*100; }
       });
@@ -3027,12 +3034,11 @@ window.loadPerformance = async function() {
       });
 
       ['HalfYearly','Annual'].forEach(exam => {
-        const MAX = MAX_MAP[exam];
         const vals = clsStudents.map(s => {
           let so = 0, sm = 0;
           SUBJECTS.forEach(sub => {
             const v = marks[s.id]?.[exam]?.[sub];
-            if (v !== undefined) { so += v; sm += MAX; }
+            if (v !== undefined) { so += v; sm += maxMarksFor(exam, sub); }
           });
           return sm > 0 ? so/sm*100 : null;
         }).filter(v => v !== null);
@@ -3212,7 +3218,7 @@ window.loadPerformance = async function() {
             let so = 0, sm = 0;
             SUBJECTS.forEach(sub => {
               const v = prevMarks[sid]?.[sub];
-              if (v !== undefined) { so += v; sm += 80; }
+              if (v !== undefined) { so += v; sm += maxMarksFor('Annual', sub); }
             });
             return sm > 0 ? so/sm*100 : null;
           }).filter(v => v !== null);
@@ -3288,6 +3294,7 @@ window.generateMarksSlips = async function() {
   const examMax    = { PA1:20, HalfYearly:80, PA2:20, Annual:80 };
   const examLabel  = examLabels[exam] || exam;
   const maxPerSub  = examMax[exam] || 100;
+  const subMax = sub => sub === 'Drawing' && DRAWING_MAX[exam] ? DRAWING_MAX[exam] : maxPerSub;
 
   const win = window.open('', '_blank');
   if (!win) { alert('Popup was blocked. Please allow popups for this site.'); return; }
@@ -3339,8 +3346,8 @@ window.generateMarksSlips = async function() {
   const studentTotals = students.map(s => {
     const sm = marksMap[s.id] || {};
     let total = 0, maxTotal = 0;
-    SUBJECTS.forEach(sub => {
-      if (sm[sub] !== undefined) { total += sm[sub].val; maxTotal += maxPerSub; }
+    subjectsForClass(s.class || cls).forEach(sub => {
+      if (sm[sub] !== undefined) { total += sm[sub].val; maxTotal += subMax(sub); }
     });
     return { id:s.id, total, maxTotal, pct: maxTotal>0 ? (total/maxTotal*100) : 0 };
   });
@@ -3357,14 +3364,14 @@ window.generateMarksSlips = async function() {
     const pct = tot.pct || 0;
     const rank = rankMap[s.id] || '—';
     const grade = tot.maxTotal > 0 ? GRADE(pct) : '—';
-    const subRows = SUBJECTS.map(sub => {
+    const subRows = subjectsForClass(s.class || cls).map(sub => {
       const entry = sm[sub];
       const subLabel = sub==='Science'?'Sci/EVS':sub==='SST'?'SST':sub==='GK'?'G.K.':sub;
       const displayVal = entry === undefined ? '—' : entry.absent ? 'A' : entry.val;
       return `<tr>
         <td style="padding:2px 5px;border:1px solid #ccc;font-size:9.5px;">${subLabel}</td>
         <td style="padding:2px 5px;border:1px solid #ccc;text-align:center;font-size:9.5px;${entry&&entry.absent?'color:#c0392b;font-weight:700;':''}">${displayVal}</td>
-        <td style="padding:2px 5px;border:1px solid #ccc;text-align:center;font-size:9.5px;">${maxPerSub}</td>
+        <td style="padding:2px 5px;border:1px solid #ccc;text-align:center;font-size:9.5px;">${subMax(sub)}</td>
       </tr>`;
     }).join('');
 

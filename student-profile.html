@@ -226,7 +226,7 @@
         </table>
       </div>
       <div class="rc-scale">
-        <b>GRADING SCALE:</b> A1=91%-100%; A2=81%-90%; B1=71%-80%; B2=61%-70%; C1=51%-60%; C2=41%-50%; D=33%-40%; <b style="color:#c0392b;">E=Below 33%</b>
+        <b>GRADING SCALE:</b> A1=91%-100%; A2=81%-90%; B1=71%-80%; B2=61%-70%; C1=51%-60%; C2=41%-50%; D=33%-40%; <b style="color:#c0392b;">E=Below 33%</b> &nbsp;|&nbsp; <b>Drawing:</b> Half Yearly &amp; Annual out of 30
       </div>
       <div class="stats-row" style="margin-top:16px;">
         <div class="stat-box"><div class="stat-num" id="rc-pct">—</div><div class="stat-label">Overall %</div></div>
@@ -303,6 +303,13 @@ const SUBJECT_ALIASES = { 'Science/E.V.S.':'Science', 'S.S.T.':'SST', 'G.K.':'GK
 const EXAMS = ['PA1','HalfYearly','PA2','Annual'];
 const EXAM_LABELS = { PA1:'PA 1', HalfYearly:'Half Yearly', PA2:'PA 2', Annual:'Annual' };
 const EXAM_MAX = { PA1:20, HalfYearly:80, PA2:20, Annual:80 };
+// Drawing Half Yearly / Annual are out of 30
+const DRAWING_MAX = { PA1:20, HalfYearly:30, PA2:20, Annual:30 };
+const maxMarksFor = (exam, subject) => (subject === 'Drawing' ? DRAWING_MAX : EXAM_MAX)[exam];
+// Classes II–V do not study SST or Sanskrit
+const JUNIOR_CLASSES = ['II','III','IV','V'];
+const subjectsForClass = cls => JUNIOR_CLASSES.includes(cls)
+  ? SUBJECTS.filter(s => s !== 'SST' && s !== 'Sanskrit') : SUBJECTS;
 
 const GRADE = pct => {
   if (pct >= 91) return 'A1'; if (pct >= 81) return 'A2';
@@ -463,7 +470,7 @@ function renderReportCard(student, studentMarks) {
 
   let t1Sum = 0, t1Max = 0, t2Sum = 0, t2Max = 0;
 
-  const rows = SUBJECTS.map(sub => {
+  const rows = subjectsForClass(student.class).map(sub => {
     const pa1e = bySubject.PA1?.[sub];
     const hye  = bySubject.HalfYearly?.[sub];
     const pa2e = bySubject.PA2?.[sub];
@@ -471,15 +478,15 @@ function renderReportCard(student, studentMarks) {
     const numVal = e => e === undefined ? undefined : (e.absent ? 0 : Number(e.val));
     const pa1 = numVal(pa1e), hy = numVal(hye), pa2 = numVal(pa2e), ann = numVal(anne);
 
-    if (pa1 !== undefined) { t1Sum += pa1; t1Max += EXAM_MAX.PA1; }
-    if (hy  !== undefined) { t1Sum += hy;  t1Max += EXAM_MAX.HalfYearly; }
-    if (pa2 !== undefined) { t2Sum += pa2; t2Max += EXAM_MAX.PA2; }
-    if (ann !== undefined) { t2Sum += ann; t2Max += EXAM_MAX.Annual; }
+    if (pa1 !== undefined) { t1Sum += pa1; t1Max += maxMarksFor('PA1', sub); }
+    if (hy  !== undefined) { t1Sum += hy;  t1Max += maxMarksFor('HalfYearly', sub); }
+    if (pa2 !== undefined) { t2Sum += pa2; t2Max += maxMarksFor('PA2', sub); }
+    if (ann !== undefined) { t2Sum += ann; t2Max += maxMarksFor('Annual', sub); }
 
     const term1 = pa1 !== undefined && hy !== undefined ? pa1 + hy : pa1 !== undefined ? pa1 : hy !== undefined ? hy : null;
     const term2 = pa2 !== undefined && ann !== undefined ? pa2 + ann : pa2 !== undefined ? pa2 : ann !== undefined ? ann : null;
     const gt = term1 !== null && term2 !== null ? term1 + term2 : term1 !== null ? term1 : term2 !== null ? term2 : null;
-    const gtMax = (pa1!==undefined?EXAM_MAX.PA1:0) + (hy!==undefined?EXAM_MAX.HalfYearly:0) + (pa2!==undefined?EXAM_MAX.PA2:0) + (ann!==undefined?EXAM_MAX.Annual:0);
+    const gtMax = (pa1!==undefined?maxMarksFor('PA1', sub):0) + (hy!==undefined?maxMarksFor('HalfYearly', sub):0) + (pa2!==undefined?maxMarksFor('PA2', sub):0) + (ann!==undefined?maxMarksFor('Annual', sub):0);
     const grade = gt !== null && gtMax > 0 ? GRADE(gt / gtMax * 100) : '-';
     const remark = pa1e?.remarks || hye?.remarks || pa2e?.remarks || anne?.remarks || (grade !== '-' ? GRADE_REMARK[grade] : '');
 
@@ -543,7 +550,7 @@ function sessionOverallPct(studentMarks, session) {
     if (!bySubject) return;
     SUBJECTS.forEach(sub => {
       if (bySubject[sub]) {
-        max += EXAM_MAX[exam];
+        max += maxMarksFor(exam, sub);
         if (!bySubject[sub].absent) total += Number(bySubject[sub].val) || 0;
       }
     });
@@ -589,7 +596,7 @@ function renderSubjectHistory(studentMarks, sessions) {
       let total = 0, max = 0;
       SUBJECTS.forEach(sub => {
         if (bySubject[sub]) {
-          max += EXAM_MAX[exam];
+          max += maxMarksFor(exam, sub);
           if (!bySubject[sub].absent) total += Number(bySubject[sub].val) || 0;
         }
       });
@@ -681,9 +688,10 @@ async function loadCurrentSessionAnalysis(student) {
 
   // examData[exam] = { rank, totalStudents, subjects: { [subject]: {studentVal, classAvgPct, max} } }
   const examData = {};
+  const classSubjects = subjectsForClass(cls);
   EXAMS.forEach(exam => {
     const subjects = {};
-    SUBJECTS.forEach(sub => {
+    classSubjects.forEach(sub => {
       const vals = classmates.map(c => marksLookup[`${c.id}_${exam}_${sub}`]).filter(Boolean);
       if (!vals.length) return;
       const myEntry = marksLookup[`${student.id}_${exam}_${sub}`];
@@ -693,7 +701,7 @@ async function loadCurrentSessionAnalysis(student) {
         studentVal: myEntry.absent ? null : Number(myEntry.val)||0,
         studentAbsent: myEntry.absent,
         classAvgVal,
-        max: EXAM_MAX[exam]
+        max: maxMarksFor(exam, sub)
       };
     });
     if (!Object.keys(subjects).length) return;
@@ -702,7 +710,7 @@ async function loadCurrentSessionAnalysis(student) {
       let total = 0, max = 0;
       SUBJECTS.forEach(sub => {
         const e = marksLookup[`${c.id}_${exam}_${sub}`];
-        if (e) { max += EXAM_MAX[exam]; if (!e.absent) total += Number(e.val) || 0; }
+        if (e) { max += maxMarksFor(exam, sub); if (!e.absent) total += Number(e.val) || 0; }
       });
       return { id: c.id, pct: max > 0 ? total / max * 100 : null };
     }).filter(r => r.pct !== null);
@@ -733,7 +741,7 @@ function renderOverallRank(student, classmates, marksLookup) {
     EXAMS.forEach(exam => {
       SUBJECTS.forEach(sub => {
         const e = marksLookup[`${studentId}_${exam}_${sub}`];
-        if (e) { max += EXAM_MAX[exam]; if (!e.absent) total += Number(e.val) || 0; }
+        if (e) { max += maxMarksFor(exam, sub); if (!e.absent) total += Number(e.val) || 0; }
       });
     });
     return max > 0 ? total / max * 100 : null;
@@ -782,7 +790,7 @@ function renderExamWiseComparison(cls, session, examData) {
 
     return `<div class="exam-block">
       <div class="exam-block-head">
-        <span>${EXAM_LABELS[exam]||exam} (Max ${EXAM_MAX[exam]} per subject)</span>
+        <span>${EXAM_LABELS[exam]||exam} (Max ${EXAM_MAX[exam]} per subject${exam === 'HalfYearly' || exam === 'Annual' ? ', Drawing ' + DRAWING_MAX[exam] : ''})</span>
         <span class="rank-tag">Rank ${d.rank} of ${d.totalStudents} &mdash; ${d.overallPct.toFixed(1)}% overall</span>
       </div>
       ${bars}

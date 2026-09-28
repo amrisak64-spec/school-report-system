@@ -238,8 +238,13 @@ const SUBJECTS = ['English','Hindi','Maths','Science','SST','GK','Computer','San
 const SUBJECT_ALIASES = { 'Science/E.V.S.':'Science', 'S.S.T.':'SST', 'G.K.':'GK' };
 const EXAMS = ['PA1','HalfYearly','PA2','Annual'];
 const EXAM_MAX = { PA1:20, HalfYearly:80, PA2:20, Annual:80 };
-const SUBJ_MAX = 200; // per subject total max
-const GRAND_MAX = SUBJECTS.length * SUBJ_MAX; // 1800
+// Drawing Half Yearly / Annual are out of 30
+const DRAWING_MAX = { PA1:20, HalfYearly:30, PA2:20, Annual:30 };
+const maxMarksFor = (exam, subject) => (subject === 'Drawing' ? DRAWING_MAX : EXAM_MAX)[exam];
+// Classes II–V do not study SST or Sanskrit
+const JUNIOR_CLASSES = ['II','III','IV','V'];
+const subjectsForClass = cls => JUNIOR_CLASSES.includes(cls)
+  ? SUBJECTS.filter(s => s !== 'SST' && s !== 'Sanskrit') : SUBJECTS;
 
 let currentUser = null;
 let tableData = [];
@@ -251,6 +256,7 @@ let lastActiveExams = [];
 let lastRankMap = {};
 let lastSortedData = [];
 let lastTableData = [];
+let lastSubjects = SUBJECTS;
 let sortBy = 'rank';
 
 function sortTableData(data, rankMap, by) {
@@ -340,21 +346,22 @@ window.loadTabulation = async function() {
       marksLookup[`${m.studentId}_${m.exam}_${sub}`] = { val: m.marksObtained, absent: !!m.absent };
     });
 
-    // Exams to show
+    // Exams and subjects to show
     const activeExams = examFilter ? [examFilter] : EXAMS;
+    const subjects = subjectsForClass(cls);
 
     // Build tabulation data
     tableData = students.map(s => {
       const subjectTotals = {};
       let grandTotal = 0, grandMax = 0;
 
-      SUBJECTS.forEach(sub => {
+      subjects.forEach(sub => {
         let subTotal = 0, subMax = 0;
         const examMarks = {};
         activeExams.forEach(exam => {
           const entry = marksLookup[`${s.id}_${exam}_${sub}`];
           examMarks[exam] = entry ? { val: entry.absent ? null : entry.val, absent: entry.absent } : null;
-          if (entry) { subTotal += entry.absent ? 0 : Number(entry.val); subMax += EXAM_MAX[exam]; }
+          if (entry) { subTotal += entry.absent ? 0 : Number(entry.val); subMax += maxMarksFor(exam, sub); }
         });
         subjectTotals[sub] = { examMarks, total: subMax ? subTotal : null, max: subMax };
         if (subMax > 0) { grandTotal += subTotal; grandMax += subMax; }
@@ -382,12 +389,12 @@ window.loadTabulation = async function() {
 
     if (examFilter) {
       // Single exam: one column per subject, no sub-header row needed (use rowspan=2)
-      SUBJECTS.forEach(sub => {
-        hRow1 += `<th class="th-subj" rowspan="2" style="min-width:55px;">${sub}<br><small style="font-weight:400;">(${EXAM_MAX[examFilter]})</small></th>`;
+      subjects.forEach(sub => {
+        hRow1 += `<th class="th-subj" rowspan="2" style="min-width:55px;">${sub}<br><small style="font-weight:400;">(${maxMarksFor(examFilter, sub)})</small></th>`;
       });
     } else {
       // All exams: subject group header + sub-row with exam names
-      SUBJECTS.forEach(sub => {
+      subjects.forEach(sub => {
         hRow1 += `<th class="th-subj" colspan="5" style="min-width:220px;">${sub}</th>`;
       });
     }
@@ -400,7 +407,7 @@ window.loadTabulation = async function() {
     let hRow2 = '';
     if (!examFilter) {
       hRow2 = '<tr>';
-      SUBJECTS.forEach(() => {
+      subjects.forEach(() => {
         activeExams.forEach(ex => hRow2 += `<th class="th-subj">${EXAM_LABELS[ex]||ex}</th>`);
         hRow2 += '<th class="th-subj" style="background:#155f2e;">Total</th>';
       });
@@ -414,6 +421,7 @@ window.loadTabulation = async function() {
 
     lastExamFilter = examFilter;
     lastActiveExams = activeExams;
+    lastSubjects = subjects;
     lastRankMap = rankMap;
     lastTableData = tableData;
     lastSortedData = sortedData;
@@ -468,12 +476,12 @@ function renderTbody() {
     const badgeClass = r===1?'r1':r===2?'r2':r===3?'r3':'rn';
 
     let cols = '';
-    SUBJECTS.forEach(sub => {
+    lastSubjects.forEach(sub => {
       const st = s.subjectTotals[sub];
       if (examFilter) {
         const entry = st.examMarks[examFilter];
         if (entryMode) {
-          const max = EXAM_MAX[examFilter];
+          const max = maxMarksFor(examFilter, sub);
           cols += `<td><input type="number" class="marks-input-sm" data-student="${s.id}" data-subject="${sub}"
             value="${entry && entry.val !== null ? entry.val : ''}" min="0" max="${max}" placeholder="0-${max}"/></td>`;
         } else if (entry && entry.val === null) {
@@ -541,7 +549,6 @@ window.saveEntryMarks = async function() {
   const session = document.getElementById('sel-session').value;
   const cls     = document.getElementById('sel-class').value;
   const section = document.getElementById('sel-section').value;
-  const max     = EXAM_MAX[exam];
 
   const studentById = {};
   lastSortedData.forEach(s => studentById[s.id] = s);
@@ -553,6 +560,7 @@ window.saveEntryMarks = async function() {
     input.classList.remove('error');
     if (raw === '') return;
     const num = Number(raw);
+    const max = maxMarksFor(exam, input.dataset.subject);
     if (isNaN(num) || num < 0 || num > max) {
       input.classList.add('error');
       const stu = studentById[input.dataset.student];
@@ -589,7 +597,7 @@ window.saveEntryMarks = async function() {
           session,
           marksObtained: item.marks,
           absent: false,
-          maxMarks: max,
+          maxMarks: maxMarksFor(exam, item.subject),
           enteredBy: currentUser?.email || '',
           updatedAt: serverTimestamp()
         }, { merge: true });
@@ -615,7 +623,7 @@ window.exportCSV = function() {
   const title = `Prabha Gyan Jyoti Public School - ${examLabel} Tabulation Sheet - Session ${session} - Class ${cls}${section ? ' '+section : ''}`;
 
   const headers = ['Rank','Roll No','Student Name'];
-  SUBJECTS.forEach(sub => {
+  lastSubjects.forEach(sub => {
     if (examFilter) {
       headers.push(`${sub} (${EXAM_LABELS[examFilter]||examFilter})`);
     } else {
@@ -627,7 +635,7 @@ window.exportCSV = function() {
 
   const rows = lastSortedData.map(s => {
     const row = [lastRankMap[s.id], s.rollNo||'', s.name||''];
-    SUBJECTS.forEach(sub => {
+    lastSubjects.forEach(sub => {
       const st = s.subjectTotals[sub];
       const cell = entry => !entry ? '' : (entry.val === null ? 'A' : entry.val);
       if (examFilter) {
