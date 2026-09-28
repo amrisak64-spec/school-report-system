@@ -7,7 +7,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyBvi2Px_kwKzzDWM0p1uGb9YKtPrZoEebY",
  authDomain: "prabhagyanjyoti.firebaseapp.com",
 projectId: "prabhagyanjyoti",
-  storageBucket: "prabhagyanJyoti.firebasestorage.app",
+  storageBucket: "prabhagyanjyoti.firebasestorage.app",
   messagingSenderId: "167332170512",
   appId: "1:167332170512:web:92fe5e1653654adcc4b395"
 };
