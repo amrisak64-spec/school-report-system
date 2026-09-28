@@ -413,6 +413,7 @@
     <div class="tab" data-title="Performance" onclick="showTab('performance', this)">📈 <span>Performance</span></div>
     <div class="tab" data-title="Print Report Card" onclick="showTab('report', this)">🖨️ <span>Print Report Card</span></div>
     <div class="tab" data-title="Marks Slip" onclick="showTab('markslip', this)">📋 <span>Marks Slip</span></div>
+    <div class="tab" data-title="Exam Comparison" onclick="showTab('examcmp', this)">📉 <span>Exam Comparison</span></div>
     <div class="tab" onclick="window.location.href='appearance.html'">📋 <span>Appearance</span></div>
     <div class="tab" onclick="window.location.href='tabulation.html'">📊 <span>Tabulation</span></div>
   </nav>
@@ -1059,6 +1060,71 @@
       <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
         <button class="btn btn-success" onclick="generateMarksSlips()">🖨️ Print Marks Slips</button>
         <span style="font-size:12px;color:#888;">Opens a print-ready page with 6 slips per A4 sheet.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== EXAM COMPARISON ===== -->
+  <div class="section" id="sec-examcmp">
+    <div class="card">
+      <h2>📉 Exam-wise Comparison (PA-1 → Half Yearly → PA-2 → Annual)</h2>
+      <p style="font-size:13px;color:#555;margin-bottom:14px;">Compares every student's percentage across the four exams, so you can see who is improving and who is slipping. Percentages are used because the exams have different maximum marks.</p>
+      <div class="filter-row">
+        <div>
+          <label>Session</label>
+          <select id="xc-session">
+            <option value="2024-25">2024-25</option>
+            <option value="2025-26">2025-26</option>
+            <option value="2026-27" selected>2026-27</option>
+            <option value="2027-28">2027-28</option>
+          </select>
+        </div>
+        <div>
+          <label>Class</label>
+          <select id="xc-class" style="width:140px;" onchange="fillExamCmpSubjects()">
+            <option value="">-- Select --</option>
+            <option>II</option><option>III</option><option>IV</option>
+            <option>V</option><option>VI</option><option>VII</option>
+            <option>VIII</option>
+          </select>
+        </div>
+        <div>
+          <label>Section</label>
+          <select id="xc-section" style="width:140px;">
+            <option value="">-- All --</option>
+            <option value="A">Section A</option>
+            <option value="B">Section B</option>
+          </select>
+        </div>
+        <div>
+          <label>Subject</label>
+          <select id="xc-subject" style="width:170px;">
+            <option value="">All Subjects (Overall)</option>
+          </select>
+        </div>
+        <div>
+          <label>Sort By</label>
+          <select id="xc-sort" style="width:190px;" onchange="renderExamCmp()">
+            <option value="roll">Roll No.</option>
+            <option value="name">Name</option>
+            <option value="latest">Latest Exam % (high → low)</option>
+            <option value="improved">Most Improved</option>
+            <option value="declined">Most Declined</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-primary" onclick="loadExamCmp()">🔍 Show Comparison</button>
+        <button class="btn btn-success" id="xc-print" style="display:none;" onclick="printExamCmp()">🖨️ Print</button>
+        <button class="btn" id="xc-csv" style="display:none;background:#8e44ad;color:#fff;" onclick="exportExamCmpCSV()">⬇️ Export CSV</button>
+      </div>
+      <div id="xc-msg" style="margin-top:12px;font-size:13px;color:#555;"></div>
+      <div id="xc-summary" style="display:none;margin-top:14px;"></div>
+      <div id="xc-table-wrap" style="display:none;margin-top:14px;overflow-x:auto;">
+        <table id="xc-table">
+          <thead id="xc-thead"></thead>
+          <tbody id="xc-tbody"></tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -3442,6 +3508,221 @@ window.generateMarksSlips = async function() {
   <div class="page"><div class="grid">${slips}</div></div>
   </body></html>`);
   win.document.close();
+};
+
+// ── EXAM-WISE COMPARISON ──────────────────────────────────────────────────
+const XC_EXAMS = ['PA1','HalfYearly','PA2','Annual'];
+let _xc = null; // { cls, section, session, subject, rows, avg }
+
+window.fillExamCmpSubjects = function() {
+  const cls = document.getElementById('xc-class').value;
+  const sel = document.getElementById('xc-subject');
+  const prev = sel.value;
+  const subs = cls ? subjectsForClass(cls) : SUBJECTS;
+  sel.innerHTML = '<option value="">All Subjects (Overall)</option>' +
+    subs.map(s => `<option value="${s}">${s}</option>`).join('');
+  if (subs.includes(prev)) sel.value = prev;
+};
+
+window.loadExamCmp = async function() {
+  const cls     = document.getElementById('xc-class').value;
+  const section = document.getElementById('xc-section').value;
+  const session = document.getElementById('xc-session').value;
+  const subject = document.getElementById('xc-subject').value;
+  const msgEl   = document.getElementById('xc-msg');
+  if (!cls) { msgEl.textContent = '⚠️ Please select a class.'; return; }
+  msgEl.textContent = 'Loading...';
+  ['xc-summary','xc-table-wrap','xc-print','xc-csv'].forEach(id => document.getElementById(id).style.display = 'none');
+
+  try {
+    const [stuSnap, marksSnap] = await Promise.all([
+      getDocs(query(collection(db,'students'), where('class','==',cls), where('session','==',session))),
+      getDocs(query(collection(db,'marks'),    where('class','==',cls), where('session','==',session)))
+    ]);
+    const students = [];
+    stuSnap.forEach(d => {
+      const st = { id: d.id, ...d.data() };
+      if (st.left) return;
+      if (!section || st.section === section) students.push(st);
+    });
+    if (!students.length) { msgEl.textContent = 'No students found for this class/session.'; return; }
+
+    const lookup = {};
+    marksSnap.forEach(d => {
+      const m = d.data();
+      const sub = SUBJECT_ALIASES[m.subject] || m.subject;
+      lookup[`${m.studentId}_${m.exam}_${sub}`] = (m.absent || m.marksObtained === null) ? 0 : Number(m.marksObtained) || 0;
+    });
+
+    const subjects = subject ? [subject] : subjectsForClass(cls);
+    const rows = students.map(st => {
+      const exams = {};
+      XC_EXAMS.forEach(ex => {
+        let got = 0, max = 0;
+        subjects.forEach(sub => {
+          const v = lookup[`${st.id}_${ex}_${sub}`];
+          if (v !== undefined) { got += v; max += maxMarksFor(ex, sub); }
+        });
+        exams[ex] = max > 0 ? { got, max, pct: got / max * 100 } : null;
+      });
+      const done = XC_EXAMS.filter(ex => exams[ex]);
+      const first = done.length ? exams[done[0]].pct : null;
+      const last  = done.length ? exams[done[done.length-1]].pct : null;
+      const change = done.length >= 2 ? last - first : null;
+      return { id: st.id, rollNo: st.rollNo, name: st.name || '', section: st.section || '', exams, latest: last, change };
+    });
+
+    // Class average per exam, over students who have marks in that exam
+    const avg = {};
+    XC_EXAMS.forEach(ex => {
+      const vals = rows.map(r => r.exams[ex]).filter(Boolean).map(e => e.pct);
+      avg[ex] = vals.length ? vals.reduce((a,b) => a+b, 0) / vals.length : null;
+    });
+
+    _xc = { cls, section, session, subject, rows, avg };
+    if (!XC_EXAMS.some(ex => avg[ex] !== null)) { msgEl.textContent = 'No marks entered yet for this selection.'; return; }
+    msgEl.textContent = '';
+    renderExamCmp();
+  } catch(e) {
+    msgEl.textContent = '❌ Error: ' + e.message;
+  }
+};
+
+const xcPctColor = p => p >= 75 ? '#1e8449' : p >= 50 ? '#1a5276' : p >= 33 ? '#b9770e' : '#c0392b';
+const xcDelta = d => d === null || d === undefined ? ''
+  : Math.abs(d) < 0.05 ? '<span style="color:#888;">● 0.0</span>'
+  : d > 0 ? `<span style="color:#1e8449;">▲ ${d.toFixed(1)}</span>`
+          : `<span style="color:#c0392b;">▼ ${Math.abs(d).toFixed(1)}</span>`;
+const xcTrendLabel = c => c === null ? '' : c >= 5 ? 'Improved' : c <= -5 ? 'Declined' : 'Steady';
+const xcTrend = c => c === null ? '<span style="color:#aaa;">—</span>'
+  : c >= 5  ? '<span style="color:#1e8449;font-weight:700;">📈 Improved</span>'
+  : c <= -5 ? '<span style="color:#c0392b;font-weight:700;">📉 Declined</span>'
+  : '<span style="color:#555;font-weight:700;">➖ Steady</span>';
+
+function xcSortedRows() {
+  const by = document.getElementById('xc-sort').value;
+  const rows = [..._xc.rows];
+  const hi = v => v === null ? -Infinity : v;
+  const lo = v => v === null ? Infinity : v;
+  if (by === 'name')          rows.sort((a,b) => a.name.localeCompare(b.name));
+  else if (by === 'latest')   rows.sort((a,b) => hi(b.latest) - hi(a.latest));
+  else if (by === 'improved') rows.sort((a,b) => hi(b.change) - hi(a.change));
+  else if (by === 'declined') rows.sort((a,b) => lo(a.change) - lo(b.change));
+  else rows.sort((a,b) => (Number(a.rollNo)||0) - (Number(b.rollNo)||0));
+  return rows;
+}
+
+window.renderExamCmp = function() {
+  if (!_xc) return;
+  const { rows, avg, subject } = _xc;
+
+  // Summary tiles: class average per exam + change from the previous exam
+  let prevAvg = null;
+  const tiles = XC_EXAMS.map(ex => {
+    const a = avg[ex];
+    const d = a !== null && prevAvg !== null ? a - prevAvg : null;
+    if (a !== null) prevAvg = a;
+    return `<div style="flex:1;min-width:140px;background:#f4f7fb;border:1px solid #dde5f0;border-radius:8px;padding:12px;text-align:center;">
+      <div style="font-size:12px;color:#555;font-weight:600;">${EXAM_LABELS[ex]} — Class Avg</div>
+      <div style="font-size:22px;font-weight:800;color:${a!==null?xcPctColor(a):'#aaa'};">${a!==null?a.toFixed(1)+'%':'—'}</div>
+      <div style="font-size:12px;">${xcDelta(d)}</div>
+    </div>`;
+  }).join('');
+  const count = label => rows.filter(r => xcTrendLabel(r.change) === label).length;
+  document.getElementById('xc-summary').innerHTML = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">${tiles}</div>
+    <div style="font-size:13px;color:#333;">
+      <b>Class ${esc(_xc.cls)}${_xc.section?' - '+esc(_xc.section):''}</b> | ${subject ? esc(subject) : 'All Subjects'} | Session ${esc(_xc.session)} &nbsp;—&nbsp;
+      <span style="color:#1e8449;font-weight:700;">📈 ${count('Improved')} improved</span> &nbsp;
+      <span style="color:#555;font-weight:700;">➖ ${count('Steady')} steady</span> &nbsp;
+      <span style="color:#c0392b;font-weight:700;">📉 ${count('Declined')} declined</span>
+      <span style="color:#888;font-size:12px;"> (improved/declined = change of 5% or more between first and latest exam)</span>
+    </div>`;
+
+  document.getElementById('xc-thead').innerHTML = `<tr>
+    <th style="text-align:center;">#</th><th>Roll</th><th>Student Name</th>
+    ${XC_EXAMS.map(ex => `<th style="text-align:center;">${EXAM_LABELS[ex]}</th>`).join('')}
+    <th style="text-align:center;">Change<br><small style="font-weight:400;">(first → latest)</small></th>
+    <th style="text-align:center;">Trend</th></tr>`;
+
+  const cell = (r, ex, i) => {
+    const e = r.exams[ex];
+    if (!e) return `<td style="text-align:center;color:#bbb;">—</td>`;
+    const prevEx = XC_EXAMS.slice(0, i).reverse().find(p => r.exams[p]);
+    const d = prevEx ? e.pct - r.exams[prevEx].pct : null;
+    const marks = subject ? `<div style="font-size:11px;color:#888;">${e.got}/${e.max}</div>` : '';
+    return `<td style="text-align:center;">
+      <div style="font-weight:700;color:${xcPctColor(e.pct)};">${e.pct.toFixed(1)}%</div>${marks}
+      <div style="font-size:11px;">${xcDelta(d)}</div></td>`;
+  };
+
+  const body = xcSortedRows().map((r, n) => `<tr>
+    <td style="text-align:center;color:#888;">${n+1}</td>
+    <td>${esc(r.rollNo ?? '-')}</td>
+    <td><b>${esc(r.name)}</b>${r.section?` <span style="color:#999;font-size:11px;">(${esc(r.section)})</span>`:''}</td>
+    ${XC_EXAMS.map((ex, i) => cell(r, ex, i)).join('')}
+    <td style="text-align:center;font-weight:700;">${r.change === null ? '<span style="color:#aaa;">—</span>' : xcDelta(r.change)}</td>
+    <td style="text-align:center;">${xcTrend(r.change)}</td>
+  </tr>`).join('');
+
+  const avgRow = `<tr style="background:#eef3fa;font-weight:700;">
+    <td></td><td></td><td>CLASS AVERAGE</td>
+    ${XC_EXAMS.map(ex => `<td style="text-align:center;color:${avg[ex]!==null?xcPctColor(avg[ex]):'#aaa'};">${avg[ex]!==null?avg[ex].toFixed(1)+'%':'—'}</td>`).join('')}
+    <td></td><td></td></tr>`;
+
+  document.getElementById('xc-tbody').innerHTML = body + avgRow;
+  ['xc-summary','xc-table-wrap','xc-print','xc-csv'].forEach(id => document.getElementById(id).style.display = '');
+};
+
+window.printExamCmp = function() {
+  if (!_xc) return;
+  const title = `Exam-wise Comparison – Class ${_xc.cls}${_xc.section?' - '+_xc.section:''} – ${_xc.subject || 'All Subjects'} – Session ${_xc.session}`;
+  const win = window.open('', '_blank');
+  if (!win) { alert('Please allow pop-ups to print.'); return; }
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(title)}</title>
+  <style>
+    body { font-family:Arial,sans-serif; margin:12mm; color:#000; }
+    h1 { font-size:16px; text-align:center; margin:0; }
+    h2 { font-size:13px; text-align:center; margin:4px 0 12px; font-weight:600; color:#333; }
+    table { width:100%; border-collapse:collapse; font-size:11px; }
+    th { background:#1a3c6e; color:#fff; padding:6px 4px; border:1px solid #555; }
+    td { border:1px solid #999; padding:4px; }
+    tr { break-inside:avoid; page-break-inside:avoid; }
+    .summary { margin-bottom:10px; }
+    .no-print { margin-bottom:10px; }
+    @media print {
+      .no-print { display:none; }
+      body { margin:8mm; }
+      * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    }
+  </style></head><body>
+  <div class="no-print"><button onclick="window.print()" style="padding:8px 18px;background:#27ae60;color:#fff;border:none;border-radius:5px;font-weight:700;cursor:pointer;">🖨️ Print / Save PDF</button></div>
+  <h1>PRABHA GYAN JYOTI PUBLIC SCHOOL, GANGOH</h1>
+  <h2>${esc(title)}</h2>
+  <div class="summary">${document.getElementById('xc-summary').innerHTML}</div>
+  <table>${document.getElementById('xc-table').innerHTML}</table>
+  </body></html>`);
+  win.document.close();
+};
+
+window.exportExamCmpCSV = function() {
+  if (!_xc) return;
+  const title = `Prabha Gyan Jyoti Public School - Exam-wise Comparison - Class ${_xc.cls}${_xc.section?' '+_xc.section:''} - ${_xc.subject || 'All Subjects'} - Session ${_xc.session}`;
+  const headers = ['#','Roll No','Student Name','Section', ...XC_EXAMS.map(ex => `${EXAM_LABELS[ex]} %`), 'Change (first to latest)', 'Trend'];
+  const rows = xcSortedRows().map((r, n) => [
+    n+1, r.rollNo ?? '', r.name, r.section,
+    ...XC_EXAMS.map(ex => r.exams[ex] ? r.exams[ex].pct.toFixed(1) : ''),
+    r.change === null ? '' : r.change.toFixed(1),
+    xcTrendLabel(r.change)
+  ]);
+  rows.push(['','','CLASS AVERAGE','', ...XC_EXAMS.map(ex => _xc.avg[ex] !== null ? _xc.avg[ex].toFixed(1) : ''), '', '']);
+  const csv = [[title], [], headers, ...rows]
+    .map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `ExamComparison_Class${_xc.cls}${_xc.section?'_'+_xc.section:''}${_xc.subject?'_'+_xc.subject:''}_${_xc.session}.csv`;
+  a.click();
 };
 
 function showEntryMsg(msg, type) {
