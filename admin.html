@@ -413,7 +413,11 @@
     <div class="tab" data-title="Performance" onclick="showTab('performance', this)">📈 <span>Performance</span></div>
     <div class="tab" data-title="Print Report Card" onclick="showTab('report', this)">🖨️ <span>Print Report Card</span></div>
     <div class="tab" data-title="Marks Slip" onclick="showTab('markslip', this)">📋 <span>Marks Slip</span></div>
+<<<<<<< HEAD
     <div class="tab" data-title="Exam Comparison" onclick="showTab('examcmp', this)">📉 <span>Exam Comparison</span></div>
+=======
+    <div class="tab" data-title="Admit Card" onclick="showTab('admitcard', this)">🎫 <span>Admit Card</span></div>
+>>>>>>> 896a363bac0b6fb997fda263cd05da0ec2af60a1
     <div class="tab" onclick="window.location.href='appearance.html'">📋 <span>Appearance</span></div>
     <div class="tab" onclick="window.location.href='tabulation.html'">📊 <span>Tabulation</span></div>
   </nav>
@@ -1064,6 +1068,7 @@
     </div>
   </div>
 
+<<<<<<< HEAD
   <!-- ===== EXAM COMPARISON ===== -->
   <div class="section" id="sec-examcmp">
     <div class="card">
@@ -1073,6 +1078,17 @@
         <div>
           <label>Session</label>
           <select id="xc-session">
+=======
+  <!-- ===== ADMIT CARD ===== -->
+  <div class="section" id="sec-admitcard">
+    <div class="card">
+      <h2>🎫 Print Admit Cards (Class-wise)</h2>
+      <p style="font-size:13px;color:#555;margin-bottom:14px;">Select session, class, section and exam — prints 10 admit cards per A4 page with Name, Father's Name and Class filled in.</p>
+      <div class="filter-row">
+        <div>
+          <label>Session</label>
+          <select id="ac-session">
+>>>>>>> 896a363bac0b6fb997fda263cd05da0ec2af60a1
             <option value="2024-25">2024-25</option>
             <option value="2025-26">2025-26</option>
             <option value="2026-27" selected>2026-27</option>
@@ -1081,7 +1097,11 @@
         </div>
         <div>
           <label>Class</label>
+<<<<<<< HEAD
           <select id="xc-class" style="width:140px;" onchange="fillExamCmpSubjects()">
+=======
+          <select id="ac-class" style="width:140px;">
+>>>>>>> 896a363bac0b6fb997fda263cd05da0ec2af60a1
             <option value="">-- Select --</option>
             <option>II</option><option>III</option><option>IV</option>
             <option>V</option><option>VI</option><option>VII</option>
@@ -1090,13 +1110,18 @@
         </div>
         <div>
           <label>Section</label>
+<<<<<<< HEAD
           <select id="xc-section" style="width:140px;">
+=======
+          <select id="ac-section" style="width:140px;">
+>>>>>>> 896a363bac0b6fb997fda263cd05da0ec2af60a1
             <option value="">-- All --</option>
             <option value="A">Section A</option>
             <option value="B">Section B</option>
           </select>
         </div>
         <div>
+<<<<<<< HEAD
           <label>Subject</label>
           <select id="xc-subject" style="width:170px;">
             <option value="">All Subjects (Overall)</option>
@@ -1125,6 +1150,42 @@
           <thead id="xc-thead"></thead>
           <tbody id="xc-tbody"></tbody>
         </table>
+=======
+          <label>Exam</label>
+          <select id="ac-exam" style="width:160px;" onchange="updateAdmitTitle()">
+            <option value="PERIODIC ASSESSMENT - 1">PA-1</option>
+            <option value="HALF YEARLY EXAMINATION" selected>Half Yearly</option>
+            <option value="PERIODIC ASSESSMENT - 2">PA-2</option>
+            <option value="ANNUAL EXAMINATION">Annual</option>
+          </select>
+        </div>
+        <div>
+          <label>Year</label>
+          <input id="ac-year" type="number" style="width:100px;" oninput="updateAdmitTitle()"/>
+        </div>
+      </div>
+      <div class="filter-row" style="margin-top:10px;">
+        <div style="flex:1;min-width:240px;">
+          <label>Title printed on card (editable)</label>
+          <input id="ac-title" placeholder="e.g. HALF YEARLY EXAMINATION 2026"/>
+        </div>
+        <div>
+          <label>Roll Number</label>
+          <select id="ac-roll-mode" style="width:220px;" onchange="document.getElementById('ac-roll-start-wrap').style.display = this.value==='seq' ? '' : 'none'">
+            <option value="blank" selected>Leave blank (fill by hand)</option>
+            <option value="class">Class roll no.</option>
+            <option value="seq">Exam roll no. (auto sequence)</option>
+          </select>
+        </div>
+        <div id="ac-roll-start-wrap" style="display:none;">
+          <label>Start from</label>
+          <input id="ac-roll-start" type="number" value="1001" style="width:110px;"/>
+        </div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-success" onclick="generateAdmitCards()">🖨️ Print Admit Cards</button>
+        <span style="font-size:12px;color:#888;">Opens a print-ready page with 10 cards per A4 sheet. Left / passed-out students are skipped.</span>
+>>>>>>> 896a363bac0b6fb997fda263cd05da0ec2af60a1
       </div>
     </div>
   </div>
@@ -3510,6 +3571,7 @@ window.generateMarksSlips = async function() {
   win.document.close();
 };
 
+<<<<<<< HEAD
 // ── EXAM-WISE COMPARISON ──────────────────────────────────────────────────
 const XC_EXAMS = ['PA1','HalfYearly','PA2','Annual'];
 let _xc = null; // { cls, section, session, subject, rows, avg }
@@ -3701,10 +3763,153 @@ window.printExamCmp = function() {
   <h2>${esc(title)}</h2>
   <div class="summary">${document.getElementById('xc-summary').innerHTML}</div>
   <table>${document.getElementById('xc-table').innerHTML}</table>
+=======
+// ---- ADMIT CARDS ----
+window.updateAdmitTitle = function() {
+  const exam = document.getElementById('ac-exam').value;
+  const year = document.getElementById('ac-year').value.trim();
+  document.getElementById('ac-title').value = year ? `${exam} ${year}` : exam;
+};
+document.getElementById('ac-year').value = new Date().getFullYear();
+updateAdmitTitle();
+
+window.generateAdmitCards = async function() {
+  const session  = document.getElementById('ac-session').value;
+  const cls      = document.getElementById('ac-class').value;
+  const section  = document.getElementById('ac-section').value;
+  const title    = document.getElementById('ac-title').value.trim();
+  const rollMode = document.getElementById('ac-roll-mode').value;
+  const rollStart = parseInt(document.getElementById('ac-roll-start').value, 10) || 1;
+  if (!cls) { alert('Please select a class.'); return; }
+
+  const win = window.open('', '_blank');
+  if (!win) { alert('Popup was blocked. Please allow popups for this site.'); return; }
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Loading...</title></head><body style="font-family:Arial;padding:40px;text-align:center;color:#555;"><p style="margin-top:80px;font-size:15px;">Loading admit cards...</p></body></html>`);
+  win.document.close();
+
+  let students = [];
+  try {
+    const stuQ = section
+      ? query(collection(db,'students'), where('class','==',cls), where('section','==',section), where('session','==',session))
+      : query(collection(db,'students'), where('class','==',cls), where('session','==',session));
+    const snap = await getDocs(stuQ);
+    snap.forEach(d => { const s = d.data(); if (!s.left && !s.passedOut) students.push({id:d.id, ...s}); });
+  } catch(e) { win.close(); alert('Error loading students: ' + e.message); return; }
+
+  if (students.length === 0) { win.close(); alert('No students found for this class / session.'); return; }
+  students.sort((a,b) => (a.section||'').localeCompare(b.section||'') || (a.rollNo||0)-(b.rollNo||0));
+
+  const logoUrl = new URL('logo.svg', window.location.href).href;
+  const rollFor = (s, i) => rollMode === 'class' ? (s.rollNo || '') : rollMode === 'seq' ? rollStart + i : '';
+  // Principal's signature as vector ink strokes (no font needed, prints identically everywhere)
+  const sigSvg = `<svg class="ac-sig" viewBox="-260 -820 5200 1300"><g transform="rotate(-4 2300 0)" fill="#1f3a93" stroke="#1f3a93" stroke-width="10" stroke-linejoin="round">`
+    + `<path d="M314 49Q352 49 398 -12Q444 -73 483 -162Q522 -252 556 -347Q589 -442 608 -516Q627 -591 627 -605Q627 -619 625 -619Q616 -619 511 -508Q406 -398 344 -336Q282 -274 199 -198Q27 -42 -193 79Q-199 82 -205 82Q-211 82 -211 78Q-211 74 -204 71Q-56 -5 89 -124Q238 -247 330 -340Q422 -434 470 -485Q518 -536 584 -607Q651 -678 686 -715Q692 -721 696 -721Q700 -721 700 -715Q700 -684 681 -599Q662 -514 625 -402Q588 -289 542 -185Q496 -81 433 -10Q370 62 307 62Q268 62 246 22Q223 -19 223 -84Q223 -150 255 -205Q263 -219 269 -219Q274 -219 276 -211Q266 -194 258 -152Q250 -111 250 -69Q250 49 314 49ZM881 -426 736 -257Q815 -310 979 -477Q1143 -644 1143 -676Q1143 -681 1138 -681Q1133 -681 1127 -678Q1062 -642 969 -531Q965 -527 928 -482Q890 -436 881 -426ZM1167 -687Q1167 -640 994 -468Q820 -295 703 -218L687 -199Q662 -176 586 -74Q580 -64 580 -63Q580 -62 582 -62Q583 -62 593 -68Q603 -75 668 -122Q818 -231 887 -265Q893 -267 895 -267Q906 -267 906 -248Q906 -230 877 -192Q848 -153 813 -120Q719 -31 719 -20Q719 -14 723 -14Q779 -32 821 -57L919 -119L920 -106Q815 -36 764 -17Q712 2 698 2Q683 2 683 -7Q683 -25 734 -79Q785 -133 836 -184Q886 -236 886 -246Q886 -248 883 -248Q870 -248 759 -173Q648 -98 592 -56Q537 -13 531 -6Q525 0 500 3Q490 3 490 -2Q490 -7 504 -26Q576 -114 736 -300Q896 -487 908 -498Q920 -510 942 -533Q965 -556 982 -574Q1000 -591 1028 -616Q1055 -642 1075 -659Q1126 -701 1150 -701Q1157 -701 1162 -696Q1167 -692 1167 -687ZM1214 -119 1215 -106Q1054 1 1019 1Q1013 1 1013 -6Q1013 -27 1029 -66L1034 -80Q1034 -82 1030 -82Q1027 -82 972 -42Q918 -2 902 -2Q885 -2 885 -32Q885 -115 980 -194Q1074 -273 1207 -273Q1219 -273 1219 -263Q1219 -253 1125 -146Q1031 -40 1031 -18Q1031 -14 1037 -14Q1043 -14 1088 -40Q1133 -66 1173 -92ZM1055 -118Q1072 -131 1121 -187Q1170 -243 1170 -252Q1170 -256 1162 -256Q1116 -256 1055 -214Q994 -171 952 -117Q909 -63 909 -30Q909 -24 915 -24Q921 -24 934 -32Q948 -39 968 -52Q987 -66 1001 -76Q1049 -112 1055 -118ZM1754 -658Q1724 -658 1533 -466Q1342 -274 1243 -137Q1335 -207 1546 -412Q1756 -616 1756 -655Q1756 -657 1754 -658ZM1773 -676Q1782 -676 1782 -665Q1782 -617 1568 -410Q1353 -202 1227 -114Q1183 -51 1183 -23Q1183 -14 1187 -14Q1228 -14 1334 -80L1394 -119L1395 -106Q1370 -90 1338 -70Q1222 2 1177 2Q1165 2 1165 -17Q1165 -75 1246 -188Q1327 -302 1432 -408Q1536 -515 1636 -596Q1737 -676 1773 -676ZM1527 -216Q1536 -227 1548 -244Q1560 -261 1568 -261Q1576 -261 1585 -246Q1585 -228 1494 -128Q1404 -28 1404 -19Q1404 -17 1410 -17Q1416 -17 1480 -58Q1614 -144 1711 -247Q1735 -269 1753 -269Q1754 -269 1755 -269Q1774 -268 1774 -264L1773 -262Q1730 -222 1645 -127Q1560 -32 1560 -15Q1560 -11 1566 -11Q1573 -11 1703 -93L1744 -119L1745 -107Q1733 -99 1714 -87Q1565 7 1540 7Q1531 7 1531 -3Q1531 -13 1556 -60Q1580 -107 1591 -120L1575 -111Q1424 -3 1394 -3Q1382 -3 1382 -16Q1382 -30 1393 -52Q1404 -73 1414 -86Q1423 -99 1442 -122Q1461 -144 1462 -145L1384 -99L1381 -110L1415 -131Q1502 -187 1527 -216ZM1996 14Q2057 14 2241 -110L2308 -152Q2315 -156 2323 -156Q2331 -156 2331 -154Q2331 -152 2328 -150L2256 -106Q2244 -98 2200 -68Q2156 -39 2135 -26Q2114 -13 2080 6Q2016 43 1975 43Q1911 43 1911 -53Q1911 -116 1949 -204Q1987 -292 2056 -383Q2124 -474 2210 -553Q2295 -632 2402 -682Q2508 -733 2609 -733Q2664 -733 2664 -691Q2664 -641 2597 -554Q2530 -468 2442 -400Q2353 -332 2300 -332Q2276 -332 2276 -346Q2276 -356 2298 -378Q2319 -401 2332 -401Q2336 -401 2336 -398Q2336 -394 2324 -382Q2311 -371 2311 -368Q2311 -364 2313 -364Q2343 -364 2425 -426Q2507 -488 2579 -568Q2651 -647 2651 -688Q2651 -721 2601 -721Q2515 -721 2418 -670Q2322 -618 2241 -538Q2160 -457 2094 -366Q2027 -275 1989 -189Q1951 -103 1951 -44Q1951 14 1996 14ZM2540 -426 2395 -257Q2474 -310 2638 -477Q2802 -644 2802 -676Q2802 -681 2797 -681Q2792 -681 2786 -678Q2721 -642 2628 -531Q2624 -527 2586 -482Q2549 -436 2540 -426ZM2826 -687Q2826 -640 2652 -468Q2479 -295 2362 -218L2346 -199Q2321 -176 2245 -74Q2239 -64 2239 -63Q2239 -62 2240 -62Q2242 -62 2252 -68Q2262 -75 2327 -122Q2477 -231 2546 -265Q2552 -267 2554 -267Q2565 -267 2565 -248Q2565 -230 2536 -192Q2507 -153 2472 -120Q2378 -31 2378 -20Q2378 -14 2382 -14Q2438 -32 2480 -57L2578 -119L2579 -106Q2474 -36 2422 -17Q2371 2 2356 2Q2342 2 2342 -7Q2342 -25 2393 -79Q2444 -133 2494 -184Q2545 -236 2545 -246Q2545 -248 2542 -248Q2529 -248 2418 -173Q2307 -98 2252 -56Q2196 -13 2190 -6Q2184 0 2159 3Q2149 3 2149 -2Q2149 -7 2163 -26Q2235 -114 2395 -300Q2555 -487 2567 -498Q2579 -510 2602 -533Q2624 -556 2642 -574Q2659 -591 2686 -616Q2714 -642 2734 -659Q2785 -701 2809 -701Q2816 -701 2821 -696Q2826 -692 2826 -687ZM2873 -119 2874 -106Q2713 1 2678 1Q2672 1 2672 -6Q2672 -27 2688 -66L2693 -80Q2693 -82 2690 -82Q2686 -82 2631 -42Q2577 -2 2560 -2Q2544 -2 2544 -32Q2544 -115 2638 -194Q2733 -273 2866 -273Q2878 -273 2878 -263Q2878 -253 2784 -146Q2690 -40 2690 -18Q2690 -14 2696 -14Q2702 -14 2747 -40Q2792 -66 2832 -92ZM2714 -118Q2731 -131 2780 -187Q2829 -243 2829 -252Q2829 -256 2821 -256Q2775 -256 2714 -214Q2653 -171 2610 -117Q2568 -63 2568 -30Q2568 -24 2574 -24Q2580 -24 2594 -32Q2607 -39 2626 -52Q2646 -66 2660 -76Q2708 -112 2714 -118ZM3005 -216Q3014 -227 3026 -244Q3038 -261 3046 -261Q3054 -261 3063 -246Q3063 -228 2972 -128Q2882 -28 2882 -19Q2882 -17 2888 -17Q2894 -17 2958 -58Q3092 -144 3189 -247Q3213 -269 3231 -269Q3232 -269 3233 -269Q3252 -268 3252 -264L3251 -262Q3208 -222 3123 -127Q3038 -32 3038 -15Q3038 -11 3044 -11Q3051 -11 3181 -93L3222 -119L3223 -107Q3211 -99 3192 -87Q3043 7 3018 7Q3009 7 3009 -3Q3009 -13 3034 -60Q3058 -107 3069 -120L3053 -111Q2902 -3 2872 -3Q2860 -3 2860 -16Q2860 -30 2871 -52Q2882 -73 2892 -86Q2901 -99 2920 -122Q2939 -144 2940 -145L2862 -99L2859 -110L2893 -131Q2980 -187 3005 -216ZM3211 -17Q3238 -17 3344 -96Q3450 -174 3496 -246Q3496 -253 3484 -253Q3456 -253 3389 -211Q3322 -169 3264 -112Q3207 -56 3207 -22Q3207 -17 3211 -17ZM3349 6Q3337 6 3337 -8Q3337 -21 3344 -35Q3350 -49 3363 -70Q3380 -97 3385 -111L3384 -112Q3233 -2 3198 -2Q3187 -2 3187 -22Q3187 -74 3224 -122Q3262 -170 3315 -200Q3368 -231 3421 -249Q3474 -267 3510 -267Q3711 -488 3824 -634Q3847 -664 3876 -665Q3885 -665 3885 -657Q3885 -649 3752 -498Q3619 -347 3486 -190Q3353 -33 3353 -10Q3353 -6 3358 -6Q3363 -6 3398 -23Q3433 -40 3461 -57L3559 -119L3560 -106Q3394 6 3349 6ZM3842 -426 3697 -257Q3776 -310 3940 -477Q4104 -644 4104 -676Q4104 -681 4099 -681Q4094 -681 4088 -678Q4023 -642 3930 -531Q3926 -527 3888 -482Q3851 -436 3842 -426ZM4128 -687Q4128 -640 3954 -468Q3781 -295 3664 -218L3648 -199Q3623 -176 3547 -74Q3541 -64 3541 -63Q3541 -62 3542 -62Q3544 -62 3554 -68Q3564 -75 3629 -122Q3779 -231 3848 -265Q3854 -267 3856 -267Q3867 -267 3867 -248Q3867 -230 3838 -192Q3809 -153 3774 -120Q3680 -31 3680 -20Q3680 -14 3684 -14Q3740 -32 3782 -57L3880 -119L3881 -106Q3776 -36 3724 -17Q3673 2 3658 2Q3644 2 3644 -7Q3644 -25 3695 -79Q3746 -133 3796 -184Q3847 -236 3847 -246Q3847 -248 3844 -248Q3831 -248 3720 -173Q3609 -98 3554 -56Q3498 -13 3492 -6Q3486 0 3461 3Q3451 3 3451 -2Q3451 -7 3465 -26Q3537 -114 3697 -300Q3857 -487 3869 -498Q3881 -510 3904 -533Q3926 -556 3944 -574Q3961 -591 3988 -616Q4016 -642 4036 -659Q4087 -701 4111 -701Q4118 -701 4123 -696Q4128 -692 4128 -687ZM4175 -119 4176 -106Q4015 1 3980 1Q3974 1 3974 -6Q3974 -27 3990 -66L3995 -80Q3995 -82 3992 -82Q3988 -82 3933 -42Q3879 -2 3862 -2Q3846 -2 3846 -32Q3846 -115 3940 -194Q4035 -273 4168 -273Q4180 -273 4180 -263Q4180 -253 4086 -146Q3992 -40 3992 -18Q3992 -14 3998 -14Q4004 -14 4049 -40Q4094 -66 4134 -92ZM4016 -118Q4033 -131 4082 -187Q4131 -243 4131 -252Q4131 -256 4123 -256Q4077 -256 4016 -214Q3955 -171 3912 -117Q3870 -63 3870 -30Q3870 -24 3876 -24Q3882 -24 3896 -32Q3909 -39 3928 -52Q3948 -66 3962 -76Q4010 -112 4016 -118ZM4479 -149 4487 -140Q4441 -112 4412 -93Q4383 -74 4368 -74Q4346 -74 4346 -93Q4346 -107 4362 -148Q4377 -190 4383 -207L4380 -210Q4376 -210 4371 -206Q4270 -125 4240 -97Q4211 -69 4184 -37Q4156 -5 4154 -2Q4151 1 4150 2Q4147 5 4130 5Q4112 5 4112 2Q4114 -1 4137 -26Q4193 -87 4238 -143L4209 -126Q4163 -98 4142 -84L4138 -95L4201 -135Q4235 -157 4260 -181Q4284 -205 4293 -220Q4302 -235 4309 -245Q4316 -255 4322 -255Q4328 -255 4341 -248Q4341 -238 4325 -213Q4309 -188 4293 -168L4277 -149Q4277 -147 4278 -147Q4281 -147 4285 -150Q4289 -154 4318 -178Q4348 -203 4370 -220Q4392 -238 4420 -254Q4449 -270 4462 -270Q4475 -270 4475 -264Q4475 -256 4426 -230Q4415 -224 4392 -172Q4370 -121 4370 -97Q4370 -92 4380 -92Q4389 -92 4417 -110ZM4588 -251Q4595 -261 4603 -261Q4611 -261 4620 -246Q4620 -228 4530 -128Q4439 -28 4439 -19Q4439 -17 4445 -17Q4451 -17 4515 -58Q4579 -99 4613 -126Q4667 -170 4712 -224L4730 -247Q4754 -269 4772 -269Q4773 -269 4774 -269Q4793 -268 4793 -264L4792 -262Q4759 -224 4680 -128Q4601 -32 4590 -13Q4598 -13 4644 -39Q4690 -65 4732 -92L4773 -118L4774 -106Q4710 -62 4654 -32L4563 15Q4484 122 4366 244Q4247 367 4226 367Q4205 367 4205 353Q4205 304 4250 250Q4302 189 4344 154Q4387 119 4408 102Q4483 44 4511 24Q4552 -26 4572 -48Q4614 -97 4644 -133L4632 -125Q4618 -116 4610 -111Q4459 -3 4429 -3Q4417 -3 4417 -16Q4417 -30 4429 -52Q4441 -75 4452 -90Q4463 -105 4483 -128Q4503 -152 4504 -153L4419 -99L4416 -110L4454 -136Q4525 -185 4546 -204Q4568 -222 4588 -251ZM4234 344Q4240 344 4302 274Q4363 204 4422 134L4480 63Q4480 61 4478 61Q4231 241 4231 338Q4231 344 4234 344Z"/>`
+    + `<path d="M4380,170 C3500,330 2000,330 700,280 C420,270 300,300 380,330" fill="none" stroke-width="30" stroke-linecap="round"/></g></svg>`;
+  const fit = (text, base, max) => text.length > max ? `font-size:${(base * max / text.length).toFixed(2)}pt;` : '';
+
+  const card = (s, i) => {
+    const name   = s.name || '';
+    const father = s.fatherName || '';
+    const clsTxt = (s.class || cls) + (s.section ? ' - ' + s.section : '');
+    const roll   = String(rollFor(s, i));
+    return `<div class="ac">
+      <svg class="ac-bg" viewBox="0 0 920 530" preserveAspectRatio="none">
+        <path d="M688,0 H920 V146 C868,130 818,112 790,78 C766,44 746,10 688,0 Z" fill="#e8b21c"/>
+        <path d="M710,0 H920 V128 C870,112 828,98 802,66 C780,36 762,7 710,0 Z" fill="#14275c"/>
+        <path d="M0,440 C80,437 150,455 215,480 C262,500 310,520 420,530 H0 Z" fill="#e8b21c"/>
+        <path d="M0,453 C78,450 142,466 200,488 C244,506 288,522 375,530 H0 Z" fill="#14275c"/>
+        <path d="M420,527 H920" stroke="#e8b21c" stroke-width="5"/>
+      </svg>
+      <div class="ac-tag">Educating<br>for a<br><span>Brighter</span><br><span>Tomorrow</span></div>
+      <div class="ac-logo"><img src="${logoUrl}" alt=""></div>
+      <div class="ac-school">PRABHA GYAN JYOTI PUBLIC SCHOOL</div>
+      <div class="ac-city">GANGOH</div>
+      <div class="ac-motto"><i></i>LEARN<b></b>GROW<b></b>SHINE<i></i></div>
+      <div class="ac-pill">ADMIT CARD</div>
+      <div class="ac-exam">${escapeHtml(title)}</div>
+      <div class="ac-fields">
+        <div class="ac-row"><span class="ac-lbl">Name</span><span class="ac-col">:</span><span class="ac-box wide" style="${fit(name,8,34)}">${escapeHtml(name)}</span></div>
+        <div class="ac-row"><span class="ac-lbl">Father's Name</span><span class="ac-col">:</span><span class="ac-box wide" style="${fit(father,8,34)}">${escapeHtml(father)}</span></div>
+        <div class="ac-row"><span class="ac-lbl">Class</span><span class="ac-col">:</span><span class="ac-box">${escapeHtml(clsTxt)}</span></div>
+        <div class="ac-row"><span class="ac-lbl">Roll Number</span><span class="ac-col">:</span><span class="ac-box">${escapeHtml(roll)}</span></div>
+      </div>
+      <div class="ac-slogan">Discipline Today<br><span>Success Tomorrow</span></div>
+      <div class="ac-sign">${sigSvg}<div class="ac-prin">Principal</div></div>
+    </div>`;
+  };
+
+  const pages = [];
+  for (let i = 0; i < students.length; i += 10) {
+    pages.push(`<div class="sheet">${students.slice(i, i+10).map((s, j) => card(s, i+j)).join('')}</div>`);
+  }
+
+  win.document.open();
+  win.document.write(`<!DOCTYPE html><html><head>
+  <meta charset="UTF-8">
+  <title>Admit Cards – Class ${escapeHtml(cls)}${section?' '+escapeHtml(section):''} – ${escapeHtml(title)}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@700;800&family=Dancing+Script:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    @page { size:A4; margin:0; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:#e9e9e9; font-family:Arial,sans-serif; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .toolbar { position:sticky;top:0;z-index:999;background:#1a3c6e;padding:6px 14px;display:flex;gap:8px;align-items:center; }
+    .toolbar span { color:#fff;font-size:12px;flex:1; }
+    .toolbar button { padding:6px 16px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600; }
+    .sheet { width:210mm; height:297mm; margin:10px auto; background:#fff; padding:8mm 10mm;
+             display:grid; grid-template-columns:92mm 92mm; grid-auto-rows:53mm; column-gap:6mm; row-gap:4mm;
+             overflow:hidden; page-break-after:always; break-after:page; }
+    .sheet:last-child { page-break-after:auto; break-after:auto; }
+    .ac { position:relative; width:92mm; height:53mm; border:0.5mm solid #14275c; overflow:hidden; background:#fff; color:#14275c; }
+    .ac-bg { position:absolute; inset:0; width:100%; height:100%; }
+    .ac-tag { position:absolute; right:0.6mm; top:0.9mm; width:12mm; text-align:center; font-family:'Dancing Script','Segoe Script','Brush Script MT',cursive; font-weight:700;
+              color:#fff; font-size:5.6pt; line-height:0.95; font-style:italic; transform:rotate(-5deg); white-space:nowrap; }
+    .ac-tag span { color:#f2c230; font-size:6.2pt; }
+    .ac-logo { position:absolute; left:2.2mm; top:2mm; width:16mm; height:16mm; border-radius:50%; overflow:hidden; }
+    .ac-logo img { width:112%; height:112%; margin:-6%; display:block; }
+    .ac-school { position:absolute; left:19mm; width:53mm; top:2.6mm; text-align:center; font-family:'Roboto Slab',Georgia,serif; font-weight:800;
+                 font-size:8.2pt; letter-spacing:-0.2pt; white-space:nowrap; }
+    .ac-city { position:absolute; left:19mm; width:53mm; top:6.6mm; text-align:center; font-family:'Roboto Slab',Georgia,serif; font-weight:800; font-size:7pt; letter-spacing:0.3pt; }
+    .ac-motto { position:absolute; left:19mm; width:53mm; top:9.6mm; display:flex; align-items:center; justify-content:center; gap:1.2mm;
+                font-size:4.6pt; letter-spacing:0.6pt; color:#14275c; white-space:nowrap; }
+    .ac-motto i { flex:1; height:0.3mm; background:#d0202a; }
+    .ac-motto b { width:0.9mm; height:0.9mm; border-radius:50%; background:#d0202a; }
+    .ac-pill { position:absolute; left:23mm; width:45mm; top:12.2mm; height:5.2mm; line-height:4.6mm; text-align:center; background:#14275c; color:#fff;
+               border:0.35mm solid #e8b21c; border-radius:3mm; font-family:'Roboto Slab',Georgia,serif; font-weight:800; font-size:10pt; letter-spacing:0.8pt; }
+    .ac-exam { position:absolute; left:17.5mm; width:56mm; top:18.3mm; height:3.9mm; line-height:3.9mm; text-align:center; background:#dbe6f6; border-radius:0.6mm;
+               font-family:'Roboto Slab',Georgia,serif; font-weight:700; font-size:6.6pt; white-space:nowrap; overflow:hidden; }
+    .ac-fields { position:absolute; left:3.5mm; top:23.6mm; right:3.5mm; }
+    .ac-row { display:flex; align-items:center; height:4.6mm; }
+    .ac-lbl { width:17mm; font-size:6.4pt; font-weight:700; color:#111; font-family:Georgia,serif; }
+    .ac-col { width:3.5mm; font-size:6.4pt; font-weight:700; color:#111; }
+    .ac-box { height:3.7mm; line-height:3.5mm; width:26mm; border:0.25mm solid #7d8db5; border-radius:0.5mm; padding:0 1.2mm;
+              font-size:8pt; font-weight:700; color:#000; white-space:nowrap; overflow:hidden; text-transform:uppercase; }
+    .ac-box.wide { width:62mm; }
+    .ac-slogan { position:absolute; left:2.5mm; bottom:1.3mm; font-family:'Dancing Script','Segoe Script','Brush Script MT',cursive; font-weight:700; font-style:italic;
+                color:#fff; font-size:6pt; line-height:1.05; transform:rotate(-4deg); white-space:nowrap; }
+    .ac-slogan span { color:#f2c230; padding-left:2mm; }
+    .ac-sign { position:absolute; right:4mm; bottom:2.6mm; width:24mm; text-align:center; }
+    .ac-sig { display:block; width:24mm; height:6mm; border-bottom:0.25mm solid #14275c; }
+    .ac-prin { font-size:5.6pt; font-weight:700; color:#111; margin-top:0.5mm; font-family:Georgia,serif; }
+    @media print {
+      body { background:#fff; }
+      .toolbar { display:none; }
+      .sheet { margin:0; }
+    }
+  </style>
+  </head><body>
+  <div class="toolbar">
+    <button onclick="window.close()" style="background:#555;color:#fff;">← Back</button>
+    <span>🎫 Admit Cards – Class ${escapeHtml(cls)}${section?' ('+escapeHtml(section)+')':''} | ${escapeHtml(title)} | Session ${escapeHtml(session)} | ${students.length} students</span>
+    <button onclick="window.print()" style="background:#27ae60;color:#fff;">🖨️ Print / Save PDF</button>
+  </div>
+  ${pages.join('')}
+>>>>>>> 896a363bac0b6fb997fda263cd05da0ec2af60a1
   </body></html>`);
   win.document.close();
 };
 
+<<<<<<< HEAD
 window.exportExamCmpCSV = function() {
   if (!_xc) return;
   const title = `Prabha Gyan Jyoti Public School - Exam-wise Comparison - Class ${_xc.cls}${_xc.section?' '+_xc.section:''} - ${_xc.subject || 'All Subjects'} - Session ${_xc.session}`;
@@ -3725,6 +3930,8 @@ window.exportExamCmpCSV = function() {
   a.click();
 };
 
+=======
+>>>>>>> 896a363bac0b6fb997fda263cd05da0ec2af60a1
 function showEntryMsg(msg, type) {
   const el = document.getElementById('en-msg');
   el.style.cssText = `padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:10px;background:${

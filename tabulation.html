@@ -143,7 +143,7 @@
   </div>
   <div class="topbar-right">
     <button class="btn-back" onclick="goBack()">← Back</button>
-    <button class="btn-export" onclick="exportCSV()" id="btn-export" style="display:none;">⬇ Export CSV</button>
+    <button class="btn-export" onclick="exportExcel()" id="btn-export" style="display:none;">⬇ Export Excel</button>
     <button class="btn-logout" onclick="logout()">Logout</button>
   </div>
 </div>
@@ -215,7 +215,7 @@
       <div class="summary-bar">
         <div style="font-size:13px;color:#555;" id="tab-summary"></div>
         <button class="btn btn-primary" id="btn-save-entry" style="display:none;background:#16a085;" onclick="saveEntryMarks()">💾 Save All Marks</button>
-        <button class="btn btn-primary" onclick="exportCSV()">⬇ Export CSV</button>
+        <button class="btn btn-primary" onclick="exportExcel()">⬇ Export Excel</button>
         <button class="btn" style="background:#555;color:#fff;" onclick="goBack()">← Back</button>
       </div>
       <div class="table-wrap">
@@ -609,6 +609,183 @@ window.saveEntryMarks = async function() {
   } catch (e) {
     showMsg('tab-msg', 'Error saving marks: ' + e.message, 'error');
   }
+};
+
+function loadExcelJS() {
+  if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
+  return new Promise((resolve, reject) => {
+    const sc = document.createElement('script');
+    sc.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+    sc.onload = () => resolve(window.ExcelJS);
+    sc.onerror = () => reject(new Error('Could not load Excel library (check internet connection).'));
+    document.head.appendChild(sc);
+  });
+}
+
+// Greyscale, print-ready .xlsx (designed for black & white printers)
+window.exportExcel = async function() {
+  if (tableData.length === 0) return;
+  let ExcelJS;
+  try { ExcelJS = await loadExcelJS(); }
+  catch (e) { showMsg('tab-msg', e.message, 'error'); return; }
+
+  const cls        = document.getElementById('sel-class').value;
+  const section    = document.getElementById('sel-section').value;
+  const session    = document.getElementById('sel-session').value;
+  const examFilter = lastExamFilter;
+  const activeExams = examFilter ? [examFilter] : lastActiveExams;
+  const examLabel  = examFilter ? (EXAM_LABELS[examFilter]||examFilter) : 'All Exams';
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Tabulation', {
+    pageSetup: {
+      paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+      horizontalCentered: true,
+      margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 }
+    },
+    headerFooter: { oddFooter: '&LPrinted: &D&RPage &P of &N' }
+  });
+
+  const perSub = examFilter ? 1 : activeExams.length + 1;
+  const totalCols = 3 + lastSubjects.length * perSub + 4;
+  const thin = { style: 'thin', color: { argb: 'FF000000' } };
+  const border = { top: thin, left: thin, bottom: thin, right: thin };
+  const headFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
+  const lightFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+  const center = { horizontal: 'center', vertical: 'middle', wrapText: true };
+
+  // Title block
+  ws.mergeCells(1, 1, 1, totalCols);
+  Object.assign(ws.getCell(1, 1), {
+    value: 'Prabha Gyan Jyoti Public School',
+    font: { name: 'Calibri', size: 16, bold: true }, alignment: center
+  });
+  ws.mergeCells(2, 1, 2, totalCols);
+  Object.assign(ws.getCell(2, 1), {
+    value: `${examLabel} Tabulation Sheet  |  Class ${cls}${section ? ' - '+section : ''}  |  Session ${session}`,
+    font: { name: 'Calibri', size: 12, bold: true }, alignment: center
+  });
+  ws.getRow(1).height = 24;
+  ws.getRow(2).height = 18;
+
+  // Header rows (one row for a single exam, two rows for all exams)
+  const h1 = 4, h2 = examFilter ? 4 : 5;
+  const headCell = (r, c, v) => {
+    const cell = ws.getCell(r, c);
+    cell.value = v;
+    cell.font = { bold: true, size: 10 };
+    cell.alignment = center;
+  };
+  const spanHead = (c1, v) => {
+    if (h2 > h1) ws.mergeCells(h1, c1, h2, c1);
+    headCell(h1, c1, v);
+  };
+  spanHead(1, 'Rank');
+  spanHead(2, 'Roll');
+  spanHead(3, 'Student Name');
+  let c = 4;
+  lastSubjects.forEach(sub => {
+    if (examFilter) {
+      spanHead(c, `${sub}\n(${maxMarksFor(examFilter, sub)})`);
+      c++;
+    } else {
+      ws.mergeCells(h1, c, h1, c + perSub - 1);
+      headCell(h1, c, sub);
+      activeExams.forEach((ex, i) => headCell(h2, c + i, EXAM_LABELS[ex]||ex));
+      headCell(h2, c + activeExams.length, 'Total');
+      c += perSub;
+    }
+  });
+  ['Grand Total', 'Max', '%', 'Grade'].forEach(lbl => { spanHead(c, lbl); c++; });
+  for (let r = h1; r <= h2; r++) for (let cc = 1; cc <= totalCols; cc++) {
+    const cell = ws.getCell(r, cc);
+    cell.border = border;
+    cell.fill = headFill;
+  }
+  ws.getRow(h1).height = examFilter ? 30 : 18;
+
+  // Data rows
+  const cellVal = entry => !entry ? '-' : (entry.val === null ? 'A' : entry.val);
+  lastSortedData.forEach((s, idx) => {
+    const vals = [lastRankMap[s.id], s.rollNo || '', s.name || ''];
+    const subjTotalCols = [];
+    lastSubjects.forEach(sub => {
+      const st = s.subjectTotals[sub];
+      if (examFilter) {
+        vals.push(cellVal(st.examMarks[examFilter]));
+      } else {
+        activeExams.forEach(ex => vals.push(cellVal(st.examMarks[ex])));
+        vals.push(st.total !== null ? st.total : '-');
+        subjTotalCols.push(vals.length);
+      }
+    });
+    const hasMarks = s.grandMax > 0;
+    vals.push(hasMarks ? s.grandTotal : '-');
+    vals.push(s.grandMax || '-');
+    vals.push(hasMarks ? Number(s.percentage.toFixed(1)) : '-');
+    vals.push(hasMarks ? calcGrade(s.percentage) : '-');
+
+    const row = ws.getRow(h2 + 1 + idx);
+    vals.forEach((v, i) => {
+      const cell = row.getCell(i + 1);
+      cell.value = v;
+      cell.border = border;
+      cell.font = { size: 10, bold: v === 'A' };
+      cell.alignment = i === 2 ? { horizontal: 'left', vertical: 'middle' } : center;
+    });
+    row.height = 16;
+    row.getCell(3).font = { size: 10, bold: true };
+    if (lastRankMap[s.id] <= 3) row.getCell(1).font = { size: 10, bold: true };
+    if (hasMarks) row.getCell(totalCols - 1).numFmt = '0.0"%"';
+    // Light grey on total columns so they stand out on B&W prints
+    [...subjTotalCols, totalCols - 3, totalCols - 1, totalCols].forEach(col => {
+      const cell = row.getCell(col);
+      cell.fill = lightFill;
+      cell.font = { size: 10, bold: true };
+    });
+    if (hasMarks && s.percentage < 33) row.getCell(totalCols).font = { size: 10, bold: true, underline: true };
+  });
+
+  // Column widths
+  ws.getColumn(1).width = 6;
+  ws.getColumn(2).width = 6;
+  ws.getColumn(3).width = 24;
+  for (let cc = 4; cc <= totalCols - 4; cc++) ws.getColumn(cc).width = examFilter ? 9 : 7;
+  ws.getColumn(totalCols - 3).width = 9;
+  ws.getColumn(totalCols - 2).width = 7;
+  ws.getColumn(totalCols - 1).width = 8;
+  ws.getColumn(totalCols).width = 7;
+
+  // Summary + signature lines
+  const passCount = tableData.filter(s => s.grandMax > 0 && s.percentage >= 33).length;
+  const avgPct = (tableData.reduce((sum, s) => sum + s.percentage, 0) / tableData.length).toFixed(1);
+  const sumRow = h2 + lastSortedData.length + 2;
+  ws.mergeCells(sumRow, 1, sumRow, totalCols);
+  Object.assign(ws.getCell(sumRow, 1), {
+    value: `Total Students: ${tableData.length}     Passed: ${passCount}     Failed: ${tableData.length - passCount}     Class Average: ${avgPct}%     (A = Absent)`,
+    font: { size: 10, italic: true }, alignment: { horizontal: 'left' }
+  });
+  const signRow = sumRow + 3;
+  [[3, 'Class Teacher'], [Math.max(5, totalCols - 3), 'Principal']].forEach(([col, lbl]) => {
+    const cl = ws.getCell(signRow, col);
+    cl.value = lbl;
+    cl.font = { size: 10, bold: true };
+    cl.alignment = { horizontal: 'center' };
+    cl.border = { top: thin };
+  });
+
+  // Repeat header rows on every printed page; freeze name/header on screen
+  ws.pageSetup.printTitlesRow = `${h1}:${h2}`;
+  ws.views = [{ state: 'frozen', xSplit: 3, ySplit: h2 }];
+
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const examSuffix = examFilter ? `_${examFilter}` : '_AllExams';
+  a.download = `Tabulation_Class${cls}${section?'_'+section:''}${examSuffix}_${session}.xlsx`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 };
 
 window.exportCSV = function() {
