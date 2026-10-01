@@ -413,11 +413,8 @@
     <div class="tab" data-title="Performance" onclick="showTab('performance', this)">📈 <span>Performance</span></div>
     <div class="tab" data-title="Print Report Card" onclick="showTab('report', this)">🖨️ <span>Print Report Card</span></div>
     <div class="tab" data-title="Marks Slip" onclick="showTab('markslip', this)">📋 <span>Marks Slip</span></div>
-<<<<<<< HEAD
     <div class="tab" data-title="Exam Comparison" onclick="showTab('examcmp', this)">📉 <span>Exam Comparison</span></div>
-=======
     <div class="tab" data-title="Admit Card" onclick="showTab('admitcard', this)">🎫 <span>Admit Card</span></div>
->>>>>>> 896a363bac0b6fb997fda263cd05da0ec2af60a1
     <div class="tab" onclick="window.location.href='appearance.html'">📋 <span>Appearance</span></div>
     <div class="tab" onclick="window.location.href='tabulation.html'">📊 <span>Tabulation</span></div>
   </nav>
@@ -1068,7 +1065,6 @@
     </div>
   </div>
 
-<<<<<<< HEAD
   <!-- ===== EXAM COMPARISON ===== -->
   <div class="section" id="sec-examcmp">
     <div class="card">
@@ -1078,17 +1074,6 @@
         <div>
           <label>Session</label>
           <select id="xc-session">
-=======
-  <!-- ===== ADMIT CARD ===== -->
-  <div class="section" id="sec-admitcard">
-    <div class="card">
-      <h2>🎫 Print Admit Cards (Class-wise)</h2>
-      <p style="font-size:13px;color:#555;margin-bottom:14px;">Select session, class, section and exam — prints 10 admit cards per A4 page with Name, Father's Name and Class filled in.</p>
-      <div class="filter-row">
-        <div>
-          <label>Session</label>
-          <select id="ac-session">
->>>>>>> 896a363bac0b6fb997fda263cd05da0ec2af60a1
             <option value="2024-25">2024-25</option>
             <option value="2025-26">2025-26</option>
             <option value="2026-27" selected>2026-27</option>
@@ -1097,11 +1082,7 @@
         </div>
         <div>
           <label>Class</label>
-<<<<<<< HEAD
           <select id="xc-class" style="width:140px;" onchange="fillExamCmpSubjects()">
-=======
-          <select id="ac-class" style="width:140px;">
->>>>>>> 896a363bac0b6fb997fda263cd05da0ec2af60a1
             <option value="">-- Select --</option>
             <option>II</option><option>III</option><option>IV</option>
             <option>V</option><option>VI</option><option>VII</option>
@@ -1110,18 +1091,13 @@
         </div>
         <div>
           <label>Section</label>
-<<<<<<< HEAD
           <select id="xc-section" style="width:140px;">
-=======
-          <select id="ac-section" style="width:140px;">
->>>>>>> 896a363bac0b6fb997fda263cd05da0ec2af60a1
             <option value="">-- All --</option>
             <option value="A">Section A</option>
             <option value="B">Section B</option>
           </select>
         </div>
         <div>
-<<<<<<< HEAD
           <label>Subject</label>
           <select id="xc-subject" style="width:170px;">
             <option value="">All Subjects (Overall)</option>
@@ -1150,7 +1126,43 @@
           <thead id="xc-thead"></thead>
           <tbody id="xc-tbody"></tbody>
         </table>
-=======
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ADMIT CARD ===== -->
+  <div class="section" id="sec-admitcard">
+    <div class="card">
+      <h2>🎫 Print Admit Cards (Class-wise)</h2>
+      <p style="font-size:13px;color:#555;margin-bottom:14px;">Select session, class, section and exam — prints 10 admit cards per A4 page with Name, Father's Name and Class filled in.</p>
+      <div class="filter-row">
+        <div>
+          <label>Session</label>
+          <select id="ac-session">
+            <option value="2024-25">2024-25</option>
+            <option value="2025-26">2025-26</option>
+            <option value="2026-27" selected>2026-27</option>
+            <option value="2027-28">2027-28</option>
+          </select>
+        </div>
+        <div>
+          <label>Class</label>
+          <select id="ac-class" style="width:140px;">
+            <option value="">-- Select --</option>
+            <option>II</option><option>III</option><option>IV</option>
+            <option>V</option><option>VI</option><option>VII</option>
+            <option>VIII</option>
+          </select>
+        </div>
+        <div>
+          <label>Section</label>
+          <select id="ac-section" style="width:140px;">
+            <option value="">-- All --</option>
+            <option value="A">Section A</option>
+            <option value="B">Section B</option>
+          </select>
+        </div>
+        <div>
           <label>Exam</label>
           <select id="ac-exam" style="width:160px;" onchange="updateAdmitTitle()">
             <option value="PERIODIC ASSESSMENT - 1">PA-1</option>
@@ -1185,7 +1197,6 @@
       <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
         <button class="btn btn-success" onclick="generateAdmitCards()">🖨️ Print Admit Cards</button>
         <span style="font-size:12px;color:#888;">Opens a print-ready page with 10 cards per A4 sheet. Left / passed-out students are skipped.</span>
->>>>>>> 896a363bac0b6fb997fda263cd05da0ec2af60a1
       </div>
     </div>
   </div>
@@ -3571,7 +3582,6 @@ window.generateMarksSlips = async function() {
   win.document.close();
 };
 
-<<<<<<< HEAD
 // ── EXAM-WISE COMPARISON ──────────────────────────────────────────────────
 const XC_EXAMS = ['PA1','HalfYearly','PA2','Annual'];
 let _xc = null; // { cls, section, session, subject, rows, avg }
@@ -3763,7 +3773,30 @@ window.printExamCmp = function() {
   <h2>${esc(title)}</h2>
   <div class="summary">${document.getElementById('xc-summary').innerHTML}</div>
   <table>${document.getElementById('xc-table').innerHTML}</table>
-=======
+  </body></html>`);
+  win.document.close();
+};
+
+window.exportExamCmpCSV = function() {
+  if (!_xc) return;
+  const title = `Prabha Gyan Jyoti Public School - Exam-wise Comparison - Class ${_xc.cls}${_xc.section?' '+_xc.section:''} - ${_xc.subject || 'All Subjects'} - Session ${_xc.session}`;
+  const headers = ['#','Roll No','Student Name','Section', ...XC_EXAMS.map(ex => `${EXAM_LABELS[ex]} %`), 'Change (first to latest)', 'Trend'];
+  const rows = xcSortedRows().map((r, n) => [
+    n+1, r.rollNo ?? '', r.name, r.section,
+    ...XC_EXAMS.map(ex => r.exams[ex] ? r.exams[ex].pct.toFixed(1) : ''),
+    r.change === null ? '' : r.change.toFixed(1),
+    xcTrendLabel(r.change)
+  ]);
+  rows.push(['','','CLASS AVERAGE','', ...XC_EXAMS.map(ex => _xc.avg[ex] !== null ? _xc.avg[ex].toFixed(1) : ''), '', '']);
+  const csv = [[title], [], headers, ...rows]
+    .map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `ExamComparison_Class${_xc.cls}${_xc.section?'_'+_xc.section:''}${_xc.subject?'_'+_xc.subject:''}_${_xc.session}.csv`;
+  a.click();
+};
+
 // ---- ADMIT CARDS ----
 window.updateAdmitTitle = function() {
   const exam = document.getElementById('ac-exam').value;
@@ -3904,34 +3937,10 @@ window.generateAdmitCards = async function() {
     <button onclick="window.print()" style="background:#27ae60;color:#fff;">🖨️ Print / Save PDF</button>
   </div>
   ${pages.join('')}
->>>>>>> 896a363bac0b6fb997fda263cd05da0ec2af60a1
   </body></html>`);
   win.document.close();
 };
 
-<<<<<<< HEAD
-window.exportExamCmpCSV = function() {
-  if (!_xc) return;
-  const title = `Prabha Gyan Jyoti Public School - Exam-wise Comparison - Class ${_xc.cls}${_xc.section?' '+_xc.section:''} - ${_xc.subject || 'All Subjects'} - Session ${_xc.session}`;
-  const headers = ['#','Roll No','Student Name','Section', ...XC_EXAMS.map(ex => `${EXAM_LABELS[ex]} %`), 'Change (first to latest)', 'Trend'];
-  const rows = xcSortedRows().map((r, n) => [
-    n+1, r.rollNo ?? '', r.name, r.section,
-    ...XC_EXAMS.map(ex => r.exams[ex] ? r.exams[ex].pct.toFixed(1) : ''),
-    r.change === null ? '' : r.change.toFixed(1),
-    xcTrendLabel(r.change)
-  ]);
-  rows.push(['','','CLASS AVERAGE','', ...XC_EXAMS.map(ex => _xc.avg[ex] !== null ? _xc.avg[ex].toFixed(1) : ''), '', '']);
-  const csv = [[title], [], headers, ...rows]
-    .map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `ExamComparison_Class${_xc.cls}${_xc.section?'_'+_xc.section:''}${_xc.subject?'_'+_xc.subject:''}_${_xc.session}.csv`;
-  a.click();
-};
-
-=======
->>>>>>> 896a363bac0b6fb997fda263cd05da0ec2af60a1
 function showEntryMsg(msg, type) {
   const el = document.getElementById('en-msg');
   el.style.cssText = `padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:10px;background:${
