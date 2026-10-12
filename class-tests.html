@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#FF6B00"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="PGJPS"/>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icons/icon-192.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png"/>
+  <title>Class Tests – Prabha Gyan Jyoti</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { overflow-x: hidden; }
+    body { font-family: Arial, sans-serif; background: #f0f4f8; color: #222; }
+
+    .topbar {
+      background: #1a3c6e; color: #fff;
+      padding: 12px 24px; display: flex;
+      justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    }
+    .topbar-info h1 { font-size: 15px; display: flex; align-items: center; gap: 8px; }
+    .topbar-info h1 img { width: 30px; height: 30px; border-radius: 50%; }
+    .topbar-info p { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+    .topbar-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .topbar-right button { border: none; padding: 7px 14px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 600; }
+    .btn-logout { background: #c0392b; color: #fff; }
+    .btn-back   { background: #27ae60; color: #fff; }
+
+    .content { padding: 24px; max-width: 1300px; margin: 0 auto; }
+    .card {
+      background: #fff; border-radius: 10px;
+      padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 24px;
+    }
+    .card h2 { font-size: 16px; color: #1a3c6e; margin-bottom: 18px; border-bottom: 1px solid #e0e0e0; padding-bottom: 10px;
+               display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .card h3 { font-size: 14px; color: #1a3c6e; margin: 20px 0 10px; }
+
+    .filter-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; align-items: flex-end; }
+    .filter-row > div { flex: 1; min-width: 130px; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 16px; }
+    label { font-size: 12px; font-weight: 600; color: #555; display: block; margin-bottom: 4px; }
+    input, select, textarea {
+      width: 100%; padding: 9px 12px;
+      border: 1.5px solid #ccc; border-radius: 6px; font-size: 13px; font-family: inherit; background: #fff;
+    }
+    textarea { resize: vertical; min-height: 60px; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #2e6da4; }
+    input[type="checkbox"] { width: auto; }
+    .req { color: #c0392b; }
+    .hint { font-size: 11.5px; color: #888; margin-top: 4px; }
+
+    .btn { padding: 9px 18px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-primary { background: #1a3c6e; color: #fff; }
+    .btn-danger { background: #c0392b; color: #fff; }
+    .btn-success { background: #27ae60; color: #fff; }
+    .btn-warning { background: #e67e22; color: #fff; }
+    .btn-info { background: #2980b9; color: #fff; }
+    .btn-light { background: #eef2f7; color: #1a3c6e; }
+    .btn:hover { opacity: 0.88; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+    .msg { padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 14px; }
+    .msg-success { background: #d5f5e3; color: #1e8449; }
+    .msg-error { background: #fadbd8; color: #c0392b; }
+    .msg-info { background: #d6eaf8; color: #1a5276; }
+    .msg-warn { background: #fef5e7; color: #9a5b00; }
+    .msg ul { margin: 6px 0 0 18px; }
+
+    /* Wide tables scroll inside their own box, never the page */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid #e3e8ef; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #1a3c6e; color: #fff; padding: 9px 8px; text-align: left; white-space: nowrap; }
+    td { padding: 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
+    tr:hover td { background: #f5f8ff; }
+    .num { text-align: right; }
+    .center { text-align: center; }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+    .badge-draft { background: #fef5e7; color: #b9770e; }
+    .badge-final { background: #d5f5e3; color: #1e8449; }
+    .badge-retest { background: #ebdef0; color: #7d3c98; }
+    .empty { text-align: center; color: #888; padding: 30px 10px; }
+
+    /* Section / question builder tables */
+    .builder td { padding: 5px; }
+    .builder input, .builder select { padding: 6px 8px; }
+    .sum-ok { color: #1e8449; font-weight: 700; }
+    .sum-bad { color: #c0392b; font-weight: 700; }
+
+    /* Marks grid */
+    .grid-head { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: #444; margin-bottom: 14px; }
+    .grid-head b { color: #1a3c6e; }
+    .marks-grid { font-size: 12.5px; }
+    .marks-grid th, .marks-grid td { padding: 5px 6px; }
+    .marks-grid th.sec { text-align: center; }
+    .marks-grid th small { display: block; font-weight: 400; opacity: 0.8; }
+    .marks-grid .sticky1, .marks-grid .sticky2 { position: sticky; z-index: 2; background: #fff; }
+    .marks-grid th.sticky1, .marks-grid th.sticky2 { background: #1a3c6e; z-index: 3; }
+    .marks-grid .sticky1 { left: 0; min-width: 42px; }
+    .marks-grid .sticky2 { left: 42px; min-width: 130px; max-width: 170px; box-shadow: 2px 0 3px rgba(0,0,0,0.06); }
+    .marks-grid td.sticky2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .marks-grid input.mk { width: 52px; padding: 5px 4px; text-align: center; }
+    .marks-grid input.mk::-webkit-outer-spin-button, .marks-grid input.mk::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .marks-grid input.mk { -moz-appearance: textfield; }
+    .marks-grid input.mk:disabled { background: #f4f4f4; }
+    .marks-grid input.mk.bad { border-color: #c0392b; background: #fdecea; }
+    .marks-grid input.rm { min-width: 140px; padding: 5px 6px; }
+    .marks-grid tr.absent td:not(.sticky1):not(.sticky2) { background: #f4f4f4; }
+    .marks-grid tr.dirty td.sticky1 { box-shadow: inset 3px 0 0 #e67e22; }
+    .marks-grid tr.err td.sticky1 { box-shadow: inset 3px 0 0 #c0392b; }
+    .band { font-weight: 600; white-space: nowrap; }
+    .band-support { color: #c0392b; font-weight: 800; }
+    .band-pass { color: #b9770e; }
+    .band-good { color: #2471a3; }
+    .band-excellent { color: #1e8449; }
+    .cancelled { text-decoration: line-through; color: #999; }
+    .rt-note { display: block; font-size: 11px; color: #7d3c98; }
+    .flag-btn { background: #fff; border: 1.5px solid #ccc; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 12px; white-space: nowrap; }
+    .flag-btn.has { border-color: #e67e22; background: #fef5e7; }
+    .save-status { font-size: 12px; color: #888; }
+    .save-status.saving { color: #2980b9; }
+    .save-status.error { color: #c0392b; font-weight: 600; }
+
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999;
+                     align-items: center; justify-content: center; padding: 16px; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: #fff; border-radius: 12px; padding: 22px; width: 100%; max-width: 560px;
+             max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+    .modal h3 { font-size: 15px; color: #1a3c6e; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid #e0e0e0; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
+    .flag-row { display: grid; grid-template-columns: 1.2fr 0.7fr 2fr auto; gap: 6px; margin-bottom: 6px; }
+    .flag-row input, .flag-row select { padding: 6px 8px; }
+
+    .student-pick { max-height: 260px; overflow-y: auto; border: 1px solid #e3e8ef; border-radius: 6px; padding: 6px 10px; }
+    .student-pick label { display: flex; gap: 8px; align-items: center; font-weight: 400; font-size: 13px; color: #333; padding: 3px 0; margin: 0; }
+
+    #loading { text-align: center; padding: 30px; color: #888; font-size: 14px; }
+    .view { display: none; }
+    .view.active { display: block; }
+
+    @media (max-width: 600px) {
+      .topbar { padding: 10px 16px; }
+      .content { padding: 12px 16px; }
+      .card { padding: 16px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .topbar-info h1 { font-size: 13px; }
+      .flag-row { grid-template-columns: 1fr 1fr; }
+      .marks-grid .sticky2 { min-width: 100px; max-width: 120px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-info">
+    <h1><img src="icons/icon-192.png" alt=""/> 📝 Class Tests</h1>
+    <p id="user-info">Loading...</p>
+  </div>
+  <div class="topbar-right">
+    <button class="btn-back" onclick="goBack()">⬅ Back</button>
+    <button class="btn-logout" onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<div class="content">
+  <div id="loading">Loading…</div>
+  <div id="global-msg"></div>
+
+  <!-- ===== LIST ===== -->
+  <div class="view" id="view-list">
+    <div class="card">
+      <h2>
+        <span>Class Tests <span id="list-session" style="font-size:12px;font-weight:400;color:#888;"></span></span>
+        <span class="btn-row">
+          <button class="btn btn-success" onclick="location.hash='#new'">➕ New Test</button>
+        </span>
+      </h2>
+      <div class="filter-row">
+        <div><label for="f-class">Class</label><select id="f-class"></select></div>
+        <div><label for="f-subject">Subject</label><select id="f-subject"></select></div>
+        <div><label for="f-from">From date</label><input type="date" id="f-from"/></div>
+        <div><label for="f-to">To date</label><input type="date" id="f-to"/></div>
+        <div style="flex:0 0 auto;"><button class="btn btn-light" onclick="clearFilters()">Clear</button></div>
+      </div>
+      <div class="table-wrap">
+        <table id="list-table">
+          <thead><tr>
+            <th>Date</th><th>Test</th><th>Class</th><th>Subject</th>
+            <th class="num">Max</th><th class="num">Marked</th><th class="num">Class avg</th><th class="num">Pass %</th><th></th>
+          </tr></thead>
+          <tbody id="list-body"></tbody>
+        </table>
+      </div>
+      <p class="hint" style="margin-top:8px;">Averages and pass % leave out absent students and use re-test scores where a re-test exists.</p>
+    </div>
+  </div>
+
+  <!-- ===== CREATE / EDIT TEST ===== -->
+  <div class="view" id="view-edit">
+    <div class="card">
+      <h2><span id="edit-title">New Test</span>
+        <span class="btn-row">
+          <button class="btn btn-light" onclick="location.hash='#list'">Cancel</button>
+        </span>
+      </h2>
+      <div id="edit-msg"></div>
+      <div id="edit-retest-info"></div>
+
+      <div class="form-grid">
+        <div><label for="t-class">Class <span class="req">*</span></label><select id="t-class"></select></div>
+        <div><label for="t-classSection">Class section</label>
+          <select id="t-classSection"><option value="All">All sections</option><option value="A">Section A</option><option value="B">Section B</option></select></div>
+        <div><label for="t-subject">Subject <span class="req">*</span></label><select id="t-subject"></select></div>
+        <div><label for="t-testName">Test name <span class="req">*</span></label>
+          <input id="t-testName" list="test-name-list" placeholder="e.g. Pre-Final Assessment"/>
+          <datalist id="test-name-list">
+            <option>Class Test</option><option>Unit Test 1</option><option>Unit Test 2</option><option>Unit Test 3</option>
+            <option>Unit Test 4</option><option>Pre-Final Assessment</option>
+          </datalist></div>
+        <div><label for="t-set">Set</label><input id="t-set" placeholder="A" maxlength="3"/></div>
+        <div><label for="t-testDate">Test date <span class="req">*</span></label>
+          <input type="date" id="t-testDate" required/>
+          <div class="hint">Required. A future date is allowed for a draft; you can finalise only after the test date.</div></div>
+        <div><label for="t-maxMarks">Max marks <span class="req">*</span></label><input type="number" id="t-maxMarks" min="1" step="0.5" inputmode="decimal"/></div>
+        <div><label for="t-passMarks">Pass marks</label><input type="number" id="t-passMarks" min="0" step="0.5" inputmode="decimal"/>
+          <div class="hint">Default 33% of max, rounded up.</div></div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label for="t-chapters">Chapters covered (one per line)</label>
+        <textarea id="t-chapters" rows="3" placeholder="Fractions&#10;Decimals"></textarea>
+      </div>
+
+      <div id="retest-students-wrap" style="display:none;margin-bottom:16px;">
+        <label>Students taking this re-test <span class="req">*</span></label>
+        <div class="student-pick" id="retest-students"></div>
+      </div>
+
+      <h3>Paper sections</h3>
+      <div class="table-wrap">
+        <table class="builder">
+          <thead><tr><th>Code</th><th>Title / topic</th><th>Max marks</th><th></th></tr></thead>
+          <tbody id="sections-body"></tbody>
+        </table>
+      </div>
+      <div class="btn-row" style="margin-top:8px;justify-content:space-between;">
+        <button class="btn btn-light btn-sm" onclick="addSectionRow()">➕ Add section</button>
+        <span id="sections-sum"></span>
+      </div>
+
+      <h3>Questions <span style="font-weight:400;color:#888;font-size:12px;">(optional — needed for question-wise marks and the CBSE view)</span></h3>
+      <div class="btn-row" style="margin-bottom:8px;">
+        <span style="font-size:12.5px;">Quick add</span>
+        <input type="number" id="qa-count" min="1" value="5" style="width:70px;" aria-label="Number of questions"/>
+        <span style="font-size:12.5px;">questions to section</span>
+        <select id="qa-section" style="width:80px;" aria-label="Section"></select>
+        <span style="font-size:12.5px;">worth</span>
+        <input type="number" id="qa-marks" min="0.5" step="0.5" value="1" style="width:70px;" aria-label="Marks each"/>
+        <span style="font-size:12.5px;">each</span>
+        <button class="btn btn-light btn-sm" onclick="quickAddQuestions()">Add</button>
+      </div>
+      <div class="table-wrap">
+        <table class="builder">
+          <thead><tr><th>Q no</th><th>Section</th><th>Max</th><th>Topic</th><th>Chapter</th><th>Competency</th><th>Answer</th><th></th></tr></thead>
+          <tbody id="questions-body"></tbody>
+        </table>
+      </div>
+      <datalist id="chapter-list"></datalist>
+      <div class="btn-row" style="margin-top:8px;justify-content:space-between;">
+        <button class="btn btn-light btn-sm" onclick="addQuestionRow()">➕ Add question</button>
+        <span id="questions-sum"></span>
+      </div>
+
+      <div class="btn-row" style="margin-top:22px;justify-content:space-between;">
+        <span class="btn-row">
+          <button class="btn btn-primary" id="btn-save-test" onclick="saveTest()">💾 Save test</button>
+          <button class="btn btn-info" id="btn-save-open" onclick="saveTest(true)">💾 Save &amp; enter marks</button>
+        </span>
+        <span class="btn-row">
+          <button class="btn btn-warning" id="btn-create-retest" style="display:none;" onclick="startRetest()">🔁 Create re-test</button>
+          <button class="btn btn-danger" id="btn-delete-test" style="display:none;" onclick="deleteTest()">🗑️ Delete test</button>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MARKS ENTRY ===== -->
+  <div class="view" id="view-marks">
+    <div class="card">
+      <h2><span id="marks-title">Marks entry</span>
+        <span class="btn-row">
+          <span class="save-status" id="save-status"></span>
+          <button class="btn btn-light btn-sm" onclick="location.hash='#list'">⬅ List</button>
+          <button class="btn btn-light btn-sm" id="btn-edit-test">✏️ Edit test</button>
+        </span>
+      </h2>
+      <div class="grid-head" id="marks-head"></div>
+      <div id="marks-msg"></div>
+      <div class="btn-row" style="margin-bottom:12px;">
+        <button class="btn btn-light btn-sm" id="btn-toggle-mode" style="display:none;" onclick="toggleMode()"></button>
+        <button class="btn btn-primary btn-sm" id="btn-save-now" onclick="flushSave()">💾 Save now</button>
+        <button class="btn btn-success btn-sm" id="btn-finalise" onclick="finaliseTest()">✅ Finalise</button>
+        <button class="btn btn-warning btn-sm" id="btn-unfinalise" style="display:none;" onclick="unfinaliseTest()">↩ Back to draft (admin)</button>
+      </div>
+      <div class="table-wrap">
+        <table class="marks-grid" id="marks-table"></table>
+      </div>
+      <p class="hint" style="margin-top:8px;">Changes save automatically. Press Enter to move down a column. Red cells are above the maximum and are not saved.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Flags modal -->
+<div class="modal-overlay" id="flags-modal">
+  <div class="modal">
+    <h3 id="flags-title">Flags</h3>
+    <div id="flags-rows"></div>
+    <button class="btn btn-light btn-sm" onclick="addFlagRow()">➕ Add flag</button>
+    <div style="margin-top:14px;display:flex;gap:8px;align-items:center;">
+      <input type="checkbox" id="flags-confirmed"/><label for="flags-confirmed" style="margin:0;">Copying confirmed</label>
+    </div>
+    <p class="hint">Students given the same group (e.g. G1) are shown together in the Copying Check.</p>
+    <div class="modal-actions">
+      <button class="btn btn-light" onclick="closeFlags()">Cancel</button>
+      <button class="btn btn-primary" onclick="applyFlags()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm modal -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal" style="max-width:420px;">
+    <h3 id="confirm-title">Are you sure?</h3>
+    <p id="confirm-msg" style="font-size:13px;color:#555;white-space:pre-line;"></p>
+    <div class="modal-actions">
+      <button class="btn btn-light" id="confirm-cancel">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok">OK</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/class-tests-app.js"></script>
+</body>
+</html>

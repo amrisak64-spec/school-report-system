@@ -10,7 +10,9 @@
         "functions/**",
         "*.xlsx",
         "PROJECT_DOCUMENTATION.docx",
-        "~$*"
+        "~$*",
+        "tests/**",
+        "*.rules"
       ],
       "rewrites": [
         { "source": "/api/admin-teacher", "function": "adminTeacher" }
@@ -26,7 +28,9 @@
         "functions/**",
         "*.xlsx",
         "PROJECT_DOCUMENTATION.docx",
-        "~$*"
+        "~$*",
+        "tests/**",
+        "*.rules"
       ],
       "rewrites": [
         { "source": "/api/admin-teacher", "function": "adminTeacher" }
