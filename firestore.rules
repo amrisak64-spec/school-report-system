@@ -1,0 +1,120 @@
+rules_version = '2';
+
+// =====================================================================
+//  Prabha Gyan Jyoti — complete Firestore security rules
+//  Paste the WHOLE file into Firebase console → Firestore → Rules → Publish.
+//  (Not deployed from the repo; firebase.json has no "firestore" entry.)
+// =====================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- Shared helpers ----------
+    function signedIn() {
+      return request.auth != null;
+    }
+    // Caller's users/{uid} profile. A missing profile makes get() fail, so the rule denies.
+    function me() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function isStaff() {
+      return signedIn() && me().role in ['admin', 'teacher'];
+    }
+    function isAdmin() {
+      return signedIn() && me().role == 'admin';
+    }
+
+    // ---------- Existing collections (unchanged behaviour) ----------
+    // Admin, teacher, tabulation and attendance pages write these in batches of up to
+    // 499 documents. Rules here must not read other documents (get/exists), or those
+    // big batches would hit Firestore's per-request lookup limit and fail.
+
+    // Staff profiles. Created and edited only by the adminTeacher Cloud Function
+    // (Admin SDK, which bypasses rules). Browsers may only read.
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /students/{studentId} {
+      allow read, write: if signedIn();
+    }
+
+    match /marks/{markId} {
+      allow read, write: if signedIn();
+    }
+
+    match /attendance/{attendanceId} {
+      allow read, write: if signedIn();
+    }
+
+    // ---------- Class Tests (new) ----------
+    // Same aliases as SUBJECT_ALIASES in admin.html / teacher.html.
+    function canonSubject(s) {
+      return {'Science/E.V.S.': 'Science', 'S.S.T.': 'SST', 'G.K.': 'GK'}.get(s, s);
+    }
+    // A teacher owns test t when its class is assigned to them and the subject is theirs.
+    function teacherOwns(t) {
+      return signedIn()
+        && me().role == 'teacher'
+        && t.class in me().get('assignedClasses', [])
+        && (me().get('subject', '') == 'All Subjects'
+            || canonSubject(me().get('subject', '')) == t.subject);
+    }
+
+    match /classTests/{testId} {
+      function test() {
+        return get(/databases/$(database)/documents/classTests/$(testId)).data;
+      }
+      // Teachers enter marks only while the parent test is a draft; admin always.
+      function canWriteMarks() {
+        return isAdmin() || (teacherOwns(test()) && test().status == 'draft');
+      }
+
+      allow read: if isStaff();
+
+      allow create: if isAdmin()
+        || (teacherOwns(request.resource.data)
+            && request.resource.data.status == 'draft'
+            && request.resource.data.createdBy == request.auth.uid);
+
+      // Teachers: full edits while draft (including draft → final).
+      // After finalising, teachers may only refresh the list summary and report notes.
+      // Only admin can change a finalised test or move it back to draft.
+      allow update: if isAdmin()
+        || (teacherOwns(resource.data)
+            && teacherOwns(request.resource.data)
+            && (resource.data.status == 'draft'
+                || (request.resource.data.status == 'final'
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['summary', 'updatedAt', 'recommendedAction', 'questionNotes']))));
+
+      // A finalised test can be deleted only by admin.
+      allow delete: if isAdmin()
+        || (teacherOwns(resource.data) && resource.data.status == 'draft');
+
+      match /results/{studentId} {
+        allow read: if isStaff();
+        allow create, update: if canWriteMarks()
+          && request.resource.data.enteredBy == request.auth.uid;
+        allow delete: if canWriteMarks();
+
+        // Change log: append-only. Only admin may delete (when removing a whole test).
+        match /history/{historyId} {
+          allow read: if isStaff();
+          allow create: if canWriteMarks()
+            && request.resource.data.changedBy == request.auth.uid;
+          allow update: if false;
+          allow delete: if isAdmin();
+        }
+      }
+    }
+
+    // Collection-group reads of class-test results (CBSE knowledge view, step 5).
+    match /{path=**}/results/{studentId} {
+      allow read: if isStaff();
+    }
+
+    // Everything else is closed.
+  }
+}
