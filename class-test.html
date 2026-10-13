@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#FF6B00"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="PGJPS"/>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icons/icon-192.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png"/>
+  <title>Class Test – Prabha Gyan Jyoti</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f4f8; }
+
+    .topbar {
+      background: #6c3483; color: #fff;
+      padding: 12px 24px; display: flex;
+      justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    }
+    .topbar-info h1 { font-size: 15px; }
+    .topbar-info p { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+    .topbar-right { display: flex; gap: 8px; align-items: center; }
+    .topbar-right button {
+      border: none; padding: 7px 16px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 600;
+    }
+    .btn-logout { background: #c0392b; color: #fff; }
+    .btn-back   { background: #27ae60; color: #fff; }
+
+    .content { padding: 24px; max-width: 1200px; margin: 0 auto; }
+    .card {
+      background: #fff; border-radius: 10px;
+      padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 24px;
+    }
+    .card h2 { font-size: 16px; color: #6c3483; margin-bottom: 18px; border-bottom: 1px solid #e0e0e0; padding-bottom: 10px; }
+    .card h3 { font-size: 14px; color: #333; margin: 18px 0 10px; }
+
+    .filter-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; align-items: flex-end; }
+    .filter-row > div { flex: 1; min-width: 130px; }
+    label { font-size: 12px; font-weight: 600; color: #555; display: block; margin-bottom: 4px; }
+    select, input[type="text"], input[type="number"], input[type="date"] {
+      width: 100%; padding: 9px 12px;
+      border: 1.5px solid #ccc; border-radius: 6px; font-size: 13px;
+    }
+    select:focus, input:focus { outline: none; border-color: #6c3483; }
+
+    .btn { padding: 9px 18px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-primary { background: #6c3483; color: #fff; }
+    .btn-load { background: #2e6da4; color: #fff; }
+    .btn-green { background: #1a6e3c; color: #fff; }
+    .btn-orange { background: #e67e22; color: #fff; }
+    .btn-red { background: #c0392b; color: #fff; }
+    .btn-grey { background: #95a5a6; color: #fff; }
+    .btn:hover { opacity: 0.88; }
+    .btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #6c3483; color: #fff; padding: 9px 7px; text-align: center; white-space: nowrap; }
+    th.left, td.left { text-align: left; }
+    td { padding: 7px; border-bottom: 1px solid #eee; text-align: center; vertical-align: middle; }
+    tr:hover td { background: #faf5fd; }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    .marks-input {
+      width: 62px; padding: 5px 6px; border: 1.5px solid #ccc; border-radius: 5px;
+      text-align: center; font-size: 13px; font-weight: 700;
+    }
+    .marks-input.error { border-color: #c0392b; background: #fff5f5; }
+    .marks-input:disabled { background: #f0f0f0; color: #999; border-color: #ddd; }
+
+    .topic-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+    .topic-row input[type="text"] { flex: 3; }
+    .topic-row input[type="number"] { flex: 1; max-width: 110px; }
+
+    .msg { padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 14px; }
+    .msg-success { background: #d5f5e3; color: #1e8449; }
+    .msg-error { background: #fadbd8; color: #c0392b; }
+    .info-box {
+      background: #f5eef8; border-left: 4px solid #6c3483;
+      padding: 12px 16px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; line-height: 1.6;
+    }
+
+    .stats-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .stat-box { background: #f5eef8; border-radius: 8px; padding: 12px 16px; text-align: center; flex: 1; min-width: 120px; }
+    .stat-box .stat-num { font-size: 22px; font-weight: 700; color: #6c3483; }
+    .stat-box .stat-label { font-size: 11px; color: #777; margin-top: 2px; }
+
+    .pill { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .pill-weak { background: #fadbd8; color: #a93226; }
+    .pill-avg  { background: #fdebd0; color: #9c640c; }
+    .pill-good { background: #d5f5e3; color: #1e8449; }
+    .pill-info { background: #d6eaf8; color: #1a5276; }
+    .pill-due  { background: #f9e79f; color: #7d6608; }
+    .cell-weak { background: #fdecea !important; color: #a93226; font-weight: 700; }
+    .up   { color: #1e8449; font-weight: 700; }
+    .down { color: #c0392b; font-weight: 700; }
+
+    .bar { height: 10px; background: #eee; border-radius: 5px; overflow: hidden; min-width: 90px; }
+    .bar > span { display: block; height: 100%; }
+
+    .print-head { display: none; text-align: center; margin-bottom: 12px; }
+    .print-head h2 { border: none; color: #000; margin: 0; padding: 0; font-size: 17px; }
+    .print-head p { font-size: 12px; color: #333; }
+
+    #loading { text-align: center; padding: 20px; color: #888; font-size: 14px; display: none; }
+
+    @media (max-width: 700px) {
+      .filter-row { flex-direction: column; }
+      .topbar { flex-direction: column; align-items: flex-start; }
+      .content { padding: 12px; }
+      .card { padding: 14px; }
+      table { font-size: 12px; }
+      th, td { padding: 6px 5px; }
+    }
+
+    @media print {
+      body { background: #fff; }
+      .topbar, .no-print { display: none !important; }
+      body.print-mode .card:not(.print-target) { display: none !important; }
+      .card { box-shadow: none; padding: 0; }
+      .content { padding: 0; max-width: 100%; }
+      .print-head { display: block; }
+      .table-wrap { overflow: visible; }
+      table { font-size: 11px; }
+      th { background: #ddd !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .cell-weak, .pill, .bar > span { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-info">
+    <h1><img src="icons/icon-192.png" alt="" style="width:32px;height:32px;border-radius:50%;vertical-align:middle;margin-right:8px;">📝 Class Test — Weak Topics &amp; Re-test</h1>
+    <p id="user-info">Prabha Gyan Jyoti Public School</p>
+  </div>
+  <div class="topbar-right">
+    <button class="btn-back" onclick="goBack()">← Back</button>
+    <button class="btn-logout" onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- ══ STEP 1: SELECT CLASS / SUBJECT AND LIST TESTS ══ -->
+  <div class="card no-print">
+    <h2>Class Tests</h2>
+    <div class="info-box">
+      <b>How it works:</b>
+      ① Create a test with its <b>topics</b> (e.g. Fractions, Decimals) and marks of each topic →
+      ② Enter topic-wise marks of every student →
+      ③ Open the <b>Weak Topic Report</b> and print / give it to the subject teacher →
+      ④ After about <b>1 month</b> create a <b>Re-test</b> (same topics) and use <b>Compare</b> to check improvement.
+    </div>
+
+    <div class="filter-row">
+      <div>
+        <label>Session *</label>
+        <select id="sel-session">
+          <option value="2024-25">2024-25</option>
+          <option value="2025-26">2025-26</option>
+          <option value="2026-27">2026-27</option>
+          <option value="2027-28">2027-28</option>
+          <option value="2028-29">2028-29</option>
+          <option value="2029-30">2029-30</option>
+        </select>
+      </div>
+      <div>
+        <label>Class *</label>
+        <select id="sel-class">
+          <option value="">-- Select Class --</option>
+          <option>II</option><option>III</option><option>IV</option>
+          <option>V</option><option>VI</option><option>VII</option><option>VIII</option>
+        </select>
+      </div>
+      <div>
+        <label>Section</label>
+        <select id="sel-section">
+          <option value="">-- All / No Section --</option>
+          <option value="A">A</option>
+          <option value="B">B</option>
+        </select>
+      </div>
+      <div>
+        <label>Subject *</label>
+        <select id="sel-subject">
+          <option value="">-- Select Subject --</option>
+          <option>English</option>
+          <option>Hindi</option>
+          <option>Maths</option>
+          <option>Science</option>
+          <option>SST</option>
+          <option>GK</option>
+          <option>Computer</option>
+          <option>Sanskrit</option>
+          <option>Drawing</option>
+        </select>
+      </div>
+      <div style="flex:0 0 auto;">
+        <button class="btn btn-load" onclick="loadTests()">🔍 Show Tests</button>
+      </div>
+      <div style="flex:0 0 auto;">
+        <button class="btn btn-primary" onclick="openCreate()">➕ New Test</button>
+      </div>
+    </div>
+
+    <div id="list-msg"></div>
+    <div id="loading">Loading...</div>
+    <div class="table-wrap">
+      <table id="tests-table" style="display:none;">
+        <thead>
+          <tr>
+            <th class="left">Test</th>
+            <th>Date</th>
+            <th>Sec.</th>
+            <th>Topics</th>
+            <th>Max</th>
+            <th>Marks Entered</th>
+            <th>Re-test</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tests-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ CREATE TEST ══ -->
+  <div class="card no-print" id="create-card" style="display:none;">
+    <h2 id="create-title">➕ Create New Class Test</h2>
+    <div id="create-info" class="info-box" style="display:none;"></div>
+    <div class="filter-row">
+      <div style="flex:2;">
+        <label>Test Name *</label>
+        <input type="text" id="new-title" placeholder="e.g. Maths Class Test – Chapter 2 &amp; 3"/>
+      </div>
+      <div>
+        <label>Test Date *</label>
+        <input type="date" id="new-date"/>
+      </div>
+    </div>
+
+    <label>Topics &amp; Max Marks of each topic *</label>
+    <div id="topic-rows"></div>
+    <div class="btn-group" style="margin:6px 0 16px;">
+      <button class="btn btn-sm btn-grey" onclick="addTopicRow()">+ Add Topic</button>
+      <span id="topic-total" style="font-size:13px;color:#555;align-self:center;"></span>
+    </div>
+
+    <div id="create-msg"></div>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="saveTest()">💾 Save Test</button>
+      <button class="btn btn-grey" onclick="closeCard('create-card')">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ══ MARKS ENTRY ══ -->
+  <div class="card no-print" id="entry-card" style="display:none;">
+    <h2 id="entry-title">✏️ Enter Topic-wise Marks</h2>
+    <div id="entry-summary" style="font-size:13px;color:#555;margin-bottom:12px;"></div>
+    <div id="entry-msg"></div>
+    <div class="table-wrap">
+      <table>
+        <thead id="entry-thead"></thead>
+        <tbody id="entry-tbody"></tbody>
+      </table>
+    </div>
+    <div class="btn-group" style="margin-top:16px;justify-content:flex-end;">
+      <button class="btn btn-grey" onclick="closeCard('entry-card')">Close</button>
+      <button class="btn btn-green" onclick="saveMarks()">💾 Save All Marks</button>
+    </div>
+  </div>
+
+  <!-- ══ WEAK TOPIC REPORT ══ -->
+  <div class="card" id="report-card" style="display:none;">
+    <div class="print-head">
+      <h2>Prabha Gyan Jyoti Public School</h2>
+      <p id="report-print-sub"></p>
+    </div>
+    <h2 id="report-title">📉 Weak Topic Report</h2>
+    <div class="filter-row no-print" style="margin-bottom:10px;">
+      <div style="max-width:240px;">
+        <label>Weak if below</label>
+        <select id="sel-threshold" onchange="renderReport()">
+          <option value="33">33%</option>
+          <option value="40">40%</option>
+          <option value="50" selected>50%</option>
+          <option value="60">60%</option>
+        </select>
+      </div>
+      <div style="flex:0 0 auto;" class="btn-group">
+        <button class="btn btn-orange" onclick="printCard('report-card')">🖨️ Print for Teacher</button>
+        <button class="btn btn-grey" onclick="closeCard('report-card')">Close</button>
+      </div>
+    </div>
+    <div id="report-body"></div>
+  </div>
+
+  <!-- ══ COMPARISON ══ -->
+  <div class="card" id="compare-card" style="display:none;">
+    <div class="print-head">
+      <h2>Prabha Gyan Jyoti Public School</h2>
+      <p id="compare-print-sub"></p>
+    </div>
+    <h2>📈 Performance Comparison (Test vs Re-test)</h2>
+    <div class="filter-row no-print">
+      <div>
+        <label>First Test (Before)</label>
+        <select id="cmp-a"></select>
+      </div>
+      <div>
+        <label>Re-test (After)</label>
+        <select id="cmp-b"></select>
+      </div>
+      <div style="flex:0 0 auto;" class="btn-group">
+        <button class="btn btn-load" onclick="runCompare()">📊 Compare</button>
+        <button class="btn btn-orange" onclick="printCard('compare-card')">🖨️ Print</button>
+        <button class="btn btn-grey" onclick="closeCard('compare-card')">Close</button>
+      </div>
+    </div>
+    <div id="compare-body"></div>
+  </div>
+</div>
+
+<script type="module">
+import { auth, db } from './firebase-config.js';
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { collection, getDocs, doc, getDoc, addDoc, deleteDoc, query, where, serverTimestamp, writeBatch }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// Classes II–V do not study SST or Sanskrit
+const JUNIOR_CLASSES = ['II','III','IV','V'];
+const subjectAppliesToClass = (subject, cls) => !(JUNIOR_CLASSES.includes(cls) && (subject === 'SST' || subject === 'Sanskrit'));
+const SUBJECT_ALIASES = { 'Science/E.V.S.': 'Science', 'S.S.T.': 'SST', 'G.K.': 'GK' };
+const RETEST_AFTER_DAYS = 30;
+const STRONG_PCT = 75;
+const CHANGE_PTS = 5; // a change of less than this many % points counts as "same"
+
+let currentUser = null;
+let tests = [];          // tests of the selected session / class / subject
+let marksCount = {};     // testId -> number of students with marks
+let entryTest = null;    // test open in marks entry
+let entryStudents = [];
+let reportData = null;   // { test, students, marks }
+let retestParent = null; // test a re-test is being created for
+
+// ── Session default (April starts a new session) ──
+(function() {
+  const now = new Date();
+  const startYear = now.getMonth() + 1 >= 4 ? now.getFullYear() : now.getFullYear() - 1;
+  const sess = startYear + '-' + String(startYear + 1).slice(-2);
+  const sel = document.getElementById('sel-session');
+  if (![...sel.options].some(o => o.value === sess)) sel.add(new Option(sess, sess));
+  sel.value = sess;
+})();
+
+onAuthStateChanged(auth, async user => {
+  if (!user) { window.location.href = 'index.html'; return; }
+  const snap = await getDoc(doc(db, 'users', user.uid));
+  if (!snap.exists()) { window.location.href = 'index.html'; return; }
+  currentUser = { uid: user.uid, email: user.email, ...snap.data() };
+  currentUser.subject = SUBJECT_ALIASES[currentUser.subject] || currentUser.subject;
+  document.getElementById('user-info').textContent =
+    `${currentUser.name || user.email} | ${(currentUser.role || '').toUpperCase()}`;
+
+  if (currentUser.role === 'teacher') {
+    const assigned = currentUser.assignedClasses || [];
+    const clsSel = document.getElementById('sel-class');
+    [...clsSel.options].forEach(o => { if (o.value && !assigned.includes(o.value)) o.remove(); });
+    if (currentUser.subject && currentUser.subject !== 'All Subjects') {
+      const subSel = document.getElementById('sel-subject');
+      subSel.value = currentUser.subject;
+      subSel.disabled = true;
+    }
+  }
+});
+
+window.goBack = () => { window.location.href = currentUser?.role === 'admin' ? 'admin.html' : 'teacher.html'; };
+window.logout = () => signOut(auth).then(() => window.location.href = 'index.html');
+
+// ══════════════ HELPERS ══════════════
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[c]));
+}
+function showMsg(id, msg, type) {
+  const el = document.getElementById(id);
+  el.className = 'msg msg-' + (type === 'error' ? 'error' : 'success');
+  el.textContent = msg;
+  if (type === 'success') setTimeout(() => { el.textContent = ''; el.className = ''; }, 5000);
+}
+function clearMsg(id) { const el = document.getElementById(id); el.textContent = ''; el.className = ''; }
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const fmtDate = d => d ? d.split('-').reverse().join('/') : '-';
+const daysBetween = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
+const topicKey = name => String(name).trim().toLowerCase();
+const totalMax = test => test.topics.reduce((s, t) => s + Number(t.max || 0), 0);
+const pct = (got, max) => max > 0 ? (got / max) * 100 : 0;
+const r1 = n => Math.round(n * 10) / 10;
+const testById = id => tests.find(t => t.id === id);
+const testLabel = t => `${t.title} (${fmtDate(t.date)})${t.section ? ' – Sec ' + t.section : ''}`;
+
+function levelPill(p, weakPct) {
+  if (p === null) return '<span class="pill pill-info">No data</span>';
+  if (p < weakPct) return '<span class="pill pill-weak">⚠️ Weak</span>';
+  if (p < STRONG_PCT) return '<span class="pill pill-avg">Average</span>';
+  return '<span class="pill pill-good">✅ Strong</span>';
+}
+function bar(p) {
+  const color = p < 40 ? '#e74c3c' : p < 60 ? '#e67e22' : p < STRONG_PCT ? '#f1c40f' : '#27ae60';
+  return `<div class="bar"><span style="width:${Math.min(100, Math.max(0, p))}%;background:${color};"></span></div>`;
+}
+function changeCell(before, after) {
+  if (before === null || after === null) return '<td>—</td>';
+  const d = r1(after - before);
+  if (d >= CHANGE_PTS) return `<td class="up">▲ +${d}</td>`;
+  if (d <= -CHANGE_PTS) return `<td class="down">▼ ${d}</td>`;
+  return `<td style="color:#777;">● ${d > 0 ? '+' : ''}${d}</td>`;
+}
+function verdict(before, after) {
+  if (before === null || after === null) return '<span class="pill pill-info">—</span>';
+  const d = after - before;
+  if (d >= CHANGE_PTS) return '<span class="pill pill-good">Improved</span>';
+  if (d <= -CHANGE_PTS) return '<span class="pill pill-weak">Declined</span>';
+  return '<span class="pill pill-avg">Same</span>';
+}
+
+function getFilters() {
+  return {
+    session: document.getElementById('sel-session').value,
+    cls: document.getElementById('sel-class').value,
+    section: document.getElementById('sel-section').value,
+    subject: document.getElementById('sel-subject').value
+  };
+}
+function checkFilters(f, msgId) {
+  if (!f.cls || !f.subject) { showMsg(msgId, 'Please select Class and Subject.', 'error'); return false; }
+  if (currentUser?.role === 'teacher') {
+    if (!(currentUser.assignedClasses || []).includes(f.cls)) { showMsg(msgId, 'You are not assigned to this class.', 'error'); return false; }
+    if (currentUser.subject !== 'All Subjects' && f.subject !== currentUser.subject) {
+      showMsg(msgId, 'You can only manage tests of your assigned subject.', 'error'); return false;
+    }
+  }
+  if (!subjectAppliesToClass(f.subject, f.cls)) { showMsg(msgId, `${f.subject} is not taught in Class ${f.cls}.`, 'error'); return false; }
+  return true;
+}
+
+window.closeCard = id => { document.getElementById(id).style.display = 'none'; };
+function showCard(id) {
+  const el = document.getElementById(id);
+  el.style.display = 'block';
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+window.printCard = id => {
+  document.querySelectorAll('.card').forEach(c => c.classList.toggle('print-target', c.id === id));
+  document.body.classList.add('print-mode');
+  window.print();
+  document.body.classList.remove('print-mode');
+};
+
+async function loadStudentsFor(test) {
+  const snap = await getDocs(query(collection(db, 'students'), where('class', '==', test.class), where('session', '==', test.session)));
+  const list = [];
+  snap.forEach(d => {
+    const s = d.data();
+    if (s.left) return;
+    if (!test.section || s.section === test.section) list.push({ id: d.id, ...s });
+  });
+  list.sort((a, b) => (Number(a.rollNo) || 0) - (Number(b.rollNo) || 0) || (a.name || '').localeCompare(b.name || ''));
+  return list;
+}
+async function loadMarksFor(testId) {
+  const snap = await getDocs(query(collection(db, 'classTestMarks'), where('testId', '==', testId)));
+  const map = {};
+  snap.forEach(d => { const m = d.data(); map[m.studentId] = m; });
+  return map;
+}
+
+// ══════════════ LIST TESTS ══════════════
+window.loadTests = async function() {
+  const f = getFilters();
+  clearMsg('list-msg');
+  if (!checkFilters(f, 'list-msg')) return;
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('tests-table').style.display = 'none';
+  try {
+    const snap = await getDocs(query(collection(db, 'classTests'),
+      where('session', '==', f.session), where('class', '==', f.cls), where('subject', '==', f.subject)));
+    tests = [];
+    snap.forEach(d => tests.push({ id: d.id, ...d.data() }));
+    // With a section picked, show that section's tests plus whole-class tests
+    if (f.section) tests = tests.filter(t => !t.section || t.section === f.section);
+    tests.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+    marksCount = {};
+    await Promise.all(tests.map(async t => {
+      const ms = await getDocs(query(collection(db, 'classTestMarks'), where('testId', '==', t.id)));
+      marksCount[t.id] = ms.size;
+    }));
+    renderTestList();
+  } catch (e) {
+    showMsg('list-msg', 'Error loading tests: ' + e.message, 'error');
+  }
+  document.getElementById('loading').style.display = 'none';
+};
+
+function renderTestList() {
+  const tbody = document.getElementById('tests-tbody');
+  const table = document.getElementById('tests-table');
+  if (!tests.length) {
+    table.style.display = 'none';
+    showMsg('list-msg', 'No class tests yet for this class & subject. Click "➕ New Test" to create one.', 'error');
+    return;
+  }
+  const today = todayStr();
+  tbody.innerHTML = tests.map(t => {
+    const retests = tests.filter(x => x.parentTestId === t.id);
+    let retestCell;
+    if (t.parentTestId) {
+      const p = testById(t.parentTestId);
+      retestCell = `<span class="pill pill-info">Re-test of ${esc(p ? p.title : 'earlier test')}</span>`;
+    } else if (retests.length) {
+      retestCell = `<span class="pill pill-good">Done ${retests.map(r => fmtDate(r.date)).join(', ')}</span>`;
+    } else {
+      const due = addDays(t.date, RETEST_AFTER_DAYS);
+      retestCell = due <= today
+        ? `<span class="pill pill-due">🔔 Due (since ${fmtDate(due)})</span>`
+        : `<span style="font-size:12px;color:#777;">On ${fmtDate(due)} (${daysBetween(today, due)} days)</span>`;
+    }
+    const canCompare = t.parentTestId || retests.length;
+    const canDelete = currentUser?.role === 'admin' || t.createdByUid === currentUser?.uid;
+    return `<tr>
+      <td class="left"><b>${esc(t.title)}</b></td>
+      <td>${fmtDate(t.date)}</td>
+      <td>${esc(t.section || 'All')}</td>
+      <td class="left" style="font-size:12px;max-width:260px;">${t.topics.map(x => esc(x.name)).join(', ')}</td>
+      <td>${totalMax(t)}</td>
+      <td>${marksCount[t.id] || 0}</td>
+      <td>${retestCell}</td>
+      <td><div class="btn-group" style="justify-content:center;">
+        <button class="btn btn-sm btn-green" onclick="openEntry('${t.id}')">✏️ Marks</button>
+        <button class="btn btn-sm btn-orange" onclick="openReport('${t.id}')">📉 Weak Topics</button>
+        ${t.parentTestId ? '' : `<button class="btn btn-sm btn-primary" onclick="openCreate('${t.id}')">🔁 Re-test</button>`}
+        ${canCompare ? `<button class="btn btn-sm btn-load" onclick="openCompare('${t.id}')">📈 Compare</button>` : ''}
+        ${canDelete ? `<button class="btn btn-sm btn-red" onclick="deleteTest('${t.id}')" title="Delete test">🗑</button>` : ''}
+      </div></td>
+    </tr>`;
+  }).join('');
+  table.style.display = '';
+}
+
+// ══════════════ CREATE TEST / RE-TEST ══════════════
+window.addTopicRow = function(name = '', max = '') {
+  const row = document.createElement('div');
+  row.className = 'topic-row';
+  row.innerHTML = `
+    <input type="text" class="topic-name" placeholder="Topic name (e.g. Fractions)" value="${esc(name)}"/>
+    <input type="number" class="topic-max" placeholder="Max marks" min="1" value="${esc(max)}" oninput="updateTopicTotal()"/>
+    <button class="btn btn-sm btn-red" title="Remove topic">✕</button>`;
+  row.querySelector('button').onclick = () => { row.remove(); updateTopicTotal(); };
+  document.getElementById('topic-rows').appendChild(row);
+  updateTopicTotal();
+};
+window.updateTopicTotal = function() {
+  const total = [...document.querySelectorAll('.topic-max')].reduce((s, i) => s + (Number(i.value) || 0), 0);
+  document.getElementById('topic-total').textContent = `Total max marks: ${total}`;
+};
+
+window.openCreate = function(parentId) {
+  const f = getFilters();
+  clearMsg('list-msg'); clearMsg('create-msg');
+  retestParent = parentId ? testById(parentId) : null;
+  if (!retestParent && !checkFilters(f, 'list-msg')) return;
+
+  document.getElementById('topic-rows').innerHTML = '';
+  document.getElementById('new-date').value = todayStr();
+  const info = document.getElementById('create-info');
+  if (retestParent) {
+    document.getElementById('create-title').textContent = '🔁 Create Re-test';
+    document.getElementById('new-title').value = `${retestParent.title} – Re-test`;
+    retestParent.topics.forEach(t => addTopicRow(t.name, t.max));
+    info.innerHTML = `Re-test of <b>${esc(testLabel(retestParent))}</b> — Class ${esc(retestParent.class)}, ${esc(retestParent.subject)}.
+      Same topics are filled in so results can be compared. Keep topic names the same (you may change max marks).`;
+    info.style.display = 'block';
+  } else {
+    document.getElementById('create-title').textContent = '➕ Create New Class Test';
+    document.getElementById('new-title').value = '';
+    for (let i = 0; i < 3; i++) addTopicRow();
+    info.innerHTML = `New test for <b>Class ${esc(f.cls)}${f.section ? ' – ' + esc(f.section) : ''}</b>, subject <b>${esc(f.subject)}</b>, session ${esc(f.session)}.`;
+    info.style.display = 'block';
+  }
+  showCard('create-card');
+};
+
+window.saveTest = async function() {
+  const f = getFilters();
+  const base = retestParent
+    ? { session: retestParent.session, class: retestParent.class, section: retestParent.section || '', subject: retestParent.subject }
+    : { session: f.session, class: f.cls, section: f.section || '', subject: f.subject };
+  if (!retestParent && !checkFilters(f, 'create-msg')) return;
+
+  const title = document.getElementById('new-title').value.trim();
+  const date = document.getElementById('new-date').value;
+  const topics = [];
+  const seen = new Set();
+  for (const row of document.querySelectorAll('#topic-rows .topic-row')) {
+    const name = row.querySelector('.topic-name').value.trim();
+    const maxRaw = row.querySelector('.topic-max').value;
+    if (!name && !maxRaw) continue;
+    const max = Number(maxRaw);
+    if (!name) { showMsg('create-msg', 'Every topic needs a name.', 'error'); return; }
+    if (!(max > 0)) { showMsg('create-msg', `Enter valid max marks for "${name}".`, 'error'); return; }
+    if (seen.has(topicKey(name))) { showMsg('create-msg', `Topic "${name}" is repeated.`, 'error'); return; }
+    seen.add(topicKey(name));
+    topics.push({ name, max });
+  }
+  if (!title) { showMsg('create-msg', 'Please enter the test name.', 'error'); return; }
+  if (!date) { showMsg('create-msg', 'Please select the test date.', 'error'); return; }
+  if (!topics.length) { showMsg('create-msg', 'Add at least one topic.', 'error'); return; }
+
+  try {
+    await addDoc(collection(db, 'classTests'), {
+      ...base, title, date, topics,
+      parentTestId: retestParent ? retestParent.id : null,
+      createdBy: currentUser?.email || '',
+      createdByUid: currentUser?.uid || '',
+      createdAt: serverTimestamp()
+    });
+    closeCard('create-card');
+    // Show the list for the class / subject the test was saved under
+    document.getElementById('sel-session').value = base.session;
+    document.getElementById('sel-class').value = base.class;
+    document.getElementById('sel-subject').value = base.subject;
+    await loadTests();
+    showMsg('list-msg', `✅ Test "${title}" created. Now click ✏️ Marks to enter marks.`, 'success');
+    retestParent = null;
+  } catch (e) {
+    showMsg('create-msg', 'Error saving test: ' + e.message, 'error');
+  }
+};
+
+window.deleteTest = async function(id) {
+  const t = testById(id);
+  if (!t) return;
+  if (tests.some(x => x.parentTestId === id)) {
+    if (!confirm(`"${t.title}" has a re-test linked to it. Delete it anyway? (The re-test will stay.)`)) return;
+  } else if (!confirm(`Delete test "${t.title}" and all its marks? This cannot be undone.`)) return;
+  try {
+    const ms = await getDocs(query(collection(db, 'classTestMarks'), where('testId', '==', id)));
+    const batch = writeBatch(db);
+    ms.forEach(d => batch.delete(d.ref));
+    batch.delete(doc(db, 'classTests', id));
+    await batch.commit();
+    await loadTests();
+    showMsg('list-msg', `🗑 Test "${t.title}" deleted.`, 'success');
+  } catch (e) {
+    showMsg('list-msg', 'Error deleting: ' + e.message, 'error');
+  }
+};
+
+// ══════════════ MARKS ENTRY ══════════════
+window.openEntry = async function(id) {
+  entryTest = testById(id);
+  if (!entryTest) return;
+  clearMsg('entry-msg');
+  document.getElementById('entry-title').textContent = `✏️ Enter Marks — ${entryTest.title}`;
+  document.getElementById('entry-summary').textContent = 'Loading students...';
+  document.getElementById('entry-tbody').innerHTML = '';
+  showCard('entry-card');
+  try {
+    const [students, marks] = await Promise.all([loadStudentsFor(entryTest), loadMarksFor(entryTest.id)]);
+    entryStudents = students;
+    if (!students.length) {
+      document.getElementById('entry-summary').textContent = '';
+      showMsg('entry-msg', 'No students found for this class/section.', 'error');
+      return;
+    }
+    const topics = entryTest.topics;
+    document.getElementById('entry-thead').innerHTML = `<tr>
+      <th>#</th><th>Roll</th><th class="left">Student Name</th>
+      ${topics.map(t => `<th>${esc(t.name)}<br><small>(${t.max})</small></th>`).join('')}
+      <th>Total<br><small>(${totalMax(entryTest)})</small></th><th>Absent</th></tr>`;
+    document.getElementById('entry-tbody').innerHTML = students.map((s, idx) => {
+      const m = marks[s.id];
+      const absent = !!m?.absent;
+      return `<tr>
+        <td>${idx + 1}</td>
+        <td>${esc(s.rollNo || '-')}</td>
+        <td class="left">${esc(s.name || '-')}</td>
+        ${topics.map((t, ti) => {
+          const v = m && !absent && m.scores ? m.scores[t.name] : undefined;
+          return `<td><input type="number" class="marks-input" data-sid="${s.id}" data-ti="${ti}"
+            min="0" max="${t.max}" step="0.5" value="${v ?? ''}" ${absent ? 'disabled' : ''}
+            oninput="onMarkInput('${s.id}')"/></td>`;
+        }).join('')}
+        <td id="tot_${s.id}" style="font-weight:700;"></td>
+        <td><input type="checkbox" id="abs_${s.id}" ${absent ? 'checked' : ''} onchange="onAbsent('${s.id}')"/></td>
+      </tr>`;
+    }).join('');
+    students.forEach(s => onMarkInput(s.id));
+    const done = Object.keys(marks).filter(k => students.some(s => s.id === k)).length;
+    document.getElementById('entry-summary').innerHTML =
+      `Class <b>${esc(entryTest.class)}${entryTest.section ? ' – ' + esc(entryTest.section) : ''}</b> | ${esc(entryTest.subject)} |
+       Date ${fmtDate(entryTest.date)} | <b>${done}</b> of ${students.length} students saved.
+       <br><small>Leave a box empty if the question was not attempted (counted as 0). Tick Absent if the student missed the test.</small>`;
+  } catch (e) {
+    showMsg('entry-msg', 'Error loading: ' + e.message, 'error');
+  }
+};
+
+window.onMarkInput = function(sid) {
+  let total = 0, any = false;
+  document.querySelectorAll(`.marks-input[data-sid="${sid}"]`).forEach(inp => {
+    const max = entryTest.topics[inp.dataset.ti].max;
+    if (inp.value === '') { inp.classList.remove('error'); return; }
+    const v = Number(inp.value);
+    const bad = isNaN(v) || v < 0 || v > max;
+    inp.classList.toggle('error', bad);
+    if (!bad) { total += v; any = true; }
+  });
+  const absent = document.getElementById('abs_' + sid)?.checked;
+  document.getElementById('tot_' + sid).textContent = absent ? 'AB' : (any ? r1(total) : '');
+};
+window.onAbsent = function(sid) {
+  const absent = document.getElementById('abs_' + sid).checked;
+  document.querySelectorAll(`.marks-input[data-sid="${sid}"]`).forEach(inp => {
+    if (absent) { inp.value = ''; inp.classList.remove('error'); }
+    inp.disabled = absent;
+  });
+  onMarkInput(sid);
+};
+
+window.saveMarks = async function() {
+  if (!entryTest) return;
+  const t = entryTest;
+  const errors = [], saves = [];
+  entryStudents.forEach(s => {
+    const absent = document.getElementById('abs_' + s.id)?.checked;
+    if (absent) { saves.push({ s, absent: true, scores: {}, total: null }); return; }
+    const inputs = [...document.querySelectorAll(`.marks-input[data-sid="${s.id}"]`)];
+    if (inputs.every(i => i.value === '')) return; // nothing entered for this student
+    const scores = {};
+    let total = 0;
+    inputs.forEach(inp => {
+      const topic = t.topics[inp.dataset.ti];
+      const v = inp.value === '' ? 0 : Number(inp.value);
+      if (isNaN(v) || v < 0 || v > topic.max) errors.push(`${s.name} – ${topic.name}: ${inp.value}`);
+      scores[topic.name] = v;
+      total += v;
+    });
+    saves.push({ s, absent: false, scores, total });
+  });
+  if (errors.length) { showMsg('entry-msg', 'Fix invalid marks: ' + errors.join('; '), 'error'); return; }
+  if (!saves.length) { showMsg('entry-msg', 'No marks entered yet.', 'error'); return; }
+
+  try {
+    const batch = writeBatch(db);
+    saves.forEach(({ s, absent, scores, total }) => {
+      batch.set(doc(db, 'classTestMarks', `${t.id}_${s.id}`), {
+        testId: t.id,
+        studentId: s.id,
+        studentName: s.name || '',
+        rollNo: s.rollNo || '',
+        class: t.class,
+        section: s.section || '',
+        session: t.session,
+        subject: t.subject,
+        absent, scores, total,
+        maxMarks: totalMax(t),
+        enteredBy: currentUser?.email || '',
+        updatedAt: serverTimestamp()
+      });
+    });
+    await batch.commit();
+    marksCount[t.id] = Math.max(marksCount[t.id] || 0, saves.length);
+    renderTestList();
+    showMsg('entry-msg', `✅ Marks saved for ${saves.length} students.`, 'success');
+  } catch (e) {
+    showMsg('entry-msg', 'Error saving: ' + e.message, 'error');
+  }
+};
+
+// ══════════════ WEAK TOPIC REPORT ══════════════
+// Per-topic class average and per-student topic % for one test.
+function analyse(test, students, marks) {
+  const present = students.filter(s => marks[s.id] && !marks[s.id].absent);
+  const topicStats = test.topics.map(t => {
+    const vals = present.map(s => Number(marks[s.id].scores?.[t.name] ?? 0));
+    const avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    return { ...t, avgMarks: avg, avgPct: avg === null ? null : pct(avg, t.max) };
+  });
+  const max = totalMax(test);
+  const studentStats = students.map(s => {
+    const m = marks[s.id];
+    if (!m) return { s, status: 'pending' };
+    if (m.absent) return { s, status: 'absent' };
+    const topicPct = {};
+    test.topics.forEach(t => { topicPct[t.name] = pct(Number(m.scores?.[t.name] ?? 0), t.max); });
+    const total = test.topics.reduce((sum, t) => sum + Number(m.scores?.[t.name] ?? 0), 0);
+    return { s, status: 'present', m, topicPct, total, pct: pct(total, max) };
+  });
+  const presentStats = studentStats.filter(x => x.status === 'present');
+  const classPct = presentStats.length ? presentStats.reduce((a, x) => a + x.pct, 0) / presentStats.length : null;
+  return { topicStats, studentStats, presentStats, classPct, max };
+}
+
+window.openReport = async function(id) {
+  const test = testById(id);
+  if (!test) return;
+  document.getElementById('report-title').textContent = `📉 Weak Topic Report — ${test.title}`;
+  document.getElementById('report-body').innerHTML = '<p style="color:#888;">Loading...</p>';
+  showCard('report-card');
+  try {
+    const [students, marks] = await Promise.all([loadStudentsFor(test), loadMarksFor(test.id)]);
+    reportData = { test, students, marks };
+    renderReport();
+  } catch (e) {
+    document.getElementById('report-body').innerHTML = `<div class="msg msg-error">Error: ${esc(e.message)}</div>`;
+  }
+};
+
+window.renderReport = function() {
+  if (!reportData) return;
+  const { test, students, marks } = reportData;
+  const weakPct = Number(document.getElementById('sel-threshold').value);
+  const a = analyse(test, students, marks);
+  const body = document.getElementById('report-body');
+  const subLine = `Class ${test.class}${test.section ? ' – ' + test.section : ''} | ${test.subject} | ${test.title} | Date ${fmtDate(test.date)} | Session ${test.session}`;
+  document.getElementById('report-print-sub').textContent = 'Class Test Weak Topic Report — ' + subLine;
+
+  if (!a.presentStats.length) {
+    body.innerHTML = '<div class="msg msg-error">No marks entered for this test yet.</div>';
+    return;
+  }
+
+  const weakTopics = a.topicStats.filter(t => t.avgPct !== null && t.avgPct < weakPct).sort((x, y) => x.avgPct - y.avgPct);
+  const absentCount = a.studentStats.filter(x => x.status === 'absent').length;
+  const pendingCount = a.studentStats.filter(x => x.status === 'pending').length;
+  const needHelp = a.presentStats.filter(x => x.pct < weakPct).length;
+
+  let html = `<p style="font-size:13px;color:#555;margin-bottom:12px;" class="no-print">${esc(subLine)}</p>
+  <div class="stats-row">
+    <div class="stat-box"><div class="stat-num">${a.presentStats.length}</div><div class="stat-label">Students Appeared</div></div>
+    <div class="stat-box"><div class="stat-num">${absentCount}</div><div class="stat-label">Absent</div></div>
+    <div class="stat-box"><div class="stat-num">${r1(a.classPct)}%</div><div class="stat-label">Class Average</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:#c0392b;">${weakTopics.length}</div><div class="stat-label">Weak Topics (class avg &lt; ${weakPct}%)</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:#c0392b;">${needHelp}</div><div class="stat-label">Students below ${weakPct}% overall</div></div>
+  </div>`;
+  if (pendingCount) html += `<div class="msg msg-error no-print">Marks not entered yet for ${pendingCount} student(s) — they are not counted.</div>`;
+
+  html += `<div class="info-box"><b>Weak topics of the class (teach again):</b> ${
+    weakTopics.length ? weakTopics.map(t => `<span class="pill pill-weak">${esc(t.name)} – ${r1(t.avgPct)}%</span>`).join(' ')
+                      : '<span class="pill pill-good">No weak topic 🎉</span>'}</div>`;
+
+  // Topic-wise table, weakest first
+  const sortedTopics = [...a.topicStats].sort((x, y) => (x.avgPct ?? 101) - (y.avgPct ?? 101));
+  html += `<h3>Topic-wise Class Performance</h3><div class="table-wrap"><table>
+    <thead><tr><th class="left">Topic</th><th>Max</th><th>Class Avg</th><th>Avg %</th><th></th><th>Students below ${weakPct}%</th><th>Status</th></tr></thead><tbody>`;
+  sortedTopics.forEach(t => {
+    const weakStudents = a.presentStats.filter(x => x.topicPct[t.name] < weakPct);
+    html += `<tr>
+      <td class="left"><b>${esc(t.name)}</b></td>
+      <td>${t.max}</td>
+      <td>${t.avgMarks === null ? '-' : r1(t.avgMarks)}</td>
+      <td><b>${t.avgPct === null ? '-' : r1(t.avgPct) + '%'}</b></td>
+      <td>${t.avgPct === null ? '' : bar(t.avgPct)}</td>
+      <td>${weakStudents.length} / ${a.presentStats.length}</td>
+      <td>${levelPill(t.avgPct, weakPct)}</td>
+    </tr>`;
+  });
+  html += `</tbody></table></div>`;
+
+  // Remedial groups: which students need help in which topic
+  html += `<h3>Remedial Groups (students to help, topic-wise)</h3><div class="table-wrap"><table>
+    <thead><tr><th class="left">Topic</th><th class="left">Students scoring below ${weakPct}%</th></tr></thead><tbody>`;
+  sortedTopics.forEach(t => {
+    const list = a.presentStats.filter(x => x.topicPct[t.name] < weakPct)
+      .sort((x, y) => x.topicPct[t.name] - y.topicPct[t.name]);
+    html += `<tr><td class="left"><b>${esc(t.name)}</b></td><td class="left" style="font-size:12px;">${
+      list.length ? list.map(x => `${esc(x.s.name)} <span style="color:#a93226;">(${r1(x.topicPct[t.name])}%)</span>`).join(', ') : '<span style="color:#1e8449;">None</span>'}</td></tr>`;
+  });
+  html += `</tbody></table></div>`;
+
+  // Student-wise sheet
+  html += `<h3>Student-wise Topic Marks</h3><div class="table-wrap"><table>
+    <thead><tr><th>Roll</th><th class="left">Student Name</th>
+      ${test.topics.map(t => `<th>${esc(t.name)}<br><small>(${t.max})</small></th>`).join('')}
+      <th>Total<br><small>(${a.max})</small></th><th>%</th><th class="left">Weak Topics</th></tr></thead><tbody>`;
+  a.studentStats.forEach(x => {
+    if (x.status === 'pending') return;
+    if (x.status === 'absent') {
+      html += `<tr><td>${esc(x.s.rollNo || '-')}</td><td class="left">${esc(x.s.name)}</td>
+        <td colspan="${test.topics.length + 3}" style="color:#999;">Absent</td></tr>`;
+      return;
+    }
+    const weak = test.topics.filter(t => x.topicPct[t.name] < weakPct).map(t => t.name);
+    html += `<tr><td>${esc(x.s.rollNo || '-')}</td><td class="left">${esc(x.s.name)}</td>
+      ${test.topics.map(t => `<td class="${x.topicPct[t.name] < weakPct ? 'cell-weak' : ''}">${r1(Number(x.m.scores?.[t.name] ?? 0))}</td>`).join('')}
+      <td><b>${r1(x.total)}</b></td>
+      <td class="${x.pct < weakPct ? 'cell-weak' : ''}"><b>${r1(x.pct)}%</b></td>
+      <td class="left" style="font-size:12px;color:#a93226;">${weak.length ? weak.map(esc).join(', ') : '<span style="color:#1e8449;">—</span>'}</td></tr>`;
+  });
+  html += `</tbody></table></div>
+    <p style="font-size:12px;color:#777;margin-top:10px;">Red cells = below ${weakPct}% in that topic.
+    Re-test suggested on <b>${fmtDate(addDays(test.date, RETEST_AFTER_DAYS))}</b> (about 1 month after the test).</p>
+    <div style="display:flex;justify-content:space-between;margin-top:50px;font-size:12px;">
+      <span>Subject Teacher</span><span>Class Teacher</span><span>Principal</span></div>`;
+  body.innerHTML = html;
+};
+
+// ══════════════ COMPARISON ══════════════
+window.openCompare = function(id) {
+  const t = testById(id);
+  if (!t) return;
+  // Pair: if this is a re-test, compare with its parent; else with its latest re-test
+  let a, b;
+  if (t.parentTestId && testById(t.parentTestId)) { a = testById(t.parentTestId); b = t; }
+  else {
+    a = t;
+    b = tests.filter(x => x.parentTestId === t.id).sort((x, y) => (y.date || '').localeCompare(x.date || ''))[0];
+  }
+  const opts = [...tests].sort((x, y) => (x.date || '').localeCompare(y.date || ''))
+    .map(x => `<option value="${x.id}">${esc(testLabel(x))}</option>`).join('');
+  document.getElementById('cmp-a').innerHTML = opts;
+  document.getElementById('cmp-b').innerHTML = opts;
+  if (a) document.getElementById('cmp-a').value = a.id;
+  if (b) document.getElementById('cmp-b').value = b.id;
+  showCard('compare-card');
+  runCompare();
+};
+
+window.runCompare = async function() {
+  const A = testById(document.getElementById('cmp-a').value);
+  const B = testById(document.getElementById('cmp-b').value);
+  const body = document.getElementById('compare-body');
+  if (!A || !B) { body.innerHTML = '<div class="msg msg-error">Select both tests.</div>'; return; }
+  if (A.id === B.id) { body.innerHTML = '<div class="msg msg-error">Select two different tests.</div>'; return; }
+  body.innerHTML = '<p style="color:#888;">Loading...</p>';
+  try {
+    const sameGroup = (A.section || '') === (B.section || '');
+    const [stuA, stuB, mA, mB] = await Promise.all([
+      loadStudentsFor(A), sameGroup ? null : loadStudentsFor(B), loadMarksFor(A.id), loadMarksFor(B.id)
+    ]);
+    const students = stuB ? [...new Map([...stuA, ...stuB].map(s => [s.id, s])).values()] : stuA;
+    const ra = analyse(A, students, mA);
+    const rb = analyse(B, students, mB);
+    const weakPct = Number(document.getElementById('sel-threshold').value);
+    document.getElementById('compare-print-sub').textContent =
+      `Class Test Comparison — Class ${A.class}${A.section ? ' – ' + A.section : ''} | ${A.subject} | ${testLabel(A)} vs ${testLabel(B)}`;
+
+    if (!ra.presentStats.length || !rb.presentStats.length) {
+      body.innerHTML = '<div class="msg msg-error">Marks are missing for one of the tests.</div>';
+      return;
+    }
+
+    // Topic matching by name
+    const bTopics = new Map(rb.topicStats.map(t => [topicKey(t.name), t]));
+    const aKeys = new Set(ra.topicStats.map(t => topicKey(t.name)));
+    const rows = ra.topicStats.map(t => ({ name: t.name, a: t.avgPct, b: bTopics.get(topicKey(t.name))?.avgPct ?? null }));
+    rb.topicStats.filter(t => !aKeys.has(topicKey(t.name))).forEach(t => rows.push({ name: t.name, a: null, b: t.avgPct }));
+
+    const weakBefore = rows.filter(r => r.a !== null && r.a < weakPct);
+    const fixed = weakBefore.filter(r => r.b !== null && r.b >= weakPct);
+    const stillWeak = weakBefore.filter(r => r.b !== null && r.b < weakPct);
+    const newWeak = rows.filter(r => r.b !== null && r.b < weakPct && !(r.a !== null && r.a < weakPct));
+
+    // Student-wise
+    const sB = new Map(rb.studentStats.map(x => [x.s.id, x]));
+    const pairs = ra.studentStats.map(x => ({ x, y: sB.get(x.s.id) }));
+    let improved = 0, declined = 0, same = 0;
+    pairs.forEach(({ x, y }) => {
+      if (x.status !== 'present' || y?.status !== 'present') return;
+      const d = y.pct - x.pct;
+      if (d >= CHANGE_PTS) improved++; else if (d <= -CHANGE_PTS) declined++; else same++;
+    });
+
+    const gap = daysBetween(A.date, B.date);
+    let html = `<p style="font-size:13px;color:#555;margin-bottom:12px;">
+      <b>${esc(testLabel(A))}</b> → <b>${esc(testLabel(B))}</b> (${gap} days apart). Weak = below ${weakPct}%.</p>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-num">${r1(ra.classPct)}% → ${r1(rb.classPct)}%</div><div class="stat-label">Class Average</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:#1e8449;">${improved}</div><div class="stat-label">Students Improved</div></div>
+      <div class="stat-box"><div class="stat-num">${same}</div><div class="stat-label">About Same</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:#c0392b;">${declined}</div><div class="stat-label">Students Declined</div></div>
+      <div class="stat-box"><div class="stat-num">${weakBefore.length} → ${rows.filter(r => r.b !== null && r.b < weakPct).length}</div><div class="stat-label">Weak Topics</div></div>
+    </div>
+    <div class="info-box">
+      <b>✅ Weak topics now improved:</b> ${fixed.length ? fixed.map(r => `<span class="pill pill-good">${esc(r.name)}</span>`).join(' ') : '—'}<br>
+      <b>⚠️ Still weak:</b> ${stillWeak.length ? stillWeak.map(r => `<span class="pill pill-weak">${esc(r.name)}</span>`).join(' ') : '—'}<br>
+      <b>🆕 Newly weak:</b> ${newWeak.length ? newWeak.map(r => `<span class="pill pill-avg">${esc(r.name)}</span>`).join(' ') : '—'}
+    </div>`;
+
+    html += `<h3>Topic-wise Comparison (class average %)</h3><div class="table-wrap"><table>
+      <thead><tr><th class="left">Topic</th><th>Before</th><th>After</th><th>Change (pts)</th><th>Result</th><th>Now</th></tr></thead><tbody>`;
+    rows.forEach(r => {
+      html += `<tr><td class="left"><b>${esc(r.name)}</b></td>
+        <td class="${r.a !== null && r.a < weakPct ? 'cell-weak' : ''}">${r.a === null ? '—' : r1(r.a) + '%'}</td>
+        <td class="${r.b !== null && r.b < weakPct ? 'cell-weak' : ''}">${r.b === null ? '—' : r1(r.b) + '%'}</td>
+        ${changeCell(r.a, r.b)}<td>${verdict(r.a, r.b)}</td><td>${levelPill(r.b, weakPct)}</td></tr>`;
+    });
+    html += `</tbody></table></div>`;
+
+    html += `<h3>Student-wise Comparison</h3><div class="table-wrap"><table>
+      <thead><tr><th>Roll</th><th class="left">Student Name</th><th>Before %</th><th>After %</th><th>Change (pts)</th><th>Result</th>
+      <th class="left">Weak topics fixed</th><th class="left">Still weak</th></tr></thead><tbody>`;
+    pairs.forEach(({ x, y }) => {
+      if (x.status === 'pending' && (!y || y.status === 'pending')) return;
+      const before = x.status === 'present' ? x.pct : null;
+      const after = y?.status === 'present' ? y.pct : null;
+      const show = (st, p) => st === 'absent' ? 'AB' : p === null ? '—' : r1(p) + '%';
+      let fixedT = [], weakT = [];
+      if (x.status === 'present' && y?.status === 'present') {
+        const yPct = new Map(Object.entries(y.topicPct).map(([k, v]) => [topicKey(k), v]));
+        A.topics.forEach(t => {
+          const b = x.topicPct[t.name], af = yPct.get(topicKey(t.name));
+          if (b < weakPct && af !== undefined) (af >= weakPct ? fixedT : weakT).push(t.name);
+        });
+      }
+      html += `<tr><td>${esc(x.s.rollNo || '-')}</td><td class="left">${esc(x.s.name)}</td>
+        <td class="${before !== null && before < weakPct ? 'cell-weak' : ''}">${show(x.status, before)}</td>
+        <td class="${after !== null && after < weakPct ? 'cell-weak' : ''}">${show(y?.status, after)}</td>
+        ${changeCell(before, after)}<td>${verdict(before, after)}</td>
+        <td class="left" style="font-size:12px;color:#1e8449;">${fixedT.map(esc).join(', ') || '—'}</td>
+        <td class="left" style="font-size:12px;color:#a93226;">${weakT.map(esc).join(', ') || '—'}</td></tr>`;
+    });
+    html += `</tbody></table></div>
+      <p style="font-size:12px;color:#777;margin-top:10px;">Change of ${CHANGE_PTS}+ percentage points = Improved / Declined; smaller change = Same.</p>
+      <div style="display:flex;justify-content:space-between;margin-top:50px;font-size:12px;">
+        <span>Subject Teacher</span><span>Class Teacher</span><span>Principal</span></div>`;
+    body.innerHTML = html;
+  } catch (e) {
+    body.innerHTML = `<div class="msg msg-error">Error: ${esc(e.message)}</div>`;
+  }
+};
+</script>
+<script>if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js');</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pgjps-v6';
+const CACHE_NAME = 'pgjps-v7';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -6,6 +6,7 @@ const STATIC_ASSETS = [
   '/teacher.html',
   '/tabulation.html',
   '/appearance.html',
+  '/class-test.html',
   '/firebase-config.js',
   '/manifest.json',
   '/icons/icon-192.png',
