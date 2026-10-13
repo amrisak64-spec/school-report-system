@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pgjps-v7';
+const CACHE_NAME = 'pgjps-v8';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

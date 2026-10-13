@@ -105,6 +105,9 @@
     .print-head h2 { border: none; color: #000; margin: 0; padding: 0; font-size: 17px; }
     .print-head p { font-size: 12px; color: #333; }
 
+    body:not(.is-admin) .admin-only { display: none !important; }
+    .stu-pick { display: inline-flex; align-items: center; gap: 4px; width: 250px; margin: 2px 0; }
+
     #loading { text-align: center; padding: 20px; color: #888; font-size: 14px; display: none; }
 
     @media (max-width: 700px) {
@@ -150,10 +153,11 @@
     <h2>Class Tests</h2>
     <div class="info-box">
       <b>How it works:</b>
-      ① Create a test with its <b>topics</b> (e.g. Fractions, Decimals) and marks of each topic →
-      ② Enter topic-wise marks of every student →
-      ③ Open the <b>Weak Topic Report</b> and print / give it to the subject teacher →
-      ④ After about <b>1 month</b> create a <b>Re-test</b> (same topics) and use <b>Compare</b> to check improvement.
+      ① Create a test with its <b>topics</b> (e.g. Fractions, Decimals), the max marks of each topic and the <b>test date</b> →
+      ② Click <b>📤 Excel</b>, download the blank sheet (all sections), fill the marks and upload it (or type marks with ✏️ Marks) →
+      ③ Open <b>📉 Weak Topics</b> for the section-wise result and class-wise weak topics, and download it as Excel →
+      ④ <b>Assign extra classes</b> to teachers for the weak topics →
+      ⑤ After about <b>1 month</b> create a <b>🔁 Re-test</b> (same topics), upload its Excel, then see <b>📈 Compare</b> (students up / down) and <b>📊 Teacher Improvement</b>.
     </div>
 
     <div class="filter-row">
@@ -205,6 +209,11 @@
       <div style="flex:0 0 auto;">
         <button class="btn btn-primary" onclick="openCreate()">➕ New Test</button>
       </div>
+    </div>
+    <div class="btn-group" style="margin-bottom:14px;">
+      <button class="btn btn-orange" onclick="openExtraList()">👩‍🏫 Extra Classes</button>
+      <button class="btn btn-green" onclick="openTeacherReport()">📊 Teacher Improvement</button>
+      <span style="font-size:12px;color:#777;align-self:center;">Uses the selected session (and class / subject if selected).</span>
     </div>
 
     <div id="list-msg"></div>
@@ -274,6 +283,27 @@
     </div>
   </div>
 
+  <!-- ══ EXCEL UPLOAD ══ -->
+  <div class="card no-print" id="upload-card" style="display:none;">
+    <h2 id="upload-title">📤 Upload Marks from Excel</h2>
+    <div id="upload-info" class="info-box"></div>
+    <div class="filter-row">
+      <div style="flex:0 0 auto;">
+        <button class="btn btn-load" onclick="downloadTemplate()">⬇️ Download Blank Sheet</button>
+      </div>
+      <div style="flex:2;">
+        <label>Filled Excel file (.xlsx / .xls / .csv)</label>
+        <input type="file" id="upload-file" accept=".xlsx,.xls,.csv" onchange="handleUpload(event)"/>
+      </div>
+    </div>
+    <div id="upload-msg"></div>
+    <div id="upload-preview"></div>
+    <div class="btn-group" style="margin-top:16px;justify-content:flex-end;">
+      <button class="btn btn-grey" onclick="closeCard('upload-card')">Close</button>
+      <button class="btn btn-green" id="upload-save" style="display:none;" onclick="saveUpload()">💾 Save Marks</button>
+    </div>
+  </div>
+
   <!-- ══ WEAK TOPIC REPORT ══ -->
   <div class="card" id="report-card" style="display:none;">
     <div class="print-head">
@@ -293,6 +323,8 @@
       </div>
       <div style="flex:0 0 auto;" class="btn-group">
         <button class="btn btn-orange" onclick="printCard('report-card')">🖨️ Print for Teacher</button>
+        <button class="btn btn-green" onclick="downloadReportExcel()">⬇️ Download Excel</button>
+        <button class="btn btn-primary admin-only" onclick="openAssign()">👩‍🏫 Assign Extra Class</button>
         <button class="btn btn-grey" onclick="closeCard('report-card')">Close</button>
       </div>
     </div>
@@ -318,17 +350,94 @@
       <div style="flex:0 0 auto;" class="btn-group">
         <button class="btn btn-load" onclick="runCompare()">📊 Compare</button>
         <button class="btn btn-orange" onclick="printCard('compare-card')">🖨️ Print</button>
+        <button class="btn btn-green" onclick="downloadTablesExcel('compare-body', 'Comparison')">⬇️ Excel</button>
         <button class="btn btn-grey" onclick="closeCard('compare-card')">Close</button>
       </div>
     </div>
     <div id="compare-body"></div>
+  </div>
+
+  <!-- ══ ASSIGN EXTRA CLASS ══ -->
+  <div class="card no-print" id="assign-card" style="display:none;">
+    <h2 id="assign-title">👩‍🏫 Assign Extra Class</h2>
+    <div id="assign-info" class="info-box"></div>
+    <label>Weak topics to teach again *</label>
+    <div id="assign-topics" style="display:flex;flex-wrap:wrap;gap:6px 18px;margin-bottom:14px;font-size:13px;"></div>
+    <div class="filter-row">
+      <div>
+        <label>Section *</label>
+        <select id="assign-section" onchange="renderAssignStudents()"></select>
+      </div>
+      <div style="flex:2;">
+        <label>Teacher *</label>
+        <select id="assign-teacher"></select>
+      </div>
+      <div>
+        <label>Start Date *</label>
+        <input type="date" id="assign-start"/>
+      </div>
+      <div>
+        <label>End Date (re-test) *</label>
+        <input type="date" id="assign-end"/>
+      </div>
+      <div>
+        <label>No. of Classes *</label>
+        <input type="number" id="assign-planned" min="1" value="8"/>
+      </div>
+    </div>
+    <div class="filter-row">
+      <div>
+        <label>Note for teacher</label>
+        <input type="text" id="assign-notes" placeholder="e.g. Zero period, Mon / Wed / Fri"/>
+      </div>
+    </div>
+    <label>Students for the extra class <span id="assign-count" style="font-weight:400;color:#777;"></span></label>
+    <div id="assign-students" style="max-height:260px;overflow:auto;border:1px solid #eee;border-radius:6px;padding:8px;font-size:13px;margin-bottom:14px;"></div>
+    <div id="assign-msg"></div>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="saveAssign()">💾 Assign</button>
+      <button class="btn btn-grey" onclick="closeCard('assign-card')">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ══ EXTRA CLASS LIST ══ -->
+  <div class="card" id="extra-card" style="display:none;">
+    <div class="print-head">
+      <h2>Prabha Gyan Jyoti Public School</h2>
+      <p id="extra-print-sub"></p>
+    </div>
+    <h2 id="extra-title">👩‍🏫 Extra Classes</h2>
+    <div class="btn-group no-print" style="margin-bottom:12px;">
+      <button class="btn btn-load" onclick="openExtraList()">🔄 Refresh</button>
+      <button class="btn btn-orange" onclick="printCard('extra-card')">🖨️ Print</button>
+      <button class="btn btn-green" onclick="downloadTablesExcel('extra-body', 'Extra_Classes')">⬇️ Excel</button>
+      <button class="btn btn-grey" onclick="closeCard('extra-card')">Close</button>
+    </div>
+    <div id="extra-msg"></div>
+    <div id="extra-body"></div>
+  </div>
+
+  <!-- ══ TEACHER IMPROVEMENT ══ -->
+  <div class="card" id="teacher-card" style="display:none;">
+    <div class="print-head">
+      <h2>Prabha Gyan Jyoti Public School</h2>
+      <p id="teacher-print-sub"></p>
+    </div>
+    <h2>📊 Teacher Improvement Report (extra classes)</h2>
+    <div class="btn-group no-print" style="margin-bottom:12px;">
+      <button class="btn btn-load" onclick="openTeacherReport()">🔄 Refresh</button>
+      <button class="btn btn-orange" onclick="printCard('teacher-card')">🖨️ Print</button>
+      <button class="btn btn-green" onclick="downloadTablesExcel('teacher-body', 'Teacher_Improvement')">⬇️ Excel</button>
+      <button class="btn btn-grey" onclick="closeCard('teacher-card')">Close</button>
+    </div>
+    <div id="teacher-body"></div>
   </div>
 </div>
 
 <script type="module">
 import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { collection, getDocs, doc, getDoc, addDoc, deleteDoc, query, where, serverTimestamp, writeBatch }
+import { collection, getDocs, doc, getDoc, addDoc, deleteDoc, updateDoc, query, where, serverTimestamp, writeBatch, increment }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // Classes II–V do not study SST or Sanskrit
@@ -338,6 +447,7 @@ const SUBJECT_ALIASES = { 'Science/E.V.S.': 'Science', 'S.S.T.': 'SST', 'G.K.': 
 const RETEST_AFTER_DAYS = 30;
 const STRONG_PCT = 75;
 const CHANGE_PTS = 5; // a change of less than this many % points counts as "same"
+const PASS_PCT = 33;
 
 let currentUser = null;
 let tests = [];          // tests of the selected session / class / subject
@@ -365,6 +475,7 @@ onAuthStateChanged(auth, async user => {
   currentUser.subject = SUBJECT_ALIASES[currentUser.subject] || currentUser.subject;
   document.getElementById('user-info').textContent =
     `${currentUser.name || user.email} | ${(currentUser.role || '').toUpperCase()}`;
+  document.body.classList.toggle('is-admin', currentUser.role === 'admin');
 
   if (currentUser.role === 'teacher') {
     const assigned = currentUser.assignedClasses || [];
@@ -402,6 +513,10 @@ const pct = (got, max) => max > 0 ? (got / max) * 100 : 0;
 const r1 = n => Math.round(n * 10) / 10;
 const testById = id => tests.find(t => t.id === id);
 const testLabel = t => `${t.title} (${fmtDate(t.date)})${t.section ? ' – Sec ' + t.section : ''}`;
+const secLabel = sec => sec ? 'Sec ' + sec : 'No Section';
+const bySectionRoll = (a, b) => String(a.section || '').localeCompare(String(b.section || ''))
+  || (Number(a.rollNo) || 0) - (Number(b.rollNo) || 0) || String(a.name || '').localeCompare(String(b.name || ''));
+const isAdmin = () => currentUser?.role === 'admin';
 
 function levelPill(p, weakPct) {
   if (p === null) return '<span class="pill pill-info">No data</span>';
@@ -469,7 +584,7 @@ async function loadStudentsFor(test) {
     if (s.left) return;
     if (!test.section || s.section === test.section) list.push({ id: d.id, ...s });
   });
-  list.sort((a, b) => (Number(a.rollNo) || 0) - (Number(b.rollNo) || 0) || (a.name || '').localeCompare(b.name || ''));
+  list.sort(bySectionRoll);
   return list;
 }
 async function loadMarksFor(testId) {
@@ -541,6 +656,7 @@ function renderTestList() {
       <td>${marksCount[t.id] || 0}</td>
       <td>${retestCell}</td>
       <td><div class="btn-group" style="justify-content:center;">
+        <button class="btn btn-sm btn-load" onclick="openUpload('${t.id}')">📤 Excel</button>
         <button class="btn btn-sm btn-green" onclick="openEntry('${t.id}')">✏️ Marks</button>
         <button class="btn btn-sm btn-orange" onclick="openReport('${t.id}')">📉 Weak Topics</button>
         ${t.parentTestId ? '' : `<button class="btn btn-sm btn-primary" onclick="openCreate('${t.id}')">🔁 Re-test</button>`}
@@ -680,7 +796,7 @@ window.openEntry = async function(id) {
     }
     const topics = entryTest.topics;
     document.getElementById('entry-thead').innerHTML = `<tr>
-      <th>#</th><th>Roll</th><th class="left">Student Name</th>
+      <th>#</th><th>Sec</th><th>Roll</th><th class="left">Student Name</th>
       ${topics.map(t => `<th>${esc(t.name)}<br><small>(${t.max})</small></th>`).join('')}
       <th>Total<br><small>(${totalMax(entryTest)})</small></th><th>Absent</th></tr>`;
     document.getElementById('entry-tbody').innerHTML = students.map((s, idx) => {
@@ -688,6 +804,7 @@ window.openEntry = async function(id) {
       const absent = !!m?.absent;
       return `<tr>
         <td>${idx + 1}</td>
+        <td>${esc(s.section || '-')}</td>
         <td>${esc(s.rollNo || '-')}</td>
         <td class="left">${esc(s.name || '-')}</td>
         ${topics.map((t, ti) => {
@@ -757,8 +874,18 @@ window.saveMarks = async function() {
   if (!saves.length) { showMsg('entry-msg', 'No marks entered yet.', 'error'); return; }
 
   try {
+    await writeMarks(t, saves);
+    showMsg('entry-msg', `✅ Marks saved for ${saves.length} students.`, 'success');
+  } catch (e) {
+    showMsg('entry-msg', 'Error saving: ' + e.message, 'error');
+  }
+};
+
+// Saves [{ s, absent, scores, total }] for a test (used by typed entry and Excel upload)
+async function writeMarks(t, saves) {
+  for (let i = 0; i < saves.length; i += 400) {
     const batch = writeBatch(db);
-    saves.forEach(({ s, absent, scores, total }) => {
+    saves.slice(i, i + 400).forEach(({ s, absent, scores, total }) => {
       batch.set(doc(db, 'classTestMarks', `${t.id}_${s.id}`), {
         testId: t.id,
         studentId: s.id,
@@ -770,18 +897,16 @@ window.saveMarks = async function() {
         subject: t.subject,
         absent, scores, total,
         maxMarks: totalMax(t),
+        testDate: t.date,
         enteredBy: currentUser?.email || '',
         updatedAt: serverTimestamp()
       });
     });
     await batch.commit();
-    marksCount[t.id] = Math.max(marksCount[t.id] || 0, saves.length);
-    renderTestList();
-    showMsg('entry-msg', `✅ Marks saved for ${saves.length} students.`, 'success');
-  } catch (e) {
-    showMsg('entry-msg', 'Error saving: ' + e.message, 'error');
   }
-};
+  marksCount[t.id] = (await getDocs(query(collection(db, 'classTestMarks'), where('testId', '==', t.id)))).size;
+  renderTestList();
+}
 
 // ══════════════ WEAK TOPIC REPORT ══════════════
 // Per-topic class average and per-student topic % for one test.
@@ -804,7 +929,34 @@ function analyse(test, students, marks) {
   });
   const presentStats = studentStats.filter(x => x.status === 'present');
   const classPct = presentStats.length ? presentStats.reduce((a, x) => a + x.pct, 0) / presentStats.length : null;
+  // Rank inside each section (same % = same rank)
+  presentStats.forEach(x => {
+    x.rank = 1 + presentStats.filter(y => (y.s.section || '') === (x.s.section || '') && y.pct > x.pct + 1e-9).length;
+  });
   return { topicStats, studentStats, presentStats, classPct, max };
+}
+
+// Per-section summary of one analysed test
+function sectionStats(test, a, weakPct) {
+  const avg = arr => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null;
+  const secs = [...new Set(a.studentStats.map(x => x.s.section || ''))].sort();
+  return secs.map(sec => {
+    const all = a.studentStats.filter(x => (x.s.section || '') === sec);
+    const pres = all.filter(x => x.status === 'present');
+    const topicAvg = {};
+    test.topics.forEach(t => { topicAvg[t.name] = avg(pres.map(x => x.topicPct[t.name])); });
+    return {
+      sec, total: all.length, present: pres.length,
+      absent: all.filter(x => x.status === 'absent').length,
+      avg: avg(pres.map(x => x.pct)),
+      high: pres.length ? Math.max(...pres.map(x => x.pct)) : null,
+      low: pres.length ? Math.min(...pres.map(x => x.pct)) : null,
+      passed: pres.filter(x => x.pct >= PASS_PCT).length,
+      below: pres.filter(x => x.pct < weakPct).length,
+      topicAvg,
+      weakTopics: test.topics.filter(t => topicAvg[t.name] !== null && topicAvg[t.name] < weakPct).map(t => t.name)
+    };
+  });
 }
 
 window.openReport = async function(id) {
@@ -855,15 +1007,39 @@ window.renderReport = function() {
     weakTopics.length ? weakTopics.map(t => `<span class="pill pill-weak">${esc(t.name)} – ${r1(t.avgPct)}%</span>`).join(' ')
                       : '<span class="pill pill-good">No weak topic 🎉</span>'}</div>`;
 
+  // Section-wise result
+  const secs = sectionStats(test, a, weakPct);
+  const showSecs = secs.length > 1;
+  const fmtP = p => p === null ? '-' : r1(p) + '%';
+  html += `<h3>Section-wise Result</h3><div class="table-wrap"><table>
+    <thead><tr><th class="left">Section</th><th>Students</th><th>Appeared</th><th>Absent</th><th>Average %</th><th>Highest %</th><th>Lowest %</th>
+    <th>Passed (≥${PASS_PCT}%)</th><th>Below ${weakPct}%</th><th class="left">Weak Topics of Section</th></tr></thead><tbody>`;
+  secs.forEach(x => {
+    html += `<tr><td class="left"><b>${esc(secLabel(x.sec))}</b></td><td>${x.total}</td><td>${x.present}</td><td>${x.absent}</td>
+      <td class="${x.avg !== null && x.avg < weakPct ? 'cell-weak' : ''}"><b>${fmtP(x.avg)}</b></td><td>${fmtP(x.high)}</td><td>${fmtP(x.low)}</td>
+      <td>${x.passed}</td><td>${x.below}</td>
+      <td class="left" style="font-size:12px;color:#a93226;">${x.weakTopics.map(esc).join(', ') || '<span style="color:#1e8449;">—</span>'}</td></tr>`;
+  });
+  if (showSecs) {
+    const pres = a.presentStats;
+    html += `<tr style="background:#f5eef8;font-weight:700;"><td class="left">Whole Class</td><td>${a.studentStats.length}</td><td>${pres.length}</td><td>${absentCount}</td>
+      <td>${fmtP(a.classPct)}</td><td>${fmtP(Math.max(...pres.map(x => x.pct)))}</td><td>${fmtP(Math.min(...pres.map(x => x.pct)))}</td>
+      <td>${pres.filter(x => x.pct >= PASS_PCT).length}</td><td>${needHelp}</td>
+      <td class="left" style="font-size:12px;color:#a93226;">${weakTopics.map(t => esc(t.name)).join(', ') || '—'}</td></tr>`;
+  }
+  html += `</tbody></table></div>`;
+
   // Topic-wise table, weakest first
   const sortedTopics = [...a.topicStats].sort((x, y) => (x.avgPct ?? 101) - (y.avgPct ?? 101));
-  html += `<h3>Topic-wise Class Performance</h3><div class="table-wrap"><table>
-    <thead><tr><th class="left">Topic</th><th>Max</th><th>Class Avg</th><th>Avg %</th><th></th><th>Students below ${weakPct}%</th><th>Status</th></tr></thead><tbody>`;
+  html += `<h3>Topic-wise Class Performance (class-wise weak topics)</h3><div class="table-wrap"><table>
+    <thead><tr><th class="left">Topic</th><th>Max</th>${showSecs ? secs.map(x => `<th>${esc(secLabel(x.sec))} %</th>`).join('') : ''}
+    <th>Class Avg</th><th>Avg %</th><th></th><th>Students below ${weakPct}%</th><th>Status</th></tr></thead><tbody>`;
   sortedTopics.forEach(t => {
     const weakStudents = a.presentStats.filter(x => x.topicPct[t.name] < weakPct);
     html += `<tr>
       <td class="left"><b>${esc(t.name)}</b></td>
       <td>${t.max}</td>
+      ${showSecs ? secs.map(x => { const p = x.topicAvg[t.name]; return `<td class="${p !== null && p < weakPct ? 'cell-weak' : ''}">${fmtP(p)}</td>`; }).join('') : ''}
       <td>${t.avgMarks === null ? '-' : r1(t.avgMarks)}</td>
       <td><b>${t.avgPct === null ? '-' : r1(t.avgPct) + '%'}</b></td>
       <td>${t.avgPct === null ? '' : bar(t.avgPct)}</td>
@@ -880,27 +1056,28 @@ window.renderReport = function() {
     const list = a.presentStats.filter(x => x.topicPct[t.name] < weakPct)
       .sort((x, y) => x.topicPct[t.name] - y.topicPct[t.name]);
     html += `<tr><td class="left"><b>${esc(t.name)}</b></td><td class="left" style="font-size:12px;">${
-      list.length ? list.map(x => `${esc(x.s.name)} <span style="color:#a93226;">(${r1(x.topicPct[t.name])}%)</span>`).join(', ') : '<span style="color:#1e8449;">None</span>'}</td></tr>`;
+      list.length ? list.map(x => `${esc(x.s.name)}${showSecs ? ' [' + esc(x.s.section || '-') + ']' : ''} <span style="color:#a93226;">(${r1(x.topicPct[t.name])}%)</span>`).join(', ') : '<span style="color:#1e8449;">None</span>'}</td></tr>`;
   });
   html += `</tbody></table></div>`;
 
   // Student-wise sheet
   html += `<h3>Student-wise Topic Marks</h3><div class="table-wrap"><table>
-    <thead><tr><th>Roll</th><th class="left">Student Name</th>
+    <thead><tr><th>Sec</th><th>Roll</th><th class="left">Student Name</th>
       ${test.topics.map(t => `<th>${esc(t.name)}<br><small>(${t.max})</small></th>`).join('')}
-      <th>Total<br><small>(${a.max})</small></th><th>%</th><th class="left">Weak Topics</th></tr></thead><tbody>`;
+      <th>Total<br><small>(${a.max})</small></th><th>%</th><th>Rank in Sec</th><th class="left">Weak Topics</th></tr></thead><tbody>`;
   a.studentStats.forEach(x => {
     if (x.status === 'pending') return;
     if (x.status === 'absent') {
-      html += `<tr><td>${esc(x.s.rollNo || '-')}</td><td class="left">${esc(x.s.name)}</td>
-        <td colspan="${test.topics.length + 3}" style="color:#999;">Absent</td></tr>`;
+      html += `<tr><td>${esc(x.s.section || '-')}</td><td>${esc(x.s.rollNo || '-')}</td><td class="left">${esc(x.s.name)}</td>
+        <td colspan="${test.topics.length + 4}" style="color:#999;">Absent</td></tr>`;
       return;
     }
     const weak = test.topics.filter(t => x.topicPct[t.name] < weakPct).map(t => t.name);
-    html += `<tr><td>${esc(x.s.rollNo || '-')}</td><td class="left">${esc(x.s.name)}</td>
+    html += `<tr><td>${esc(x.s.section || '-')}</td><td>${esc(x.s.rollNo || '-')}</td><td class="left">${esc(x.s.name)}</td>
       ${test.topics.map(t => `<td class="${x.topicPct[t.name] < weakPct ? 'cell-weak' : ''}">${r1(Number(x.m.scores?.[t.name] ?? 0))}</td>`).join('')}
       <td><b>${r1(x.total)}</b></td>
       <td class="${x.pct < weakPct ? 'cell-weak' : ''}"><b>${r1(x.pct)}%</b></td>
+      <td>${x.rank}</td>
       <td class="left" style="font-size:12px;color:#a93226;">${weak.length ? weak.map(esc).join(', ') : '<span style="color:#1e8449;">—</span>'}</td></tr>`;
   });
   html += `</tbody></table></div>
@@ -941,10 +1118,17 @@ window.runCompare = async function() {
   body.innerHTML = '<p style="color:#888;">Loading...</p>';
   try {
     const sameGroup = (A.section || '') === (B.section || '');
-    const [stuA, stuB, mA, mB] = await Promise.all([
-      loadStudentsFor(A), sameGroup ? null : loadStudentsFor(B), loadMarksFor(A.id), loadMarksFor(B.id)
+    const [stuA, stuB, mA, mB, extraSnap] = await Promise.all([
+      loadStudentsFor(A), sameGroup ? null : loadStudentsFor(B), loadMarksFor(A.id), loadMarksFor(B.id),
+      getDocs(query(collection(db, 'extraClasses'), where('testId', '==', A.id))).catch(() => null)
     ]);
-    const students = stuB ? [...new Map([...stuA, ...stuB].map(s => [s.id, s])).values()] : stuA;
+    const students = stuB ? [...new Map([...stuA, ...stuB].map(s => [s.id, s])).values()].sort(bySectionRoll) : stuA;
+    // studentId -> teacher names of extra classes given after test A
+    const extraOf = new Map();
+    extraSnap?.forEach(d => {
+      const e = d.data();
+      (e.students || []).forEach(st => extraOf.set(st.id, [...(extraOf.get(st.id) || []), e.teacherName || '']));
+    });
     const ra = analyse(A, students, mA);
     const rb = analyse(B, students, mB);
     const weakPct = Number(document.getElementById('sel-threshold').value);
@@ -1003,9 +1187,45 @@ window.runCompare = async function() {
     });
     html += `</tbody></table></div>`;
 
+    // Section-wise comparison
+    const secsA = sectionStats(A, ra, weakPct), secsB = sectionStats(B, rb, weakPct);
+    const secRows = [...new Set([...secsA, ...secsB].map(x => x.sec))].sort();
+    html += `<h3>Section-wise Comparison</h3><div class="table-wrap"><table>
+      <thead><tr><th class="left">Section</th><th>Before Avg %</th><th>After Avg %</th><th>Change (pts)</th><th>Result</th>
+      <th>Students Improved</th><th>Same</th><th>Declined</th></tr></thead><tbody>`;
+    secRows.forEach(sec => {
+      const x = secsA.find(v => v.sec === sec), y = secsB.find(v => v.sec === sec);
+      const b = x?.avg ?? null, af = y?.avg ?? null;
+      let up = 0, eq = 0, dn = 0;
+      pairs.forEach(({ x: p, y: q }) => {
+        if ((p.s.section || '') !== sec || p.status !== 'present' || q?.status !== 'present') return;
+        const d = q.pct - p.pct;
+        if (d >= CHANGE_PTS) up++; else if (d <= -CHANGE_PTS) dn++; else eq++;
+      });
+      html += `<tr><td class="left"><b>${esc(secLabel(sec))}</b></td>
+        <td>${b === null ? '—' : r1(b) + '%'}</td><td>${af === null ? '—' : r1(af) + '%'}</td>
+        ${changeCell(b, af)}<td>${verdict(b, af)}</td>
+        <td class="up">${up}</td><td>${eq}</td><td class="down">${dn}</td></tr>`;
+    });
+    html += `</tbody></table></div>`;
+
+    // Extra class effect: students who got an extra class vs the rest
+    if (extraOf.size) {
+      const grp = inExtra => {
+        const d = pairs.filter(({ x: p, y: q }) => p.status === 'present' && q?.status === 'present' && extraOf.has(p.s.id) === inExtra)
+          .map(({ x: p, y: q }) => q.pct - p.pct);
+        return { n: d.length, avg: d.length ? d.reduce((s, v) => s + v, 0) / d.length : null };
+      };
+      const gi = grp(true), go = grp(false);
+      const fmtD = g => g.avg === null ? '—' : (g.avg >= 0 ? '+' : '') + r1(g.avg) + ' pts';
+      html += `<div class="info-box"><b>👩‍🏫 Extra class effect:</b> students who attended an extra class changed by
+        <b class="${gi.avg >= 0 ? 'up' : 'down'}">${fmtD(gi)}</b> on average (${gi.n} students);
+        other students changed by <b>${fmtD(go)}</b> (${go.n} students).</div>`;
+    }
+
     html += `<h3>Student-wise Comparison</h3><div class="table-wrap"><table>
-      <thead><tr><th>Roll</th><th class="left">Student Name</th><th>Before %</th><th>After %</th><th>Change (pts)</th><th>Result</th>
-      <th class="left">Weak topics fixed</th><th class="left">Still weak</th></tr></thead><tbody>`;
+      <thead><tr><th>Sec</th><th>Roll</th><th class="left">Student Name</th><th>Before %</th><th>After %</th><th>Change (pts)</th><th>Result</th>
+      <th class="left">Extra Class</th><th class="left">Weak topics fixed</th><th class="left">Still weak</th></tr></thead><tbody>`;
     pairs.forEach(({ x, y }) => {
       if (x.status === 'pending' && (!y || y.status === 'pending')) return;
       const before = x.status === 'present' ? x.pct : null;
@@ -1019,17 +1239,720 @@ window.runCompare = async function() {
           if (b < weakPct && af !== undefined) (af >= weakPct ? fixedT : weakT).push(t.name);
         });
       }
-      html += `<tr><td>${esc(x.s.rollNo || '-')}</td><td class="left">${esc(x.s.name)}</td>
+      html += `<tr><td>${esc(x.s.section || '-')}</td><td>${esc(x.s.rollNo || '-')}</td><td class="left">${esc(x.s.name)}</td>
         <td class="${before !== null && before < weakPct ? 'cell-weak' : ''}">${show(x.status, before)}</td>
         <td class="${after !== null && after < weakPct ? 'cell-weak' : ''}">${show(y?.status, after)}</td>
         ${changeCell(before, after)}<td>${verdict(before, after)}</td>
+        <td class="left" style="font-size:12px;">${extraOf.has(x.s.id) ? '✅ ' + esc(extraOf.get(x.s.id).join(', ')) : '—'}</td>
         <td class="left" style="font-size:12px;color:#1e8449;">${fixedT.map(esc).join(', ') || '—'}</td>
         <td class="left" style="font-size:12px;color:#a93226;">${weakT.map(esc).join(', ') || '—'}</td></tr>`;
     });
     html += `</tbody></table></div>
-      <p style="font-size:12px;color:#777;margin-top:10px;">Change of ${CHANGE_PTS}+ percentage points = Improved / Declined; smaller change = Same.</p>
-      <div style="display:flex;justify-content:space-between;margin-top:50px;font-size:12px;">
+      <p style="font-size:12px;color:#777;margin-top:10px;">Change of ${CHANGE_PTS}+ percentage points = Improved / Declined; smaller change = Same.</p>`;
+    html += await dateWiseHistory(A);
+    html += `<div style="display:flex;justify-content:space-between;margin-top:50px;font-size:12px;">
         <span>Subject Teacher</span><span>Class Teacher</span><span>Principal</span></div>`;
+    body.innerHTML = html;
+  } catch (e) {
+    body.innerHTML = `<div class="msg msg-error">Error: ${esc(e.message)}</div>`;
+  }
+};
+
+// ══════════════ DATE-WISE HISTORY (all tests of the class & subject) ══════════════
+async function dateWiseHistory(A) {
+  const list = tests.filter(t => t.class === A.class && t.subject === A.subject && t.session === A.session)
+    .sort((x, y) => (x.date || '').localeCompare(y.date || ''));
+  if (list.length < 2) return '';
+  const allMarks = await Promise.all(list.map(t => loadMarksFor(t.id)));
+  const avg = arr => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null;
+  const secSet = new Set(), stu = new Map();
+  const rows = list.map((t, i) => {
+    const bySec = {}, all = [];
+    Object.values(allMarks[i]).forEach(m => {
+      const sec = m.section || '';
+      secSet.add(sec);
+      if (!stu.has(m.studentId)) stu.set(m.studentId, { name: m.studentName || '', rollNo: m.rollNo || '', section: sec, p: {} });
+      if (m.absent) { stu.get(m.studentId).p[t.id] = 'AB'; return; }
+      const p = pct(Number(m.total) || 0, Number(m.maxMarks) || totalMax(t));
+      stu.get(m.studentId).p[t.id] = p;
+      (bySec[sec] = bySec[sec] || []).push(p);
+      all.push(p);
+    });
+    return { t, bySec, all, classAvg: avg(all) };
+  });
+  const secs = [...secSet].sort();
+  const showSecs = secs.length > 1;
+  let html = `<h3>Date-wise History (all tests of Class ${esc(A.class)} – ${esc(A.subject)})</h3><div class="table-wrap"><table>
+    <thead><tr><th>Date</th><th class="left">Test</th><th>Appeared</th>${showSecs ? secs.map(s => `<th>${esc(secLabel(s))} Avg %</th>`).join('') : ''}
+    <th>Class Avg %</th><th>Change from previous test</th></tr></thead><tbody>`;
+  rows.forEach((r, i) => {
+    const prev = i ? rows[i - 1].classAvg : null;
+    html += `<tr><td>${fmtDate(r.t.date)}</td><td class="left">${esc(r.t.title)}${r.t.section ? ' (Sec ' + esc(r.t.section) + ')' : ''}</td><td>${r.all.length}</td>
+      ${showSecs ? secs.map(s => { const v = avg(r.bySec[s] || []); return `<td>${v === null ? '—' : r1(v) + '%'}</td>`; }).join('') : ''}
+      <td><b>${r.classAvg === null ? '—' : r1(r.classAvg) + '%'}</b></td>${i ? changeCell(prev, r.classAvg) : '<td>—</td>'}</tr>`;
+  });
+  html += `</tbody></table></div>`;
+
+  html += `<h3>Student-wise Date-wise Performance</h3><div class="table-wrap"><table>
+    <thead><tr><th>Sec</th><th>Roll</th><th class="left">Student Name</th>${list.map(t => `<th>${fmtDate(t.date)}<br><small>${esc(t.title)}</small></th>`).join('')}
+    <th>First → Last (pts)</th><th>Trend</th></tr></thead><tbody>`;
+  [...stu.values()].sort(bySectionRoll).forEach(s => {
+    const nums = list.map(t => s.p[t.id]).filter(v => typeof v === 'number');
+    const first = nums.length > 1 ? nums[0] : null, last = nums.length > 1 ? nums[nums.length - 1] : null;
+    html += `<tr><td>${esc(s.section || '-')}</td><td>${esc(s.rollNo || '-')}</td><td class="left">${esc(s.name)}</td>
+      ${list.map(t => { const v = s.p[t.id]; return `<td>${v === undefined ? '—' : v === 'AB' ? 'AB' : r1(v) + '%'}</td>`; }).join('')}
+      ${changeCell(first, last)}<td>${verdict(first, last)}</td></tr>`;
+  });
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+// ══════════════ EXCEL HELPERS ══════════════
+let xlsxLoadPromise = null;
+function loadXLSX() {
+  if (window.XLSX) return Promise.resolve();
+  if (!xlsxLoadPromise) {
+    xlsxLoadPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = resolve;
+      s.onerror = () => { xlsxLoadPromise = null; reject(new Error('Failed to load Excel library')); };
+      document.head.appendChild(s);
+    });
+  }
+  return xlsxLoadPromise;
+}
+const fileSafe = s => String(s).replace(/[^\w\-]+/g, '_').replace(/_+/g, '_').slice(0, 90);
+function sheetName(name, used) {
+  const base = String(name).replace(/[\[\]:*?\/\\]/g, ' ').trim().slice(0, 31) || 'Sheet';
+  let n = base, i = 2;
+  while (used.has(n)) n = base.slice(0, 27) + ' ' + (i++);
+  used.add(n);
+  return n;
+}
+function addSheet(wb, used, name, aoa, widths) {
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  if (widths) ws['!cols'] = widths.map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, ws, sheetName(name, used));
+}
+
+// Every table inside a card becomes one sheet, named by the heading above it
+window.downloadTablesExcel = async function(containerId, fileName) {
+  const tables = [...document.getElementById(containerId).querySelectorAll('table')];
+  if (!tables.length) { alert('Nothing to download yet.'); return; }
+  try {
+    await loadXLSX();
+    const wb = XLSX.utils.book_new(), used = new Set();
+    tables.forEach((tb, i) => {
+      const prev = tb.closest('.table-wrap')?.previousElementSibling;
+      const title = prev && prev.tagName === 'H3' ? prev.textContent : 'Table ' + (i + 1);
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(tb, { raw: true }), sheetName(title, used));
+    });
+    XLSX.writeFile(wb, fileSafe(fileName + '_' + todayStr()) + '.xlsx');
+  } catch (e) { alert('Excel error: ' + e.message); }
+};
+
+// ══════════════ EXCEL UPLOAD OF MARKS ══════════════
+let uploadTest = null, uploadStudents = [], uploadParsed = null;
+const topicHeader = t => `${t.name} (${t.max})`;
+const normHead = h => String(h ?? '').toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9ऀ-ॿ]/g, '');
+
+window.openUpload = async function(id) {
+  uploadTest = testById(id);
+  if (!uploadTest) return;
+  const t = uploadTest;
+  uploadParsed = null;
+  clearMsg('upload-msg');
+  document.getElementById('upload-title').textContent = `📤 Upload Marks from Excel — ${t.title}`;
+  document.getElementById('upload-file').value = '';
+  document.getElementById('upload-preview').innerHTML = '';
+  document.getElementById('upload-save').style.display = 'none';
+  document.getElementById('upload-info').innerHTML =
+    `Class <b>${esc(t.class)}${t.section ? ' – ' + esc(t.section) : ' (all sections)'}</b> | ${esc(t.subject)} | Test date <b>${fmtDate(t.date)}</b><br>
+     ① Download the blank sheet — it lists every student${t.section ? '' : ' of all sections'} with one column per topic.
+     ② Fill topic-wise marks (write <b>Y</b> in "Absent" for absent students; leave a row empty if not yet checked).
+     ③ Upload it here, check the preview and click <b>Save Marks</b>.<br>
+     <small>Your own Excel also works if it has <b>Section</b>, <b>Roll No</b>, <b>Student Name</b> and one column per topic named like the test topics: ${t.topics.map(x => esc(x.name)).join(', ')}.</small>`;
+  showCard('upload-card');
+  try { uploadStudents = await loadStudentsFor(t); }
+  catch (e) { showMsg('upload-msg', 'Error loading students: ' + e.message, 'error'); }
+};
+
+window.downloadTemplate = async function() {
+  const t = uploadTest;
+  if (!t) return;
+  try {
+    await loadXLSX();
+    const [students, marks] = await Promise.all([loadStudentsFor(t), loadMarksFor(t.id)]);
+    const header = ['Section', 'Roll No', 'Student Name', ...t.topics.map(topicHeader), 'Absent (Y)', 'Student ID'];
+    const rows = students.map(s => {
+      const m = marks[s.id];
+      return [s.section || '', s.rollNo || '', s.name || '',
+        ...t.topics.map(tp => m && !m.absent ? (m.scores?.[tp.name] ?? '') : ''),
+        m?.absent ? 'Y' : '', s.id];
+    });
+    const wb = XLSX.utils.book_new();
+    addSheet(wb, new Set(), 'Marks', [header, ...rows],
+      [8, 8, 28, ...t.topics.map(tp => Math.max(10, topicHeader(tp).length + 2)), 11, 24]);
+    XLSX.writeFile(wb, fileSafe(`ClassTest_${t.subject}_Class${t.class}${t.section ? '-' + t.section : ''}_${t.date}_${t.title}`) + '.xlsx');
+  } catch (e) { showMsg('upload-msg', 'Error: ' + e.message, 'error'); }
+};
+
+window.handleUpload = async function(ev) {
+  const file = ev.target.files[0];
+  if (!file || !uploadTest) return;
+  clearMsg('upload-msg');
+  uploadParsed = null;
+  document.getElementById('upload-save').style.display = 'none';
+  document.getElementById('upload-preview').innerHTML = '<p style="color:#888;">Reading file...</p>';
+  try {
+    await loadXLSX();
+    const wb = XLSX.read(new Uint8Array(await file.arrayBuffer()), { type: 'array' });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' });
+    uploadParsed = parseMarksSheet(uploadTest, uploadStudents, rows);
+    renderUploadPreview();
+  } catch (e) {
+    document.getElementById('upload-preview').innerHTML = '';
+    showMsg('upload-msg', e.message, 'error');
+  }
+};
+
+function parseMarksSheet(test, students, rows) {
+  const NAME = ['studentname', 'name', 'nameofstudent'];
+  const hi = rows.slice(0, 15).findIndex(r => r.some(c => NAME.includes(normHead(c))));
+  if (hi < 0) throw new Error('Could not find the heading row. The sheet needs a "Student Name" column — download the blank sheet to see the format.');
+  const head = rows[hi].map(normHead);
+  const find = keys => head.findIndex(h => keys.includes(h));
+  const col = {
+    id: find(['studentid']), sec: find(['section', 'sec']), roll: find(['rollno', 'roll', 'rollnumber']),
+    name: find(NAME), abs: find(['absent', 'absenty', 'ab'])
+  };
+  const topicCols = test.topics.map(t => head.indexOf(normHead(t.name)));
+  const missing = test.topics.filter((t, i) => topicCols[i] < 0).map(t => t.name);
+  if (missing.length) throw new Error(`Topic column(s) not found in the Excel: ${missing.join(', ')}. Column names must match the test topics.`);
+  const usedCols = new Set([...Object.values(col), ...topicCols].filter(i => i >= 0));
+  const ignored = rows[hi].map((h, i) => usedCols.has(i) ? '' : String(h).trim()).filter(Boolean);
+
+  const up = v => String(v ?? '').trim().toUpperCase();
+  const uniqueMap = (keyFn) => {
+    const m = new Map();
+    students.forEach(s => { const k = keyFn(s); m.set(k, m.has(k) ? null : s); });
+    return m;
+  };
+  const byId = new Map(students.map(s => [s.id, s]));
+  const bySecRoll = uniqueMap(s => up(s.section) + '|' + up(s.rollNo));
+  const byRoll = uniqueMap(s => up(s.rollNo));
+  const bySecName = uniqueMap(s => up(s.section) + '|' + up(s.name));
+  const byName = uniqueMap(s => up(s.name));
+
+  const entries = [], unmatched = [], errors = [], mismatches = [], seen = new Set();
+  for (let r = hi + 1; r < rows.length; r++) {
+    const row = rows[r];
+    const cell = i => i >= 0 ? String(row[i] ?? '').trim() : '';
+    const id = cell(col.id), sec = cell(col.sec) || test.section || '', roll = cell(col.roll), name = cell(col.name);
+    const vals = topicCols.map(i => cell(i));
+    if (!id && !roll && !name && vals.every(v => !v)) continue;
+    const rowNo = `Row ${r + 1}`;
+    let s = (id && byId.get(id)) || null;
+    if (!s && roll) s = (col.sec >= 0 || test.section) ? bySecRoll.get(up(sec) + '|' + up(roll)) : byRoll.get(up(roll));
+    if (!s && name) s = (col.sec >= 0 || test.section) ? bySecName.get(up(sec) + '|' + up(name)) : byName.get(up(name));
+    if (!s) { unmatched.push(`${rowNo}: ${name || '-'} (Roll ${roll || '-'}${sec ? ', Sec ' + sec : ''})`); continue; }
+    if (seen.has(s.id)) { errors.push(`${rowNo}: ${s.name} appears more than once`); continue; }
+    seen.add(s.id);
+    if (name && up(name) !== up(s.name)) mismatches.push(`${rowNo}: Excel "${name}" → saved for ${s.name} (Sec ${s.section || '-'}, Roll ${s.rollNo || '-'})`);
+    const absent = /^(y|yes|ab|a|absent|1|true)$/i.test(cell(col.abs)) || vals.some(v => /^(ab|absent)$/i.test(v));
+    if (absent) { entries.push({ s, absent: true, scores: {}, total: null }); continue; }
+    if (vals.every(v => v === '')) continue;
+    const scores = {};
+    let total = 0, bad = false;
+    test.topics.forEach((t, i) => {
+      const v = vals[i] === '' ? 0 : Number(vals[i]);
+      if (isNaN(v) || v < 0 || v > t.max) { errors.push(`${rowNo}: ${s.name} – ${t.name}: "${vals[i]}" (max ${t.max})`); bad = true; }
+      scores[t.name] = v;
+      total += v;
+    });
+    if (!bad) entries.push({ s, absent: false, scores, total });
+  }
+  const notInSheet = students.filter(s => !seen.has(s.id));
+  return { entries, unmatched, errors, mismatches, ignored, notInSheet };
+}
+
+function renderUploadPreview() {
+  const p = uploadParsed, t = uploadTest;
+  const box = document.getElementById('upload-preview');
+  const absent = p.entries.filter(e => e.absent).length;
+  const listBlock = (title, items, cls) => items.length
+    ? `<div class="msg ${cls}"><b>${title} (${items.length}):</b><br>${items.slice(0, 40).map(esc).join('<br>')}${items.length > 40 ? '<br>…' : ''}</div>` : '';
+  let html = `<div class="stats-row">
+    <div class="stat-box"><div class="stat-num">${p.entries.length - absent}</div><div class="stat-label">Students with marks</div></div>
+    <div class="stat-box"><div class="stat-num">${absent}</div><div class="stat-label">Absent</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:#c0392b;">${p.errors.length}</div><div class="stat-label">Errors</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:#c0392b;">${p.unmatched.length}</div><div class="stat-label">Rows not matched</div></div>
+    <div class="stat-box"><div class="stat-num">${p.notInSheet.length}</div><div class="stat-label">Students not in sheet / blank</div></div>
+  </div>`;
+  html += listBlock('❌ Fix these errors in Excel and upload again', p.errors, 'msg-error');
+  html += listBlock('⚠️ Rows that did not match any student (will be skipped)', p.unmatched, 'msg-error');
+  html += listBlock('ℹ️ Name in Excel differs from school record — please check', p.mismatches, 'msg-error');
+  if (p.ignored.length) html += `<div class="msg msg-success">Columns ignored: ${p.ignored.map(esc).join(', ')}</div>`;
+  if (p.entries.length) {
+    const max = totalMax(t);
+    html += `<h3>Preview</h3><div class="table-wrap"><table><thead><tr><th>Sec</th><th>Roll</th><th class="left">Student Name</th>
+      ${t.topics.map(tp => `<th>${esc(tp.name)}<br><small>(${tp.max})</small></th>`).join('')}<th>Total<br><small>(${max})</small></th><th>%</th></tr></thead><tbody>`;
+    [...p.entries].sort((a, b) => bySectionRoll(a.s, b.s)).forEach(e => {
+      html += `<tr><td>${esc(e.s.section || '-')}</td><td>${esc(e.s.rollNo || '-')}</td><td class="left">${esc(e.s.name)}</td>${
+        e.absent ? `<td colspan="${t.topics.length + 2}" style="color:#999;">Absent</td>`
+          : t.topics.map(tp => `<td>${r1(e.scores[tp.name])}</td>`).join('') + `<td><b>${r1(e.total)}</b></td><td>${r1(pct(e.total, max))}%</td>`}</tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+  box.innerHTML = html;
+  const saveBtn = document.getElementById('upload-save');
+  if (!p.errors.length && p.entries.length) {
+    saveBtn.textContent = `💾 Save Marks of ${p.entries.length} Students`;
+    saveBtn.style.display = '';
+  } else if (!p.entries.length && !p.errors.length) {
+    showMsg('upload-msg', 'No marks found in the file.', 'error');
+  }
+}
+
+window.saveUpload = async function() {
+  if (!uploadParsed || uploadParsed.errors.length || !uploadParsed.entries.length) return;
+  const btn = document.getElementById('upload-save');
+  btn.disabled = true;
+  try {
+    await writeMarks(uploadTest, uploadParsed.entries);
+    showMsg('upload-msg', `✅ Marks of ${uploadParsed.entries.length} students saved for "${uploadTest.title}" (${fmtDate(uploadTest.date)}).`, 'success');
+    btn.style.display = 'none';
+    uploadParsed = null;
+  } catch (e) {
+    showMsg('upload-msg', 'Error saving: ' + e.message, 'error');
+  }
+  btn.disabled = false;
+};
+
+// ══════════════ WEAK TOPIC REPORT → EXCEL ══════════════
+window.downloadReportExcel = async function() {
+  if (!reportData) return;
+  const { test, students, marks } = reportData;
+  const weakPct = Number(document.getElementById('sel-threshold').value);
+  const a = analyse(test, students, marks);
+  if (!a.presentStats.length) { alert('No marks entered for this test yet.'); return; }
+  try {
+    await loadXLSX();
+    const secs = sectionStats(test, a, weakPct);
+    const R = v => v === null || v === undefined || !isFinite(v) ? '' : r1(v);
+    const status = p => p === null ? '' : p < weakPct ? 'WEAK' : p < STRONG_PCT ? 'Average' : 'Strong';
+    const head = [
+      ['Prabha Gyan Jyoti Public School'],
+      [`Class Test Result — Class ${test.class}${test.section ? ' – ' + test.section : ''} | ${test.subject} | ${test.title}`],
+      [`Test Date: ${fmtDate(test.date)} | Session ${test.session} | Weak = below ${weakPct}%`],
+      []
+    ];
+    const pres = a.presentStats;
+    const classWeak = a.topicStats.filter(t => t.avgPct !== null && t.avgPct < weakPct).map(t => t.name);
+    const sortedTopics = [...a.topicStats].sort((x, y) => (x.avgPct ?? 101) - (y.avgPct ?? 101));
+    const wb = XLSX.utils.book_new(), used = new Set();
+
+    addSheet(wb, used, 'Summary', [...head,
+      ['SECTION-WISE RESULT'],
+      ['Section', 'Students', 'Appeared', 'Absent', 'Average %', 'Highest %', 'Lowest %', `Passed (>=${PASS_PCT}%)`, `Below ${weakPct}%`, 'Weak Topics of Section'],
+      ...secs.map(x => [secLabel(x.sec), x.total, x.present, x.absent, R(x.avg), R(x.high), R(x.low), x.passed, x.below, x.weakTopics.join(', ')]),
+      ['Whole Class', a.studentStats.length, pres.length, a.studentStats.filter(x => x.status === 'absent').length, R(a.classPct),
+        R(Math.max(...pres.map(x => x.pct))), R(Math.min(...pres.map(x => x.pct))),
+        pres.filter(x => x.pct >= PASS_PCT).length, pres.filter(x => x.pct < weakPct).length, classWeak.join(', ')],
+      [],
+      ['CLASS-WISE WEAK TOPICS (average % of each topic)'],
+      ['Topic', 'Max', ...secs.map(x => secLabel(x.sec) + ' %'), 'Whole Class %', `Students below ${weakPct}%`, 'Status'],
+      ...sortedTopics.map(t => [t.name, t.max, ...secs.map(x => R(x.topicAvg[t.name])), R(t.avgPct),
+        pres.filter(x => x.topicPct[t.name] < weakPct).length, status(t.avgPct)])
+    ], [22, 10, 10, 10, 11, 11, 11, 14, 12, 40]);
+
+    secs.forEach(x => {
+      const rows = a.studentStats.filter(y => (y.s.section || '') === x.sec && y.status !== 'pending');
+      addSheet(wb, used, x.sec ? 'Section ' + x.sec : 'Students', [...head,
+        [`${secLabel(x.sec)} — Average ${R(x.avg)}%`],
+        ['Roll No', 'Student Name', ...test.topics.map(topicHeader), `Total (${a.max})`, '%', 'Rank', `Pass (>=${PASS_PCT}%)`, 'Weak Topics'],
+        ...rows.map(y => y.status === 'absent'
+          ? [y.s.rollNo || '', y.s.name || '', ...test.topics.map(() => 'AB'), 'AB', '', '', 'Absent', '']
+          : [y.s.rollNo || '', y.s.name || '', ...test.topics.map(t => r1(Number(y.m.scores?.[t.name] ?? 0))), r1(y.total), r1(y.pct), y.rank,
+             y.pct >= PASS_PCT ? 'Pass' : 'Fail', test.topics.filter(t => y.topicPct[t.name] < weakPct).map(t => t.name).join(', ')])
+      ], [8, 28, ...test.topics.map(t => Math.max(10, topicHeader(t).length + 2)), 10, 8, 6, 12, 40]);
+    });
+
+    const rem = [...head, ['Topic', 'Section', 'Roll No', 'Student Name', 'Topic %']];
+    sortedTopics.forEach(t => pres.filter(x => x.topicPct[t.name] < weakPct)
+      .sort((x, y) => String(x.s.section || '').localeCompare(String(y.s.section || '')) || x.topicPct[t.name] - y.topicPct[t.name])
+      .forEach(x => rem.push([t.name, x.s.section || '', x.s.rollNo || '', x.s.name || '', r1(x.topicPct[t.name])])));
+    addSheet(wb, used, 'Remedial Groups', rem, [22, 9, 9, 28, 9]);
+
+    XLSX.writeFile(wb, fileSafe(`Result_${test.subject}_Class${test.class}${test.section ? '-' + test.section : ''}_${test.date}_${test.title}`) + '.xlsx');
+  } catch (e) { alert('Excel error: ' + e.message); }
+};
+
+// ══════════════ ASSIGN EXTRA CLASS ══════════════
+let teacherList = null;
+let assignCtx = null;
+async function loadTeacherList() {
+  if (teacherList) return teacherList;
+  const snap = await getDocs(collection(db, 'users'));
+  teacherList = [];
+  snap.forEach(d => {
+    const u = d.data();
+    if (u.role === 'teacher' || u.role === 'admin') teacherList.push({ uid: d.id, ...u, subject: SUBJECT_ALIASES[u.subject] || u.subject });
+  });
+  teacherList.sort((a, b) => String(a.name || a.email).localeCompare(String(b.name || b.email)));
+  return teacherList;
+}
+
+window.openAssign = async function() {
+  if (!reportData || !isAdmin()) return;
+  const { test, students, marks } = reportData;
+  const weakPct = Number(document.getElementById('sel-threshold').value);
+  const a = analyse(test, students, marks);
+  if (!a.presentStats.length) { alert('Enter the marks of this test first.'); return; }
+  assignCtx = { test, a, weakPct };
+  clearMsg('assign-msg');
+  document.getElementById('assign-title').textContent = `👩‍🏫 Assign Extra Class — ${test.title}`;
+  document.getElementById('assign-info').innerHTML =
+    `Class <b>${esc(test.class)}</b> | ${esc(test.subject)} | Test date ${fmtDate(test.date)} | Weak = below ${weakPct}%.
+     Students below ${weakPct}% in any ticked topic are selected automatically — untick anyone who should not attend.`;
+  document.getElementById('assign-topics').innerHTML = a.topicStats.map(t => {
+    const weak = t.avgPct !== null && t.avgPct < weakPct;
+    return `<label style="display:inline-flex;align-items:center;gap:5px;font-weight:400;font-size:13px;margin:0;">
+      <input type="checkbox" class="assign-topic" value="${esc(t.name)}" ${weak ? 'checked' : ''} onchange="renderAssignStudents()"/>
+      ${esc(t.name)} <span class="pill ${weak ? 'pill-weak' : 'pill-good'}">${t.avgPct === null ? '-' : r1(t.avgPct) + '%'}</span></label>`;
+  }).join('');
+  const secs = [...new Set(a.presentStats.map(x => x.s.section || ''))].sort();
+  const secSel = document.getElementById('assign-section');
+  secSel.innerHTML = (test.section ? '' : '<option value="">All Sections</option>') +
+    secs.map(s => `<option value="${esc(s)}">${esc(secLabel(s))}</option>`).join('');
+  const today = todayStr();
+  document.getElementById('assign-start').value = today;
+  const due = addDays(test.date, RETEST_AFTER_DAYS);
+  document.getElementById('assign-end').value = due > today ? due : addDays(today, RETEST_AFTER_DAYS);
+  document.getElementById('assign-notes').value = '';
+  renderAssignStudents();
+  showCard('assign-card');
+
+  const tSel = document.getElementById('assign-teacher');
+  tSel.innerHTML = '<option value="">Loading teachers...</option>';
+  try {
+    const list = await loadTeacherList();
+    const fits = u => (u.subject === test.subject || u.subject === 'All Subjects') && (u.assignedClasses || []).includes(test.class);
+    tSel.innerHTML = '<option value="">-- Select Teacher --</option>' + list.map(u =>
+      `<option value="${u.uid}">${esc(u.name || u.email)}${u.subject ? ' — ' + esc(u.subject) : ''}${fits(u) ? ' ★' : ''}</option>`).join('');
+    const best = list.filter(u => u.role === 'teacher' && fits(u));
+    if (best.length === 1) tSel.value = best[0].uid;
+  } catch (e) {
+    tSel.innerHTML = '<option value="">Could not load teachers</option>';
+    showMsg('assign-msg', 'Error loading teachers: ' + e.message, 'error');
+  }
+};
+
+const assignTopics = () => [...document.querySelectorAll('.assign-topic:checked')].map(i => i.value);
+window.renderAssignStudents = function() {
+  if (!assignCtx) return;
+  const { a, weakPct } = assignCtx;
+  const topics = assignTopics();
+  const sec = document.getElementById('assign-section').value;
+  const list = a.presentStats.filter(x => (!sec || (x.s.section || '') === sec) && topics.some(t => x.topicPct[t] < weakPct));
+  document.getElementById('assign-count').textContent = `(${list.length} selected)`;
+  document.getElementById('assign-students').innerHTML = list.length ? list.map(x => {
+    const weak = topics.filter(t => x.topicPct[t] < weakPct);
+    return `<label class="stu-pick" style="font-weight:400;"><input type="checkbox" class="assign-stu" value="${x.s.id}" checked
+      onchange="document.getElementById('assign-count').textContent='(' + document.querySelectorAll('.assign-stu:checked').length + ' selected)'"/>
+      ${x.s.section ? '[' + esc(x.s.section) + '] ' : ''}${esc(x.s.rollNo || '-')}. ${esc(x.s.name)}
+      <span style="color:#a93226;font-size:11px;">(${weak.map(esc).join(', ')})</span></label>`;
+  }).join('') : '<span style="color:#777;">No student is weak in the ticked topics.</span>';
+};
+
+window.saveAssign = async function() {
+  if (!assignCtx) return;
+  const { test, a, weakPct } = assignCtx;
+  const topics = assignTopics();
+  const section = document.getElementById('assign-section').value || test.section || '';
+  const teacherUid = document.getElementById('assign-teacher').value;
+  const startDate = document.getElementById('assign-start').value;
+  const endDate = document.getElementById('assign-end').value;
+  const plannedClasses = Number(document.getElementById('assign-planned').value);
+  const ids = new Set([...document.querySelectorAll('.assign-stu:checked')].map(i => i.value));
+  const stuList = a.presentStats.filter(x => ids.has(x.s.id))
+    .map(x => ({ id: x.s.id, name: x.s.name || '', rollNo: x.s.rollNo || '', section: x.s.section || '' }));
+  if (!topics.length) { showMsg('assign-msg', 'Tick at least one topic.', 'error'); return; }
+  if (!teacherUid) { showMsg('assign-msg', 'Select the teacher.', 'error'); return; }
+  if (!startDate || !endDate || endDate < startDate) { showMsg('assign-msg', 'Enter valid start and end dates.', 'error'); return; }
+  if (!(plannedClasses > 0)) { showMsg('assign-msg', 'Enter the number of classes.', 'error'); return; }
+  if (!stuList.length) { showMsg('assign-msg', 'Select at least one student.', 'error'); return; }
+  const teacher = teacherList.find(u => u.uid === teacherUid);
+  try {
+    await addDoc(collection(db, 'extraClasses'), {
+      session: test.session, class: test.class, section, subject: test.subject,
+      testId: test.id, testTitle: test.title, testDate: test.date,
+      topics, weakPct, students: stuList,
+      teacherUid, teacherName: teacher?.name || teacher?.email || '',
+      startDate, endDate, plannedClasses, takenClasses: 0, status: 'Assigned',
+      notes: document.getElementById('assign-notes').value.trim(),
+      createdBy: currentUser?.email || '', createdAt: serverTimestamp()
+    });
+    closeCard('assign-card');
+    showMsg('list-msg', `✅ Extra class assigned to ${teacher?.name || 'teacher'} for ${stuList.length} students (${topics.join(', ')}).`, 'success');
+    openExtraList();
+  } catch (e) {
+    showMsg('assign-msg', 'Error saving: ' + e.message, 'error');
+  }
+};
+
+// ══════════════ EXTRA CLASS LIST & IMPACT ══════════════
+let extraList = [];
+let marksCache = new Map();
+const cachedMarks = id => { if (!marksCache.has(id)) marksCache.set(id, loadMarksFor(id)); return marksCache.get(id); };
+
+async function loadExtraClasses() {
+  const f = getFilters();
+  const q = isAdmin()
+    ? query(collection(db, 'extraClasses'), where('session', '==', f.session))
+    : query(collection(db, 'extraClasses'), where('teacherUid', '==', currentUser.uid));
+  const snap = await getDocs(q);
+  const list = [];
+  snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+  return list.filter(e => e.session === f.session && (!f.cls || e.class === f.cls) && (!isAdmin() || !f.subject || e.subject === f.subject))
+    .sort((x, y) => (y.startDate || '').localeCompare(x.startDate || ''));
+}
+async function loadSessionTests(session) {
+  const snap = await getDocs(query(collection(db, 'classTests'), where('session', '==', session)));
+  const list = [];
+  snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+  return list;
+}
+
+// Before/after % of the extra-class students in the assigned topics.
+// "After" = first re-test (or later test with the same topics) held on/after the extra class started.
+async function computeImpact(e, sessTests) {
+  const A = sessTests.find(t => t.id === e.testId);
+  if (!A) return { status: 'missing' };
+  const keys = new Set((e.topics || []).map(topicKey));
+  const later = sessTests.filter(t => t.id !== A.id && t.class === A.class && t.subject === A.subject
+      && (t.date || '') > (A.date || '') && (t.date || '') >= (e.startDate || '')
+      && (t.topics || []).some(tp => keys.has(topicKey(tp.name))))
+    .sort((x, y) => (x.date || '').localeCompare(y.date || ''));
+  const B = later.find(t => t.parentTestId === A.id) || later[0];
+  if (!B) return { status: 'pending', A };
+  const [mA, mB] = await Promise.all([cachedMarks(A.id), cachedMarks(B.id)]);
+  const part = (t, m) => {
+    if (!m || m.absent) return null;
+    let got = 0, max = 0;
+    t.topics.forEach(tp => { if (keys.has(topicKey(tp.name))) { got += Number(m.scores?.[tp.name] ?? 0); max += Number(tp.max) || 0; } });
+    return max > 0 ? pct(got, max) : null;
+  };
+  const avg = arr => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null;
+  const wp = e.weakPct || 50;
+  const ids = new Set((e.students || []).map(s => s.id));
+  const rows = (e.students || []).map(st => ({ st, before: part(A, mA[st.id]), after: part(B, mB[st.id]) }));
+  const both = rows.filter(r => r.before !== null && r.after !== null);
+  if (!both.length) return { status: 'nomarks', A, B, rows };
+  const others = Object.values(mA)
+    .filter(m => !ids.has(m.studentId) && (!e.section || (m.section || '') === e.section))
+    .map(m => [part(A, m), part(B, mB[m.studentId])]).filter(([b, a]) => b !== null && a !== null);
+  return {
+    status: 'done', A, B, rows, measured: both.length,
+    before: avg(both.map(r => r.before)), after: avg(both.map(r => r.after)),
+    up: both.filter(r => r.after - r.before >= CHANGE_PTS).length,
+    down: both.filter(r => r.after - r.before <= -CHANGE_PTS).length,
+    weakBefore: both.filter(r => r.before < wp).length,
+    cleared: both.filter(r => r.before < wp && r.after >= wp).length,
+    othersChange: avg(others.map(([b, a]) => a - b)), othersN: others.length
+  };
+}
+const ptsText = d => d === null || d === undefined ? '—' : (d >= 0 ? '+' : '') + r1(d);
+function impactCell(im) {
+  if (im.status === 'missing') return '<span class="pill pill-info">Test deleted</span>';
+  if (im.status === 'pending') return '<span class="pill pill-due">Re-test pending</span>';
+  if (im.status === 'nomarks') return `<span class="pill pill-info">Marks pending (${fmtDate(im.B.date)})</span>`;
+  const d = im.after - im.before;
+  return `${r1(im.before)}% → ${r1(im.after)}% <b class="${d >= 0 ? 'up' : 'down'}">(${ptsText(d)})</b><br>
+    <small>Re-test ${fmtDate(im.B.date)} · cleared ${im.cleared}/${im.weakBefore} weak</small>`;
+}
+
+window.openExtraList = async function() {
+  const f = getFilters();
+  clearMsg('extra-msg');
+  document.getElementById('extra-title').textContent = isAdmin() ? `👩‍🏫 Extra Classes — Session ${f.session}` : `👩‍🏫 My Extra Classes — Session ${f.session}`;
+  document.getElementById('extra-print-sub').textContent = `Extra Classes — Session ${f.session}${f.cls ? ' | Class ' + f.cls : ''}${isAdmin() && f.subject ? ' | ' + f.subject : ''}`;
+  const body = document.getElementById('extra-body');
+  body.innerHTML = '<p style="color:#888;">Loading...</p>';
+  showCard('extra-card');
+  try {
+    extraList = await loadExtraClasses();
+    if (!extraList.length) {
+      body.innerHTML = `<div class="msg msg-error">No extra classes found.${isAdmin() ? ' Open a test\'s 📉 Weak Topics report and click "👩‍🏫 Assign Extra Class".' : ''}</div>`;
+      return;
+    }
+    marksCache = new Map();
+    const sessTests = await loadSessionTests(f.session);
+    const impacts = await Promise.all(extraList.map(e => computeImpact(e, sessTests)));
+    const today = todayStr();
+    let html = `<h3>Extra Classes</h3><div class="table-wrap"><table><thead><tr>
+      <th class="left">Teacher</th><th>Class</th><th>Subject</th><th class="left">Topics</th><th class="left">Based on Test</th><th>Period</th>
+      <th class="left">Students</th><th>Classes Taken</th><th>Status</th><th>Result (weak topics)</th><th class="no-print">Actions</th></tr></thead><tbody>`;
+    extraList.forEach((e, i) => {
+      const canEdit = isAdmin() || e.teacherUid === currentUser?.uid;
+      const overdue = e.status !== 'Completed' && e.endDate < today;
+      const st = e.status === 'Completed' ? '<span class="pill pill-good">Completed</span>'
+        : overdue ? '<span class="pill pill-weak">Period over</span>'
+        : e.takenClasses > 0 ? '<span class="pill pill-avg">In Progress</span>' : '<span class="pill pill-info">Assigned</span>';
+      const stu = (e.students || []).slice().sort(bySectionRoll);
+      html += `<tr>
+        <td class="left"><b>${esc(e.teacherName)}</b>${e.notes ? `<br><small style="color:#777;">${esc(e.notes)}</small>` : ''}</td>
+        <td>${esc(e.class)}${e.section ? ' – ' + esc(e.section) : ''}</td>
+        <td>${esc(e.subject)}</td>
+        <td class="left" style="font-size:12px;">${(e.topics || []).map(esc).join(', ')}</td>
+        <td class="left" style="font-size:12px;">${esc(e.testTitle)}<br>${fmtDate(e.testDate)}</td>
+        <td style="font-size:12px;">${fmtDate(e.startDate)}<br>to ${fmtDate(e.endDate)}</td>
+        <td class="left" style="font-size:12px;"><details><summary>${stu.length} students</summary>${stu.map(s =>
+          `${s.section ? '[' + esc(s.section) + '] ' : ''}${esc(s.rollNo || '-')}. ${esc(s.name)}`).join('<br>')}</details></td>
+        <td><b>${e.takenClasses || 0}</b> / ${e.plannedClasses || 0}</td>
+        <td>${st}</td>
+        <td style="font-size:12px;">${impactCell(impacts[i])}</td>
+        <td class="no-print"><div class="btn-group" style="justify-content:center;">${canEdit ? `
+          <button class="btn btn-sm btn-green" onclick="extraClassTaken('${e.id}', 1)" title="Add one class taken today">+1 Class</button>
+          <button class="btn btn-sm btn-grey" onclick="extraClassTaken('${e.id}', -1)" title="Undo one class">−1</button>
+          ${e.status !== 'Completed' ? `<button class="btn btn-sm btn-primary" onclick="extraClassDone('${e.id}')">✅ Done</button>` : ''}` : ''}
+          ${isAdmin() ? `<button class="btn btn-sm btn-red" onclick="extraClassDelete('${e.id}')" title="Delete">🗑</button>` : ''}
+        </div></td></tr>`;
+    });
+    html += `</tbody></table></div>
+      <p style="font-size:12px;color:#777;margin-top:10px;">Result = average % of the extra-class students in the assigned topics: first test → re-test.
+      Create the re-test with 🔁 Re-test (same topic names) and upload its marks to see the result.</p>`;
+    body.innerHTML = html;
+  } catch (e) {
+    body.innerHTML = `<div class="msg msg-error">Error: ${esc(e.message)}</div>`;
+  }
+};
+
+window.extraClassTaken = async function(id, n) {
+  const e = extraList.find(x => x.id === id);
+  if (!e || (n < 0 && !(e.takenClasses > 0))) return;
+  try {
+    await updateDoc(doc(db, 'extraClasses', id), {
+      takenClasses: increment(n),
+      ...(n > 0 ? { lastClassDate: todayStr() } : {}),
+      ...(e.status === 'Assigned' && n > 0 ? { status: 'In Progress' } : {}),
+      updatedBy: currentUser?.email || '', updatedAt: serverTimestamp()
+    });
+    openExtraList();
+  } catch (err) { showMsg('extra-msg', 'Error: ' + err.message, 'error'); }
+};
+window.extraClassDone = async function(id) {
+  if (!confirm('Mark this extra class as completed?')) return;
+  try {
+    await updateDoc(doc(db, 'extraClasses', id), { status: 'Completed', completedOn: todayStr(), updatedBy: currentUser?.email || '', updatedAt: serverTimestamp() });
+    openExtraList();
+  } catch (err) { showMsg('extra-msg', 'Error: ' + err.message, 'error'); }
+};
+window.extraClassDelete = async function(id) {
+  if (!confirm('Delete this extra class assignment?')) return;
+  try {
+    await deleteDoc(doc(db, 'extraClasses', id));
+    openExtraList();
+  } catch (err) { showMsg('extra-msg', 'Error: ' + err.message, 'error'); }
+};
+
+// ══════════════ TEACHER IMPROVEMENT REPORT ══════════════
+window.openTeacherReport = async function() {
+  const f = getFilters();
+  const body = document.getElementById('teacher-body');
+  document.getElementById('teacher-print-sub').textContent =
+    `Teacher Improvement Report — Session ${f.session}${f.cls ? ' | Class ' + f.cls : ''}${isAdmin() && f.subject ? ' | ' + f.subject : ''}`;
+  body.innerHTML = '<p style="color:#888;">Loading...</p>';
+  showCard('teacher-card');
+  try {
+    const list = await loadExtraClasses();
+    if (!list.length) { body.innerHTML = '<div class="msg msg-error">No extra classes assigned yet for this selection.</div>'; return; }
+    marksCache = new Map();
+    const sessTests = await loadSessionTests(f.session);
+    const impacts = await Promise.all(list.map(e => computeImpact(e, sessTests)));
+    const items = list.map((e, i) => ({ e, im: impacts[i] }));
+
+    // Teacher-wise totals (averages weighted by number of students measured)
+    const byT = new Map();
+    items.forEach(({ e, im }) => {
+      const k = e.teacherUid || e.teacherName;
+      if (!byT.has(k)) byT.set(k, { name: e.teacherName, n: 0, students: 0, taken: 0, planned: 0, measuredA: 0,
+        measured: 0, sumB: 0, sumA: 0, up: 0, down: 0, weak: 0, cleared: 0, oSum: 0, oN: 0 });
+      const t = byT.get(k);
+      t.n++; t.students += (e.students || []).length; t.taken += e.takenClasses || 0; t.planned += e.plannedClasses || 0;
+      if (im.status !== 'done') return;
+      t.measuredA++; t.measured += im.measured;
+      t.sumB += im.before * im.measured; t.sumA += im.after * im.measured;
+      t.up += im.up; t.down += im.down; t.weak += im.weakBefore; t.cleared += im.cleared;
+      if (im.othersChange !== null) { t.oSum += im.othersChange * im.othersN; t.oN += im.othersN; }
+    });
+    const rating = d => d === null ? '<span class="pill pill-info">Re-test pending</span>'
+      : d >= 15 ? '<span class="pill pill-good">⭐ Excellent</span>'
+      : d >= 8 ? '<span class="pill pill-good">Good</span>'
+      : d >= CHANGE_PTS ? '<span class="pill pill-avg">Some improvement</span>'
+      : d > -CHANGE_PTS ? '<span class="pill pill-avg">No change</span>'
+      : '<span class="pill pill-weak">Declined</span>';
+    const rows = [...byT.values()].map(t => {
+      const before = t.measured ? t.sumB / t.measured : null, after = t.measured ? t.sumA / t.measured : null;
+      return { ...t, before, after, d: before === null ? null : after - before, others: t.oN ? t.oSum / t.oN : null };
+    }).sort((x, y) => (y.d ?? -999) - (x.d ?? -999));
+
+    const done = items.filter(x => x.im.status === 'done');
+    const allB = done.reduce((s, x) => s + x.im.before * x.im.measured, 0), allA = done.reduce((s, x) => s + x.im.after * x.im.measured, 0);
+    const allN = done.reduce((s, x) => s + x.im.measured, 0);
+    let html = `<div class="stats-row">
+      <div class="stat-box"><div class="stat-num">${list.length}</div><div class="stat-label">Extra Classes Assigned</div></div>
+      <div class="stat-box"><div class="stat-num">${done.length}</div><div class="stat-label">Re-test Done</div></div>
+      <div class="stat-box"><div class="stat-num">${allN}</div><div class="stat-label">Students Measured</div></div>
+      <div class="stat-box"><div class="stat-num">${allN ? r1(allB / allN) + '% → ' + r1(allA / allN) + '%' : '—'}</div><div class="stat-label">Weak-topic Avg (before → after)</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:#1e8449;">${done.reduce((s, x) => s + x.im.cleared, 0)}</div><div class="stat-label">Students no longer weak</div></div>
+    </div>`;
+
+    html += `<h3>Teacher-wise Improvement</h3><div class="table-wrap"><table><thead><tr>
+      <th class="left">Teacher</th><th>Extra Classes</th><th>Students</th><th>Classes Taken / Planned</th><th>Re-test Done</th>
+      <th>Before %</th><th>After %</th><th>Improvement (pts)</th><th>Students Improved</th><th>Declined</th><th>Weak → Cleared</th>
+      <th>Other students' change*</th><th>Rating</th></tr></thead><tbody>`;
+    rows.forEach(t => {
+      html += `<tr><td class="left"><b>${esc(t.name)}</b></td><td>${t.n}</td><td>${t.students}</td><td>${t.taken} / ${t.planned}</td><td>${t.measuredA}</td>
+        <td>${t.before === null ? '—' : r1(t.before) + '%'}</td><td>${t.after === null ? '—' : r1(t.after) + '%'}</td>
+        ${changeCell(t.before, t.after)}<td class="up">${t.up}</td><td class="down">${t.down}</td><td>${t.cleared} / ${t.weak}</td>
+        <td>${ptsText(t.others)}</td><td>${rating(t.d)}</td></tr>`;
+    });
+    html += `</tbody></table></div>`;
+
+    html += `<h3>Extra Class-wise Detail</h3><div class="table-wrap"><table><thead><tr>
+      <th class="left">Teacher</th><th>Class</th><th>Subject</th><th class="left">Topics</th><th>Test → Re-test</th><th>Classes</th>
+      <th>Students Measured</th><th>Before %</th><th>After %</th><th>Change (pts)</th><th>Weak → Cleared</th><th>Other students' change*</th></tr></thead><tbody>`;
+    items.forEach(({ e, im }) => {
+      const ok = im.status === 'done';
+      html += `<tr><td class="left">${esc(e.teacherName)}</td><td>${esc(e.class)}${e.section ? ' – ' + esc(e.section) : ''}</td><td>${esc(e.subject)}</td>
+        <td class="left" style="font-size:12px;">${(e.topics || []).map(esc).join(', ')}</td>
+        <td style="font-size:12px;">${fmtDate(e.testDate)} → ${im.B ? fmtDate(im.B.date) : 'pending'}</td>
+        <td>${e.takenClasses || 0} / ${e.plannedClasses || 0}</td>
+        <td>${ok ? im.measured + ' / ' + (e.students || []).length : '—'}</td>
+        <td>${ok ? r1(im.before) + '%' : '—'}</td><td>${ok ? r1(im.after) + '%' : '—'}</td>
+        ${ok ? changeCell(im.before, im.after) : '<td>—</td>'}
+        <td>${ok ? im.cleared + ' / ' + im.weakBefore : '—'}</td><td>${ok ? ptsText(im.othersChange) : '—'}</td></tr>`;
+    });
+    html += `</tbody></table></div>`;
+
+    html += `<h3>Student-wise Detail (weak topics)</h3><div class="table-wrap"><table><thead><tr>
+      <th class="left">Teacher</th><th>Class</th><th>Sec</th><th>Roll</th><th class="left">Student Name</th><th class="left">Topics</th>
+      <th>Before %</th><th>After %</th><th>Change (pts)</th><th>Result</th></tr></thead><tbody>`;
+    done.forEach(({ e, im }) => {
+      im.rows.slice().sort((x, y) => bySectionRoll(x.st, y.st)).forEach(r => {
+        html += `<tr><td class="left">${esc(e.teacherName)}</td><td>${esc(e.class)}</td><td>${esc(r.st.section || '-')}</td><td>${esc(r.st.rollNo || '-')}</td>
+          <td class="left">${esc(r.st.name)}</td><td class="left" style="font-size:12px;">${(e.topics || []).map(esc).join(', ')}</td>
+          <td>${r.before === null ? 'AB' : r1(r.before) + '%'}</td><td>${r.after === null ? 'AB' : r1(r.after) + '%'}</td>
+          ${changeCell(r.before, r.after)}<td>${verdict(r.before, r.after)}</td></tr>`;
+      });
+    });
+    html += `</tbody></table></div>
+      <p style="font-size:12px;color:#777;margin-top:10px;">Before / After = average % of the extra-class students in the assigned (weak) topics, in the first test and the re-test.
+      * Other students' change = change of students of the same class/section who did <b>not</b> attend the extra class — if the extra-class students improved
+      much more than them, the extra class worked.</p>
+      <div style="display:flex;justify-content:space-between;margin-top:50px;font-size:12px;"><span>Academic Coordinator</span><span>Principal</span></div>`;
     body.innerHTML = html;
   } catch (e) {
     body.innerHTML = `<div class="msg msg-error">Error: ${esc(e.message)}</div>`;
