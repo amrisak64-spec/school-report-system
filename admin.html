@@ -887,6 +887,16 @@
             <option value="2027-28">2027-28</option>
           </select>
         </div>
+        <div>
+          <label>Exam</label>
+          <select id="perf-exam" style="width:160px;">
+            <option value="">All Exams</option>
+            <option value="PA1">P.A.1</option>
+            <option value="HalfYearly">Half Yearly</option>
+            <option value="PA2">P.A.2</option>
+            <option value="Annual">Annual</option>
+          </select>
+        </div>
         <div style="padding-top:18px;">
           <button class="btn btn-primary" onclick="loadPerformance()">🔍 Load Analysis</button>
         </div>
@@ -921,7 +931,7 @@
     <!-- SECTION 1B: Poor Performing Subjects by Class — All Classes -->
     <div class="card" id="perf-poor-card" style="display:none;">
       <h2>⚠️ Poor Performing Subjects — All Classes <span id="perf-poor-session" style="font-size:13px;font-weight:400;color:#888;"></span></h2>
-      <p style="font-size:12px;color:#666;margin-bottom:14px;">Class-subject combinations averaging below the passing mark (33%) across all classes, ranked worst first — use this to target intervention.</p>
+      <p style="font-size:12px;color:#666;margin-bottom:14px;">Class-subject combinations averaging below 45% across all classes, ranked worst first — use this to target intervention.</p>
       <div style="overflow-x:auto;">
         <table style="font-size:12px;border-collapse:collapse;width:100%;">
           <thead id="perf-poor-thead"></thead>
@@ -3108,6 +3118,8 @@ function showPromoMsg(msg, type) {
 // ── PERFORMANCE & IMPROVEMENT ─────────────────────────────────────────────
 window.loadPerformance = async function() {
   const session = document.getElementById('perf-session').value;
+  const exam    = document.getElementById('perf-exam').value;
+  const examTag = `| Session: ${session} | ${exam ? EXAM_LABELS[exam] : 'All Exams'}`;
   const msgEl   = document.getElementById('perf-msg');
   msgEl.textContent = '⏳ Loading data, please wait...';
   ['perf-subj-card','perf-poor-card','perf-improve-card','perf-top-card','perf-yoy-card'].forEach(id => document.getElementById(id).style.display = 'none');
@@ -3125,6 +3137,8 @@ window.loadPerformance = async function() {
     marksSnap.forEach(d => {
       const m = d.data();
       if (!marks[m.studentId]) marks[m.studentId] = {};
+      // Absent / blank marks are left out so they don't count as zero
+      if (m.absent || m.marksObtained === null || m.marksObtained === '' || isNaN(Number(m.marksObtained))) return;
       if (!marks[m.studentId][m.exam]) marks[m.studentId][m.exam] = {};
       marks[m.studentId][m.exam][m.subject] = Number(m.marksObtained);
     });
@@ -3133,7 +3147,8 @@ window.loadPerformance = async function() {
     msgEl.textContent = `Loaded ${studSnap.size} students. Analysing...`;
 
     const CLASSES = VALID_CLASSES;
-    const EXAMS   = ['PA1','HalfYearly','PA2','Annual'];
+    // Subject ranking, poor subjects and top students follow the selected exam
+    const EXAMS   = exam ? [exam] : ['PA1','HalfYearly','PA2','Annual'];
 
     // ── Build per-student totals ──
     // studentStats[id] = { class, name, rollNo, totalObtained, totalMax, pct, subjAvg:{sub:pct} }
@@ -3218,11 +3233,11 @@ window.loadPerformance = async function() {
 
     document.getElementById('perf-subj-thead').innerHTML = subjHead;
     document.getElementById('perf-subj-tbody').innerHTML  = subjRows || '<tr><td colspan="20" style="text-align:center;padding:20px;color:#aaa;">No data</td></tr>';
-    document.getElementById('perf-subj-session').textContent = `| Session: ${session}`;
+    document.getElementById('perf-subj-session').textContent = examTag;
     document.getElementById('perf-subj-card').style.display = '';
 
     // ════ SECTION 1B: Poor Performing Subjects — All Classes ════
-    const POOR_THRESHOLD = 33; // school's passing mark
+    const POOR_THRESHOLD = 45; // flag class-subjects below 45% for intervention
 
     const poorHead = `<tr>${TH('Rank')}${TH('Class')}${TH('Subject')}${TH('Students')}${TH('Average %','#c0392b')}${TH('Status','#444')}</tr>`;
 
@@ -3237,7 +3252,7 @@ window.loadPerformance = async function() {
     poorData.sort((a,b) => a.avg - b.avg);
 
     const poorRows = poorData.map((item,i) => {
-      const status = item.avg < 20 ? '🔴 Critical' : item.avg < 27 ? '🟠 Very Poor' : '🟡 Poor';
+      const status = item.avg < 33 ? '🔴 Below Pass' : item.avg < 40 ? '🟠 Very Poor' : '🟡 Poor';
       return `<tr>
         ${TD('#'+(i+1),'text-align:center;')}
         ${TD('<b>Class '+item.cls+'</b>')}
@@ -3249,8 +3264,8 @@ window.loadPerformance = async function() {
     }).join('');
 
     document.getElementById('perf-poor-thead').innerHTML = poorHead;
-    document.getElementById('perf-poor-tbody').innerHTML  = poorRows || '<tr><td colspan="6" style="text-align:center;padding:20px;color:#1e8449;">🎉 No class-subject averages below the passing mark.</td></tr>';
-    document.getElementById('perf-poor-session').textContent = `| Session: ${session}`;
+    document.getElementById('perf-poor-tbody').innerHTML  = poorRows || '<tr><td colspan="6" style="text-align:center;padding:20px;color:#1e8449;">🎉 No class-subject averages below 45%.</td></tr>';
+    document.getElementById('perf-poor-session').textContent = examTag;
     document.getElementById('perf-poor-card').style.display = '';
 
     // ════ SECTION 2: Improvement HY → Annual ════
@@ -3318,7 +3333,7 @@ window.loadPerformance = async function() {
 
     document.getElementById('perf-top-thead').innerHTML = topHead;
     document.getElementById('perf-top-tbody').innerHTML  = topRows || '<tr><td colspan="8" style="text-align:center;padding:20px;color:#aaa;">No data</td></tr>';
-    document.getElementById('perf-top-session').textContent = `| Session: ${session}`;
+    document.getElementById('perf-top-session').textContent = examTag;
     document.getElementById('perf-top-card').style.display = '';
 
     // ════ SECTION 4: Year-over-Year Classwise Comparison ════
@@ -3416,7 +3431,7 @@ window.loadPerformance = async function() {
       }
     }
 
-    msgEl.textContent = `✅ Analysis complete — ${studSnap.size} students across ${clsOverall.length} classes.`;
+    msgEl.textContent = `✅ Analysis complete (${exam ? EXAM_LABELS[exam] : "All Exams"}) — ${studSnap.size} students across ${clsOverall.length} classes.`;
 
   } catch(e) { msgEl.textContent = '❌ Error: ' + e.message; }
 };
