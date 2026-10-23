@@ -6,6 +6,7 @@
       "ignore": [
         "firebase.json",
         "**/.*",
+        "**/.*/**",
         "**/node_modules/**",
         "functions/**",
         "*.xlsx",
@@ -22,6 +23,7 @@
       "ignore": [
         "firebase.json",
         "**/.*",
+        "**/.*/**",
         "**/node_modules/**",
         "functions/**",
         "*.xlsx",
